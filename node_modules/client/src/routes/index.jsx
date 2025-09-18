@@ -10,6 +10,7 @@ import Favorites from '../pages/Favorites'
 import Login from '../pages/Login'
 import Register from '../pages/Register'
 import { useAppSelector } from '../app/hooks'
+import Account from '../pages/Account' // <-- NEW
 
 function Protected({ children }) {
   const { user, status } = useAppSelector(s => s.auth)
@@ -28,6 +29,7 @@ export default function AppRoutes() {
         <Route path="/checkout" element={<Protected><Checkout /></Protected>} />
         <Route path="/orders" element={<Protected><Orders /></Protected>} />
         <Route path="/favorites" element={<Protected><Favorites /></Protected>} />
+        <Route path="/account" element={<Protected><Account /></Protected>} /> {/* NEW */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<Navigate to="/" replace />} />

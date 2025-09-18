@@ -30,6 +30,7 @@ export default function RootLayout() {
               </>
             ) : (
               <div className="flex items-center gap-3">
+                <NavLink to="/account" className="hover:underline">Account</NavLink> {/* NEW */}
                 <span className="text-sm opacity-80">Hi, {user.firstName || user.username}</span>
                 <button className="rounded-lg border px-3 py-1" onClick={() => dispatch(logoutUser())}>
                   Logout
@@ -50,12 +51,15 @@ export default function RootLayout() {
                   <NavLink to="/register" onClick={() => setOpen(false)}>Register</NavLink>
                 </>
               ) : (
-                <button
-                  className="rounded-lg border px-3 py-1 w-max"
-                  onClick={() => { setOpen(false); dispatch(logoutUser()) }}
-                >
-                  Logout
-                </button>
+                <>
+                  <NavLink to="/account" onClick={() => setOpen(false)}>Account</NavLink> {/* NEW */}
+                  <button
+                    className="rounded-lg border px-3 py-1 w-max"
+                    onClick={() => { setOpen(false); dispatch(logoutUser()) }}
+                  >
+                    Logout
+                  </button>
+                </>
               )}
             </div>
           </nav>

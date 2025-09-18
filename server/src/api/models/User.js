@@ -1,15 +1,33 @@
 import mongoose from 'mongoose'
 
 const addressSchema = new mongoose.Schema({
-  label: String,
-  line1: String,
-  line2: String,
-  city: String,
-  region: String,
-  postalCode: String,
-  country: String,
-  phone: String,
+  label: { type: String, trim: true },                 // "Home", "Office"
+  line1: { type: String, required: true, trim: true },
+  line2: { type: String, trim: true },
+  city: { type: String, required: true, trim: true },
+  region: { type: String, trim: true },                // state/province
+  postalCode: { type: String, trim: true },
+  country: { type: String, required: true, trim: true },
+  phone: { type: String, trim: true },
   isDefault: { type: Boolean, default: false }
+}, { _id: true, timestamps: true })
+
+const paymentMethodSchema = new mongoose.Schema({
+  type: { type: String, enum: ['card'], required: true },
+  gateway: { type: String, enum: ['PAYHERE'], required: true },
+  label: { type: String, trim: true },                 // "Visa •••• 4242"
+  brand: { type: String, trim: true },                 // Visa/Master
+  last4: { type: String, trim: true },                 // masked
+  expMonth: Number,
+  expYear: Number,
+  tokenId: { type: String, trim: true, index: true },  // token from gateway
+}, { _id: true, timestamps: true })
+
+const twoFASchema = new mongoose.Schema({
+  enabled: { type: Boolean, default: false },
+  secret: { type: String },        // base32
+  tempSecret: { type: String },    // base32 during setup
+  backupCodes: [{ type: String }], // store hashed in production; plain for dev OK
 }, { _id: false })
 
 const userSchema = new mongoose.Schema(
@@ -17,33 +35,29 @@ const userSchema = new mongoose.Schema(
     firstName: { type: String, required: true, trim: true, minlength: 2, maxlength: 60 },
     lastName:  { type: String, required: true, trim: true, minlength: 2, maxlength: 60 },
     username:  {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-      trim: true,
-      lowercase: true, // enforce case-insensitive uniqueness
-      minlength: 3,
-      maxlength: 30,
-      match: /^[a-z0-9_\.]+$/ // letters/numbers/underscore/dot
+      type: String, required: true, unique: true, index: true, trim: true, lowercase: true,
+      minlength: 3, maxlength: 30, match: /^[a-z0-9_\.]+$/
     },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-      trim: true,
-      lowercase: true
-    },
-    password: {
-      type: String,
-      required: true,
-      select: false, // never return by default
-      minlength: 8
-    },
+    email: { type: String, required: true, unique: true, index: true, trim: true, lowercase: true },
+    password: { type: String, required: true, select: false, minlength: 8 },
+
+    // New profile fields
+    mobile: { type: String, trim: true },
+    gender: { type: String, enum: ['male','female','other','prefer_not_to_say'], default: 'prefer_not_to_say' },
+    birthday: { type: Date },
+    country: { type: String, trim: true },
+
     roles: { type: [String], default: ['user'] },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-    addresses: [addressSchema]
+    addresses: [addressSchema],
+    paymentMethods: [paymentMethodSchema],
+    twoFA: twoFASchema,
+
+    notifications: {
+      purchases: { type: Boolean, default: true },
+      account: { type: Boolean, default: true },
+      events: { type: Boolean, default: true }
+    }
   },
   { timestamps: true }
 )
