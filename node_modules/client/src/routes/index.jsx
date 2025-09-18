@@ -10,7 +10,9 @@ import Favorites from '../pages/Favorites'
 import Login from '../pages/Login'
 import Register from '../pages/Register'
 import { useAppSelector } from '../app/hooks'
-import Account from '../pages/Account' // <-- NEW
+import Account from '../pages/Account'
+import ForgotPassword from '../pages/ForgotPassword'     // <-- NEW
+import ResetPassword from '../pages/ResetPassword'       // <-- NEW
 
 function Protected({ children }) {
   const { user, status } = useAppSelector(s => s.auth)
@@ -29,9 +31,11 @@ export default function AppRoutes() {
         <Route path="/checkout" element={<Protected><Checkout /></Protected>} />
         <Route path="/orders" element={<Protected><Orders /></Protected>} />
         <Route path="/favorites" element={<Protected><Favorites /></Protected>} />
-        <Route path="/account" element={<Protected><Account /></Protected>} /> {/* NEW */}
+        <Route path="/account" element={<Protected><Account /></Protected>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />    {/* NEW */}
+        <Route path="/reset-password/:token" element={<ResetPassword />} />{/* NEW */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

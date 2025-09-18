@@ -1,6 +1,5 @@
 import { z } from 'zod'
 
-// Password: 8-128, ≥1 lower, ≥1 upper, ≥1 digit, ≥1 symbol, no spaces
 const passwordSchema = z.string()
   .min(8, 'Password must be at least 8 characters')
   .max(128, 'Password is too long')
@@ -27,7 +26,33 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   body: z.object({
-    identifier: z.string().min(3), // username or email
+    identifier: z.string().min(3),
     password: z.string().min(1)
+  })
+})
+
+export const twoFAVerifySchema = z.object({
+  body: z.object({
+    tmpToken: z.string().min(10),
+    code: z.string().min(4),
+    remember: z.boolean().optional()
+  })
+})
+
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    identifier: z.string().min(3) // username or email
+  })
+})
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    token: z.string().min(10),
+    newPassword: passwordSchema,
+    confirmPassword: z.string()
+  }).superRefine((d, ctx) => {
+    if (d.newPassword !== d.confirmPassword) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['confirmPassword'], message: 'Passwords do not match' })
+    }
   })
 })

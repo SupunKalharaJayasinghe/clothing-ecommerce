@@ -37,7 +37,6 @@ export const updateProfile = catchAsync(async (req, res) => {
   const { firstName, lastName, username, email, mobile, gender, birthday, country } = req.body
   const user = await User.findById(req.user.sub)
 
-  // uniqueness checks for username/email if changed
   if (username && username !== user.username) {
     const takenU = await User.findOne({ username: username.toLowerCase() }).lean()
     if (takenU) throw new ApiError(409, 'Username already in use')
@@ -136,10 +135,8 @@ export const listPaymentMethods = catchAsync(async (req, res) => {
 })
 
 export const addPaymentMethod = catchAsync(async (req, res) => {
-  // IMPORTANT: We do not accept raw card numbers here.
   const user = await User.findById(req.user.sub)
   const pm = user.paymentMethods.create(req.body)
-  // Optional: dedupe by tokenId
   if (user.paymentMethods.some(x => x.tokenId === pm.tokenId)) {
     return res.status(200).json({ ok: true, paymentMethod: user.paymentMethods.find(x => x.tokenId === pm.tokenId) })
   }
@@ -180,12 +177,10 @@ export const verify2FASetup = catchAsync(async (req, res) => {
   const valid = authenticator.verify({ token, secret })
   if (!valid) throw new ApiError(400, 'Invalid code')
 
-  // Enable 2FA
   user.twoFA.secret = secret
   user.twoFA.enabled = true
   user.twoFA.tempSecret = undefined
 
-  // Generate backup codes (plain for dev; hash in prod)
   const codes = Array.from({ length: 10 }).map(() => Math.random().toString(36).slice(-10))
   user.twoFA.backupCodes = codes
   await user.save()
@@ -207,4 +202,46 @@ export const regen2FACodes = catchAsync(async (req, res) => {
   user.twoFA.backupCodes = codes
   await user.save()
   res.json({ ok: true, backupCodes: codes })
+})
+
+// --- ACCOUNT DELETION REQUEST ---
+export const getDeletionRequest = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user.sub, 'deletionRequest')
+  const dr = user.deletionRequest
+  res.json({
+    ok: true,
+    deletionRequest: dr ? {
+      status: dr.status,
+      reason: dr.reason || '',
+      requestedAt: dr.requestedAt,
+      updatedAt: dr.updatedAt
+    } : null
+  })
+})
+
+export const createDeletionRequest = catchAsync(async (req, res) => {
+  const { reason } = req.body
+  const user = await User.findById(req.user.sub)
+
+  user.deletionRequest = {
+    status: 'pending',
+    reason: reason || '',
+    requestedAt: new Date(),
+    updatedAt: new Date()
+  }
+  await user.save()
+
+  // TODO: notify admins by email/webhook
+  res.status(201).json({ ok: true, deletionRequest: user.deletionRequest })
+})
+
+export const cancelDeletionRequest = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user.sub)
+  if (!user.deletionRequest) return res.json({ ok: true, deletionRequest: null })
+
+  user.deletionRequest.status = 'cancelled'
+  user.deletionRequest.updatedAt = new Date()
+  await user.save()
+
+  res.json({ ok: true, deletionRequest: user.deletionRequest })
 })

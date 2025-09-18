@@ -51,31 +51,44 @@ export default function Account() {
   const [twoFAMsg, setTwoFAMsg] = useState('')
   const [twoFAErr, setTwoFAErr] = useState('')
 
+  // Deletion request
+  const [del, setDel] = useState({ status: null, requestedAt: null, reason: '' })
+  const [delMsg, setDelMsg] = useState('')
+  const [delErr, setDelErr] = useState('')
+  const [delConfirm, setDelConfirm] = useState(false)
+
   // load all
   useEffect(() => {
     (async () => {
       try {
-        const [{ data: me }, { data: notif }, { data: pm }, { data: adr }] = await Promise.all([
+        const [me, notif, pm, adr, delr] = await Promise.all([
           api.get('/account/profile'),
           api.get('/account/notifications'),
           api.get('/account/payment-methods'),
-          api.get('/account/addresses')
+          api.get('/account/addresses'),
+          api.get('/account/deletion')
         ])
-        setUser(me.user)
+        setUser(me.data.user)
         setProfile({
-          firstName: me.user.firstName,
-          lastName: me.user.lastName,
-          username: me.user.username,
-          email: me.user.email,
-          mobile: me.user.mobile || '',
-          gender: me.user.gender || 'prefer_not_to_say',
-          birthday: me.user.birthday ? me.user.birthday.slice(0,10) : '',
-          country: me.user.country || ''
+          firstName: me.data.user.firstName,
+          lastName: me.data.user.lastName,
+          username: me.data.user.username,
+          email: me.data.user.email,
+          mobile: me.data.user.mobile || '',
+          gender: me.data.user.gender || 'prefer_not_to_say',
+          birthday: me.data.user.birthday ? me.data.user.birthday.slice(0,10) : '',
+          country: me.data.user.country || ''
         })
-        setTwoFA(me.user.twoFA)
-        setNoti(notif.notifications)
-        setCards(pm.items || [])
-        setAddresses(adr.items || [])
+        setTwoFA(me.data.user.twoFA)
+        setNoti(notif.data.notifications)
+        setCards(pm.data.items || [])
+        setAddresses(adr.data.items || [])
+        const dr = delr.data.deletionRequest
+        setDel({
+          status: dr?.status || null,
+          requestedAt: dr?.requestedAt || null,
+          reason: dr?.reason || ''
+        })
       } catch (e) {
         setErr(e.response?.data?.message || e.message)
       } finally {
@@ -148,7 +161,7 @@ export default function Account() {
     setTimeout(() => setNotiMsg(''), 1500)
   }
 
-  // Payment methods: tokenized via gateway (placeholder UX)
+  // Payment methods
   async function removeCard(id) {
     await api.delete(`/account/payment-methods/${id}`)
     setCards(prev => prev.filter(c => c._id !== id))
@@ -182,6 +195,35 @@ export default function Account() {
     setTwoFAMsg(`New backup codes: ${data.backupCodes.join(', ')}`)
   }
 
+  // Deletion request
+  async function requestDeletion() {
+    setDelErr(''); setDelMsg('')
+    if (!delConfirm) { setDelErr('Please confirm you understand this request.'); return }
+    try {
+      const { data } = await api.post('/account/deletion', { reason: del.reason })
+      setDel({
+        status: data.deletionRequest.status,
+        reason: data.deletionRequest.reason || '',
+        requestedAt: data.deletionRequest.requestedAt
+      })
+      setDelMsg('Deletion request submitted. Our team will review it.')
+    } catch (e) {
+      setDelErr(e.response?.data?.message || e.message)
+    }
+  }
+
+  async function cancelDeletion() {
+    const { data } = await api.delete('/account/deletion')
+    if (data.deletionRequest?.status === 'cancelled') {
+      setDel(prev => ({ ...prev, status: 'cancelled' }))
+      setDelMsg('Deletion request cancelled.')
+    } else {
+      // if backend returns null when none existed
+      setDel({ status: null, requestedAt: null, reason: '' })
+      setDelMsg('No active deletion request.')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="text-2xl font-bold">My Account</h1>
@@ -196,6 +238,7 @@ export default function Account() {
 
       {tab === 'info' && (
         <section className="mt-6 grid gap-6 md:grid-cols-2">
+          {/* Account info */}
           <div className="rounded-2xl border p-5">
             <h2 className="font-semibold mb-3">Account information</h2>
             <div className="grid gap-3">
@@ -218,23 +261,63 @@ export default function Account() {
             </div>
           </div>
 
-          <div className="rounded-2xl border p-5">
-            <h2 className="font-semibold mb-3">Change password</h2>
-            <input className={input} type="password" placeholder="Current password" value={pwd.currentPassword} onChange={e=>setPwd({...pwd, currentPassword:e.target.value})}/>
-            <input className={input} type="password" placeholder="New password" value={pwd.newPassword} onChange={e=>setPwd({...pwd, newPassword:e.target.value})}/>
-            <input className={input} type="password" placeholder="Confirm new password" value={pwd.confirmPassword} onChange={e=>setPwd({...pwd, confirmPassword:e.target.value})}/>
-            <ul className="mt-2 text-xs space-y-1">
-              <li className={pwdStrong.len ? 'text-green-600':'opacity-70'}>• ≥ 8 chars</li>
-              <li className={pwdStrong.lower ? 'text-green-600':'opacity-70'}>• lowercase</li>
-              <li className={pwdStrong.upper ? 'text-green-600':'opacity-70'}>• uppercase</li>
-              <li className={pwdStrong.num ? 'text-green-600':'opacity-70'}>• number</li>
-              <li className={pwdStrong.sym ? 'text-green-600':'opacity-70'}>• symbol</li>
-              <li className={pwdStrong.nospace ? 'text-green-600':'opacity-70'}>• no spaces</li>
-            </ul>
-            {pwdMsg && <p className="text-green-600 text-sm mt-2">{pwdMsg}</p>}
-            {pwdErr && <p className="text-red-600 text-sm mt-2">{pwdErr}</p>}
-            <button className="mt-2 rounded-lg border py-2" onClick={changePassword}>Update password</button>
-            <p className="text-xs opacity-70 mt-2">Password is stored hashed; on this page we just show it as ••••••••••</p>
+          {/* Password + Deletion request */}
+          <div className="space-y-6">
+            <div className="rounded-2xl border p-5">
+              <h2 className="font-semibold mb-3">Change password</h2>
+              <input className={input} type="password" placeholder="Current password" value={pwd.currentPassword} onChange={e=>setPwd({...pwd, currentPassword:e.target.value})}/>
+              <input className={input} type="password" placeholder="New password" value={pwd.newPassword} onChange={e=>setPwd({...pwd, newPassword:e.target.value})}/>
+              <input className={input} type="password" placeholder="Confirm new password" value={pwd.confirmPassword} onChange={e=>setPwd({...pwd, confirmPassword:e.target.value})}/>
+              <ul className="mt-2 text-xs space-y-1">
+                <li className={pwdStrong.len ? 'text-green-600':'opacity-70'}>• ≥ 8 chars</li>
+                <li className={pwdStrong.lower ? 'text-green-600':'opacity-70'}>• lowercase</li>
+                <li className={pwdStrong.upper ? 'text-green-600':'opacity-70'}>• uppercase</li>
+                <li className={pwdStrong.num ? 'text-green-600':'opacity-70'}>• number</li>
+                <li className={pwdStrong.sym ? 'text-green-600':'opacity-70'}>• symbol</li>
+                <li className={pwdStrong.nospace ? 'text-green-600':'opacity-70'}>• no spaces</li>
+              </ul>
+              {pwdMsg && <p className="text-green-600 text-sm mt-2">{pwdMsg}</p>}
+              {pwdErr && <p className="text-red-600 text-sm mt-2">{pwdErr}</p>}
+              <button className="mt-2 rounded-lg border py-2" onClick={changePassword}>Update password</button>
+              <p className="text-xs opacity-70 mt-2">Password is stored hashed; on this page we just show it as ••••••••••</p>
+            </div>
+
+            <div className="rounded-2xl border p-5">
+              <h2 className="font-semibold mb-2">Request account deletion</h2>
+              {del.status === 'pending' ? (
+                <>
+                  <p className="text-sm">
+                    Your deletion request is <span className="font-medium">pending</span>
+                    {del.requestedAt && <> (since {new Date(del.requestedAt).toLocaleString()})</>}
+                    . We’ll review it and contact you by email.
+                  </p>
+                  {del.reason && <p className="text-sm mt-1 opacity-80">Reason: {del.reason}</p>}
+                  <div className="mt-3 flex items-center gap-2">
+                    <button className="rounded-lg border px-3 py-1" onClick={cancelDeletion}>Cancel request</button>
+                    {delMsg && <span className="text-green-600 text-sm">{delMsg}</span>}
+                  </div>
+                </>
+              ) : del.status === 'cancelled' ? (
+                <p className="text-sm">Your previous deletion request was <span className="font-medium">cancelled</span>. You can submit a new request below.</p>
+              ) : (
+                <>
+                  <p className="text-sm opacity-80">You can request your account to be deleted. This will be reviewed by our team. You will not be able to use your account after deletion.</p>
+                  <textarea
+                    className={`${input} mt-3 h-28`}
+                    placeholder="Reason (optional, but helps us understand)"
+                    value={del.reason}
+                    onChange={e=>setDel({...del, reason:e.target.value})}
+                  />
+                  <label className="mt-2 flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={delConfirm} onChange={e=>setDelConfirm(e.target.checked)} />
+                    I understand that this action will permanently delete my account data once approved.
+                  </label>
+                  {delErr && <p className="text-red-600 text-sm mt-1">{delErr}</p>}
+                  {delMsg && <p className="text-green-600 text-sm mt-1">{delMsg}</p>}
+                  <button className="mt-2 rounded-lg border py-2" onClick={requestDeletion}>Submit deletion request</button>
+                </>
+              )}
+            </div>
           </div>
         </section>
       )}

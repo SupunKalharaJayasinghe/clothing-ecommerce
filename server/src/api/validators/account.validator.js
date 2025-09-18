@@ -73,3 +73,10 @@ export const paymentMethodCreateSchema = z.object({
     label: z.string().optional()
   })
 })
+
+// Account deletion request
+export const deletionRequestCreateSchema = z.object({
+  body: z.object({
+    reason: z.string().min(10, 'Please provide a short reason (min 10 chars)').max(1000).optional()
+  })
+})
