@@ -9,6 +9,13 @@ import Orders from '../pages/Orders'
 import Favorites from '../pages/Favorites'
 import Login from '../pages/Login'
 import Register from '../pages/Register'
+import { useAppSelector } from '../app/hooks'
+
+function Protected({ children }) {
+  const { user, status } = useAppSelector(s => s.auth)
+  if (status === 'loading') return <div className="p-6">Loading…</div>
+  return user ? children : <Navigate to="/login" replace />
+}
 
 export default function AppRoutes() {
   return (
@@ -18,9 +25,9 @@ export default function AppRoutes() {
         <Route path="/products" element={<ProductListing />} />
         <Route path="/products/:slug" element={<ProductDetails />} />
         <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/favorites" element={<Favorites />} />
+        <Route path="/checkout" element={<Protected><Checkout /></Protected>} />
+        <Route path="/orders" element={<Protected><Orders /></Protected>} />
+        <Route path="/favorites" element={<Protected><Favorites /></Protected>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<Navigate to="/" replace />} />

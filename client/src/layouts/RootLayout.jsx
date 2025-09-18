@@ -1,9 +1,14 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import { APP_NAME } from '../lib/constants'
+import { useAppDispatch, useAppSelector } from '../app/hooks'
+import { logoutUser } from '../features/auth/authSlice'
 
 export default function RootLayout() {
   const [open, setOpen] = useState(false)
+  const { user } = useAppSelector(s => s.auth)
+  const dispatch = useAppDispatch()
+
   return (
     <div className="min-h-dvh flex flex-col">
       <header className="sticky top-0 z-40 border-b bg-white">
@@ -14,11 +19,24 @@ export default function RootLayout() {
             onClick={() => setOpen(o => !o)}
             aria-label="Toggle menu"
           >☰</button>
-          <nav className="hidden md:flex gap-6">
+          <nav className="hidden md:flex items-center gap-6">
             <NavLink to="/products" className="hover:underline">Shop</NavLink>
             <NavLink to="/favorites" className="hover:underline">Favorites</NavLink>
             <NavLink to="/cart" className="hover:underline">Cart</NavLink>
-            <NavLink to="/login" className="hover:underline">Login</NavLink>
+            {!user ? (
+              <>
+                <NavLink to="/login" className="hover:underline">Login</NavLink>
+                <NavLink to="/register" className="hover:underline">Register</NavLink>
+              </>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-sm opacity-80">Hi, {user.name}</span>
+                <button className="rounded-lg border px-3 py-1"
+                        onClick={() => dispatch(logoutUser())}>
+                  Logout
+                </button>
+              </div>
+            )}
           </nav>
         </div>
         {open && (
@@ -27,7 +45,17 @@ export default function RootLayout() {
               <NavLink to="/products" onClick={() => setOpen(false)}>Shop</NavLink>
               <NavLink to="/favorites" onClick={() => setOpen(false)}>Favorites</NavLink>
               <NavLink to="/cart" onClick={() => setOpen(false)}>Cart</NavLink>
-              <NavLink to="/login" onClick={() => setOpen(false)}>Login</NavLink>
+              {!user ? (
+                <>
+                  <NavLink to="/login" onClick={() => setOpen(false)}>Login</NavLink>
+                  <NavLink to="/register" onClick={() => setOpen(false)}>Register</NavLink>
+                </>
+              ) : (
+                <button className="rounded-lg border px-3 py-1 w-max"
+                        onClick={() => { setOpen(false); /* dispatch after close */ }}>
+                  <span onClick={() => dispatch(logoutUser())}>Logout</span>
+                </button>
+              )}
             </div>
           </nav>
         )}
