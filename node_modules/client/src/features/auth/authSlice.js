@@ -6,7 +6,16 @@ export const registerUser = createAsyncThunk(
   'auth/registerUser',
   async (payload, thunkAPI) => {
     try {
-      const { data } = await api.post('/auth/register', payload)
+      // payload: { firstName, lastName, username, email, password, confirmPassword }
+      const clean = {
+        firstName: payload.firstName?.trim(),
+        lastName: payload.lastName?.trim(),
+        username: payload.username?.trim().toLowerCase(),
+        email: payload.email?.trim().toLowerCase(),
+        password: payload.password,
+        confirmPassword: payload.confirmPassword
+      }
+      const { data } = await api.post('/auth/register', clean)
       return data.user
     } catch (err) {
       return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
@@ -18,7 +27,12 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async (payload, thunkAPI) => {
     try {
-      const { data } = await api.post('/auth/login', payload)
+      // payload: { identifier, password } (identifier = username OR email)
+      const clean = {
+        identifier: payload.identifier?.trim().toLowerCase(),
+        password: payload.password
+      }
+      const { data } = await api.post('/auth/login', clean)
       return data.user
     } catch (err) {
       return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
@@ -26,29 +40,23 @@ export const loginUser = createAsyncThunk(
   }
 )
 
-export const fetchMe = createAsyncThunk(
-  'auth/fetchMe',
-  async (_, thunkAPI) => {
-    try {
-      const { data } = await api.get('/auth/me')
-      return data.user
-    } catch (err) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
-    }
+export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, thunkAPI) => {
+  try {
+    const { data } = await api.get('/auth/me')
+    return data.user
+  } catch (err) {
+    return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
   }
-)
+})
 
-export const logoutUser = createAsyncThunk(
-  'auth/logoutUser',
-  async (_, thunkAPI) => {
-    try {
-      await api.post('/auth/logout')
-      return true
-    } catch (err) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
-    }
+export const logoutUser = createAsyncThunk('auth/logoutUser', async (_, thunkAPI) => {
+  try {
+    await api.post('/auth/logout')
+    return true
+  } catch (err) {
+    return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
   }
-)
+})
 
 // --- slice ---
 const initialState = { user: null, status: 'idle', error: null }

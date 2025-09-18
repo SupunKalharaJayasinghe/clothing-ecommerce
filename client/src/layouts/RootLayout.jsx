@@ -30,9 +30,8 @@ export default function RootLayout() {
               </>
             ) : (
               <div className="flex items-center gap-3">
-                <span className="text-sm opacity-80">Hi, {user.name}</span>
-                <button className="rounded-lg border px-3 py-1"
-                        onClick={() => dispatch(logoutUser())}>
+                <span className="text-sm opacity-80">Hi, {user.firstName || user.username}</span>
+                <button className="rounded-lg border px-3 py-1" onClick={() => dispatch(logoutUser())}>
                   Logout
                 </button>
               </div>
@@ -51,9 +50,11 @@ export default function RootLayout() {
                   <NavLink to="/register" onClick={() => setOpen(false)}>Register</NavLink>
                 </>
               ) : (
-                <button className="rounded-lg border px-3 py-1 w-max"
-                        onClick={() => { setOpen(false); /* dispatch after close */ }}>
-                  <span onClick={() => dispatch(logoutUser())}>Logout</span>
+                <button
+                  className="rounded-lg border px-3 py-1 w-max"
+                  onClick={() => { setOpen(false); dispatch(logoutUser()) }}
+                >
+                  Logout
                 </button>
               )}
             </div>

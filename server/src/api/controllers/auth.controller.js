@@ -8,30 +8,54 @@ const cookieOpts = {
   httpOnly: true,
   sameSite: 'lax',
   secure: process.env.NODE_ENV === 'production',
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  maxAge: 7 * 24 * 60 * 60 * 1000
+}
+
+function sanitize(user) {
+  return {
+    id: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    username: user.username,
+    email: user.email,
+    roles: user.roles
+  }
 }
 
 export const register = catchAsync(async (req, res) => {
-  const { name, email, password } = req.body
-  if (!name || !email || !password) throw new ApiError(400, 'name, email, password are required')
-  if (password.length < 8) throw new ApiError(400, 'password must be at least 8 characters')
+  const { firstName, lastName, username, email, password } = req.body
 
-  const exists = await User.findOne({ email })
-  if (exists) throw new ApiError(409, 'Email already in use')
+  // Ensure uniqueness
+  const existing = await User.findOne({
+    $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }]
+  }).lean()
+  if (existing) {
+    const which = existing.email === email.toLowerCase() ? 'Email' : 'Username'
+    throw new ApiError(409, `${which} already in use`)
+  }
 
   const hash = await bcrypt.hash(password, 12)
-  const user = await User.create({ name, email, password: hash })
+  const user = await User.create({
+    firstName,
+    lastName,
+    username,
+    email,
+    password: hash
+  })
 
   const token = signJwt({ sub: user._id, email: user.email, roles: user.roles })
   res.cookie('access_token', token, cookieOpts)
-  res.status(201).json({ ok: true, user: { id: user._id, name: user.name, email: user.email, roles: user.roles } })
+  res.status(201).json({ ok: true, user: sanitize(user) })
 })
 
 export const login = catchAsync(async (req, res) => {
-  const { email, password } = req.body
-  if (!email || !password) throw new ApiError(400, 'email and password are required')
+  const { identifier, password } = req.body
+  const idLower = identifier.toLowerCase()
 
-  const user = await User.findOne({ email }).select('+password')
+  const user = await User.findOne({
+    $or: [{ email: idLower }, { username: idLower }]
+  }).select('+password')
+
   if (!user) throw new ApiError(401, 'Invalid credentials')
 
   const match = await bcrypt.compare(password, user.password)
@@ -39,12 +63,12 @@ export const login = catchAsync(async (req, res) => {
 
   const token = signJwt({ sub: user._id, email: user.email, roles: user.roles })
   res.cookie('access_token', token, cookieOpts)
-  res.json({ ok: true, user: { id: user._id, name: user.name, email: user.email, roles: user.roles } })
+  res.json({ ok: true, user: sanitize(user) })
 })
 
 export const me = catchAsync(async (req, res) => {
   const user = await User.findById(req.user.sub)
-  res.json({ ok: true, user: { id: user._id, name: user.name, email: user.email, roles: user.roles } })
+  res.json({ ok: true, user: sanitize(user) })
 })
 
 export const logout = catchAsync(async (_req, res) => {
