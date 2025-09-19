@@ -11,7 +11,7 @@ function load() {
   } catch { return { items: [] } }
 }
 function save(state) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify({ items: state.items })) } catch {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ items: state.items })) } catch (e) { void e }
 }
 
 const initialState = { items: load().items } // [{slug, name, image, color, price, stock?, quantity}]

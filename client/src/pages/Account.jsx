@@ -15,7 +15,7 @@ function TabBtn({active, onClick, children}) {
 export default function Account() {
   const [tab, setTab] = useState('info')
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState(null)
+  // Note: remove unused local user state to satisfy lint rules
 
   // profile form
   const [profile, setProfile] = useState({
@@ -68,7 +68,6 @@ export default function Account() {
           api.get('/account/addresses'),
           api.get('/account/deletion')
         ])
-        setUser(me.data.user)
         setProfile({
           firstName: me.data.user.firstName,
           lastName: me.data.user.lastName,
@@ -113,8 +112,7 @@ export default function Account() {
   async function saveProfile() {
     setSaving(true); setMsg(''); setErr('')
     try {
-      const { data } = await api.patch('/account/profile', profile)
-      setUser(data.user)
+      await api.patch('/account/profile', profile)
       setMsg('Profile saved')
     } catch (e) {
       setErr(e.response?.data?.message || e.message)

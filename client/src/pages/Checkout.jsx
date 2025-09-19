@@ -14,6 +14,8 @@ export default function Checkout() {
 
   const [method, setMethod] = useState('COD') // 'COD' | 'CARD' | 'BANK'
   const [addr, setAddr] = useState({ line1: '', line2: '', city: '', region: '', postalCode: '', country: 'Sri Lanka', phone: '' })
+  const [addresses, setAddresses] = useState([])
+  const [addressId, setAddressId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [slip, setSlip] = useState(null) // bank
@@ -25,7 +27,19 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!user) navigate('/login?next=' + encodeURIComponent('/checkout'))
-  }, [user])
+  }, [user, navigate])
+
+  // Load saved addresses for convenience
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/account/addresses')
+        setAddresses(data.items || [])
+        const def = (data.items || []).find(a => a.isDefault) || (data.items || [])[0]
+        if (def) setAddressId(def._id)
+      } catch {}
+    })()
+  }, [])
 
   if (items.length === 0) {
     return (
@@ -38,9 +52,12 @@ export default function Checkout() {
   async function place() {
     setLoading(true); setError('')
     try {
+      const hasTypedAddress = addr.line1.trim() && addr.city.trim() && addr.country.trim() && addr.phone.trim()
       const payload = {
         method,
-        address: { ...addr, line1: addr.line1.trim(), city: addr.city.trim(), country: addr.country.trim(), phone: addr.phone.trim() },
+        ...(hasTypedAddress
+          ? { address: { ...addr, line1: addr.line1.trim(), city: addr.city.trim(), country: addr.country.trim(), phone: addr.phone.trim() } }
+          : { addressId: addressId || undefined }),
         items: items.map(i => ({ slug: i.slug, quantity: i.quantity }))
       }
       const { data } = await api.post('/orders', payload)
@@ -137,6 +154,24 @@ export default function Checkout() {
         {/* Summary */}
         <aside className="border rounded-xl p-4 h-max">
           <h2 className="font-semibold mb-3">Order summary</h2>
+          {/* Saved addresses selector */}
+          <div className="mb-3">
+            <label className="text-sm font-medium">Use saved address</label>
+            <select
+              className="mt-1 w-full border rounded-lg px-3 py-2"
+              value={addressId}
+              onChange={e => setAddressId(e.target.value)}
+            >
+              <option value="">— None — (fill the form)</option>
+              {addresses.map(a => (
+                <option key={a._id} value={a._id}>
+                  {(a.label || 'Address') + ' — ' + a.line1 + ', ' + a.city}
+                  {a.isDefault ? ' (default)' : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs opacity-70 mt-1">If you leave the form empty, we'll use the selected saved address.</p>
+          </div>
           <div className="space-y-2 max-h-[18rem] overflow-auto">
             {items.map(it => (
               <div key={it.slug} className="flex justify-between text-sm">

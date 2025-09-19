@@ -44,7 +44,10 @@ export default function Favorites() {
     try {
       await api.delete(`/favorites/${slug}`)
       setItems(prev => prev.filter(p => p.slug !== slug))
-    } catch {}
+    } catch (e) {
+      // optional: keep UI silent but avoid empty catch for lint
+      void e
+    }
   }
 
   if (loading) return <div className="p-6">Loading favorites…</div>

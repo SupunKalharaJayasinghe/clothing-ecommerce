@@ -2,6 +2,8 @@ import Product from '../models/Product.js'
 import Order from '../models/Order.js'
 import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
+import mongoose from 'mongoose'
+import User from '../models/User.js'
 
 function calcTotals(items) {
   const subtotal = items.reduce((s, it) => s + (it.price * it.quantity), 0)
@@ -13,7 +15,7 @@ function calcTotals(items) {
 
 // POST /api/orders
 export const placeOrder = catchAsync(async (req, res) => {
-  const { method, address, items } = req.body
+  const { method, address, addressId, items } = req.body
   if (!['COD','CARD','BANK'].includes(method)) throw new ApiError(400, 'Invalid payment method')
 
   // build order items from product snapshot
@@ -37,6 +39,21 @@ export const placeOrder = catchAsync(async (req, res) => {
 
   const totals = calcTotals(orderItems)
 
+  // Resolve address: prefer explicit snapshot; else use saved address by id; else use user's default
+  let addr = address
+  if (!addr) {
+    const user = await User.findById(req.user.sub)
+    if (addressId) {
+      const found = user.addresses.id(addressId)
+      if (!found) throw new ApiError(400, 'Saved address not found')
+      addr = found.toObject()
+    } else {
+      const def = user.addresses.find(a => a.isDefault) || user.addresses[0]
+      if (!def) throw new ApiError(400, 'No address provided and no saved address found')
+      addr = def.toObject()
+    }
+  }
+
   // derive initial status & payment
   let status = 'placed'
   let payment = { method, status: 'pending' }
@@ -46,15 +63,36 @@ export const placeOrder = catchAsync(async (req, res) => {
   }
   // BANK stays 'pending' until verify; COD stays 'pending' until delivery cash confirm
 
-  const order = await Order.create({
-    user: req.user.sub,
-    items: orderItems,
-    address,
-    totals,
-    status,
-    statusHistory: [{ status }],
-    payment
+  // Atomically reserve stock per product; use a transaction if available
+  const session = await mongoose.startSession()
+  let order
+  await session.withTransaction(async () => {
+    // Ensure sufficient stock and decrement
+    const ops = orderItems.map(oi => ({
+      updateOne: {
+        filter: { _id: oi.product, stock: { $gte: oi.quantity } },
+        update: { $inc: { stock: -oi.quantity } }
+      }
+    }))
+    const resBulk = await Product.bulkWrite(ops, { session })
+    const modified = Object.values(resBulk.result).reduce((a, v) => a + (typeof v === 'number' ? v : 0), 0)
+    // Fallback check: ensure all matched and modified
+    if (resBulk.modifiedCount !== orderItems.length) {
+      throw new ApiError(400, 'One or more items are out of stock')
+    }
+
+    order = await Order.create([{
+      user: req.user.sub,
+      items: orderItems,
+      address: addr,
+      totals,
+      status,
+      statusHistory: [{ status }],
+      payment
+    }], { session })
+    order = order[0]
   })
+  session.endSession()
 
   // For CARD: return minimal payload you can use to build a PayHere form client-side (sandbox)
   let payhere = null

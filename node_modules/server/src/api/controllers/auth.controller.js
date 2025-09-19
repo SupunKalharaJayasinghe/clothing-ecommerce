@@ -4,18 +4,19 @@ import User from '../models/User.js'
 import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import { signJwt, verifyJwt } from '../../utils/jwt.js'
+import { env } from '../../config/env.js'
 import { authenticator } from 'otplib'
 
 const accessCookie = {
   httpOnly: true,
-  sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production',
+  sameSite: env.COOKIE_SAMESITE,
+  secure: env.COOKIE_SECURE === 'true',
   maxAge: 7 * 24 * 60 * 60 * 1000
 }
 const remember2faCookie = {
   httpOnly: true,
-  sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production',
+  sameSite: env.COOKIE_SAMESITE,
+  secure: env.COOKIE_SECURE === 'true',
   maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
 }
 
@@ -140,12 +141,8 @@ export const me = catchAsync(async (req, res) => {
 })
 
 export const logout = catchAsync(async (_req, res) => {
-  res.clearCookie('access_token', {
-    httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production'
-  })
-  res.clearCookie('twofa_remember', {
-    httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production'
-  })
+  res.clearCookie('access_token', { httpOnly: true, sameSite: env.COOKIE_SAMESITE, secure: env.COOKIE_SECURE === 'true' })
+  res.clearCookie('twofa_remember', { httpOnly: true, sameSite: env.COOKIE_SAMESITE, secure: env.COOKIE_SECURE === 'true' })
   res.json({ ok: true })
 })
 

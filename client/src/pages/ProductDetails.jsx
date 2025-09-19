@@ -263,9 +263,7 @@ export default function ProductDetails() {
 
       // if we were editing this one, reset the form
       if (editingId === id) cancelEdit()
-    } catch (e) {
-      // optionally show toast
-    }
+    } catch (e) { void e }
   }
 
   return (
