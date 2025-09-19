@@ -19,6 +19,15 @@ api.interceptors.response.use(
       cfg.__retried = true
       return api(cfg)
     }
+    // If unauthorized, try to re-hydrate user state once
+    if (err.response && err.response.status === 401 && !cfg.__rehydrated) {
+      try {
+        cfg.__rehydrated = true
+        // Best-effort fetch to refresh session via rolling cookie
+        await api.get('/auth/me')
+        return api(cfg)
+      } catch {}
+    }
     return Promise.reject(err)
   }
 )

@@ -8,6 +8,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { env } from './config/env.js'
 import { cspDirectives, corsOptions, apiRateLimiter } from './config/security.js'
+import { refreshJwtIfNeeded } from './middlewares/session.js'
 
 // routes
 import healthRoutes from './api/routes/health.routes.js'
@@ -39,6 +40,7 @@ export function createServer() {
   app.use(cors(corsOptions))
   app.use(compression())
   app.use(cookieParser())
+  app.use(refreshJwtIfNeeded)
   app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: true }))
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'))
