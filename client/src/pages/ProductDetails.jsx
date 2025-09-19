@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
-import { useAppSelector } from '../app/hooks'
+import { useAppSelector, useAppDispatch } from '../app/hooks' // <-- CHANGED
+import { addToCart } from '../features/cart/cartSlice'        // <-- NEW
 
 function Price({ price, discountPercent, finalPrice }) {
   if (discountPercent > 0) {
@@ -68,6 +69,7 @@ function StarInput({ value, onChange, size='text-2xl' }) {
 export default function ProductDetails() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const dispatch = useAppDispatch() // <-- NEW
   const { user } = useAppSelector(s => s.auth)
   const userId = user?.id || user?._id // handle either shape
 
@@ -179,6 +181,19 @@ export default function ProductDetails() {
     } catch {
       setIsFav(prev => !prev) // rollback
     }
+  }
+
+  // --- NEW: add to cart handler (adds 1 by default) ---
+  function addItem() {
+    if (!p) return
+    dispatch(addToCart({
+      slug: p.slug,
+      name: p.name,
+      image: p.images?.[0],
+      color: p.color,
+      price: p.finalPrice ?? p.price,
+      quantity: 1
+    }))
   }
 
   function startEdit(review) {
@@ -311,7 +326,9 @@ export default function ProductDetails() {
           <p className="text-sm leading-relaxed opacity-90 whitespace-pre-line">{p.description}</p>
 
           <div className="flex items-center gap-3 pt-2">
-            <button className="rounded-lg border px-4 py-2" disabled={p.stock <= 0}>Add to cart</button>
+            <button className="rounded-lg border px-4 py-2" disabled={p.stock <= 0} onClick={addItem}>
+              Add to cart
+            </button>
             <button className="rounded-lg border px-4 py-2" onClick={toggleFavorite}>
               {isFav ? 'Remove from favorites' : 'Add to favorites'}
             </button>
