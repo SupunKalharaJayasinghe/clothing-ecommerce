@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
+import { useAppSelector } from '../app/hooks'
 
 function Price({ price, discountPercent, finalPrice }) {
   if (discountPercent > 0) {
@@ -51,6 +52,11 @@ export default function ProductListing() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { user } = useAppSelector(s => s.auth)
+
+  // favorites (by slug for easy UI highlight)
+  const [favSlugs, setFavSlugs] = useState(new Set())
 
   const q = params.get('q') || ''
   const sort = params.get('sort') || 'new'
@@ -68,11 +74,46 @@ export default function ProductListing() {
     })()
   }, [q, sort])
 
+  useEffect(() => {
+    if (!user) { setFavSlugs(new Set()); return }
+    (async () => {
+      try {
+        const { data } = await api.get('/favorites/ids')
+        setFavSlugs(new Set(data.slugs || []))
+      } catch {
+        setFavSlugs(new Set())
+      }
+    })()
+  }, [user])
+
   function updateParam(key, value) {
     const next = new URLSearchParams(params)
     if (!value) next.delete(key)
     else next.set(key, value)
     setParams(next)
+  }
+
+  async function toggleFavorite(e, slug) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!user) return navigate('/login?next=' + encodeURIComponent('/products' + (q ? `?q=${q}` : '')))
+    const next = new Set(favSlugs)
+    const isFav = next.has(slug)
+    try {
+      if (isFav) {
+        next.delete(slug)
+        setFavSlugs(next)
+        await api.delete(`/favorites/${slug}`)
+      } else {
+        next.add(slug)
+        setFavSlugs(next)
+        await api.post(`/favorites/${slug}`)
+      }
+    } catch {
+      // rollback
+      if (isFav) next.add(slug); else next.delete(slug)
+      setFavSlugs(new Set(next))
+    }
   }
 
   if (loading) return <div className="p-6">Loading products…</div>
@@ -103,31 +144,42 @@ export default function ProductListing() {
       </div>
 
       <div className="grid gap-6 mt-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {items.map(p => (
-          <Link key={p._id} to={`/products/${p.slug}`} className="group border rounded-2xl overflow-hidden hover:shadow-sm transition">
-            <div className="aspect-[4/5] bg-gray-50 overflow-hidden">
-              <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-            </div>
-            <div className="p-3 space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
-                {p.mainTags?.includes('limited') && <Badge tone="amber">Limited</Badge>}
-                {p.mainTags?.includes('bestseller') && <Badge tone="purple">Bestseller</Badge>}
-                {p.discountPercent > 0 && <Badge tone="red">-{p.discountPercent}%</Badge>}
+        {items.map(p => {
+          const isFav = favSlugs.has(p.slug)
+          return (
+            <Link key={p._id} to={`/products/${p.slug}`} className="group border rounded-2xl overflow-hidden hover:shadow-sm transition relative">
+              <button
+                aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                onClick={(e) => toggleFavorite(e, p.slug)}
+                className={`absolute right-2 top-2 rounded-full border px-2 py-1 text-lg bg-white/90 ${isFav ? 'text-red-600' : 'text-gray-700'}`}
+                title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                {isFav ? '♥' : '♡'}
+              </button>
+              <div className="aspect-[4/5] bg-gray-50 overflow-hidden">
+                <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
               </div>
-              <div className="font-medium leading-snug line-clamp-2">{p.name}</div>
-              <div className="text-sm opacity-70">Color: {p.color}</div>
-              <Price price={p.price} discountPercent={p.discountPercent} finalPrice={p.finalPrice ?? p.price} />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 text-sm">
-                  <Stars rating={p.rating} />
-                  <span className="opacity-70">({p.reviewsCount})</span>
+              <div className="p-3 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
+                  {p.mainTags?.includes('limited') && <Badge tone="amber">Limited</Badge>}
+                  {p.mainTags?.includes('bestseller') && <Badge tone="purple">Bestseller</Badge>}
+                  {p.discountPercent > 0 && <Badge tone="red">-{p.discountPercent}%</Badge>}
                 </div>
-                {p.lowStock ? <Badge tone="red">Low stock</Badge> : p.stock > 0 ? <Badge tone="blue">In stock</Badge> : <Badge>Out</Badge>}
+                <div className="font-medium leading-snug line-clamp-2">{p.name}</div>
+                <div className="text-sm opacity-70">Color: {p.color}</div>
+                <Price price={p.price} discountPercent={p.discountPercent} finalPrice={p.finalPrice ?? p.price} />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-sm">
+                    <Stars rating={p.rating} />
+                    <span className="opacity-70">({p.reviewsCount})</span>
+                  </div>
+                  {p.lowStock ? <Badge tone="red">Low stock</Badge> : p.stock > 0 ? <Badge tone="blue">In stock</Badge> : <Badge>Out</Badge>}
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          )
+        })}
       </div>
     </div>
   )

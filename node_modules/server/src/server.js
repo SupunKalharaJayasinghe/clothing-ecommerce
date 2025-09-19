@@ -12,6 +12,7 @@ import healthRoutes from './api/routes/health.routes.js'
 import authRoutes from './api/routes/auth.routes.js'
 import productRoutes from './api/routes/product.routes.js'
 import accountRoutes from './api/routes/account.routes.js' // <-- NEW
+import favoriteRoutes from './api/routes/favorite.routes.js' // <-- NEW
 
 // error handlers
 import { notFound, errorHandler } from './middlewares/error.js'
@@ -43,6 +44,7 @@ export function createServer() {
   app.use('/api/auth', authRoutes)
   app.use('/api/products', productRoutes)
   app.use('/api/account', accountRoutes) // <-- NEW
+  app.use('/api/favorites', favoriteRoutes) // <-- NEW
 
   // 404 + error handling
   app.use(notFound)
