@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector } from '../app/hooks'
@@ -69,6 +69,7 @@ export default function ProductDetails() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const { user } = useAppSelector(s => s.auth)
+  const userId = user?.id || user?._id // handle either shape
 
   const [p, setP] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -86,12 +87,16 @@ export default function ProductDetails() {
   const [revLoading, setRevLoading] = useState(true)
   const [revErr, setRevErr] = useState('')
 
-  // my review
-  const [myReview, setMyReview] = useState(null)
+  // my reviews count (for limit 5)
+  const [myTotal, setMyTotal] = useState(0)
+
+  // write/edit form
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
+  const [editingId, setEditingId] = useState(null) // null means creating a new review
   const [sendErr, setSendErr] = useState('')
   const [sendMsg, setSendMsg] = useState('')
+  const formRef = useRef(null)
 
   // fetch product
   useEffect(() => {
@@ -140,16 +145,15 @@ export default function ProductDetails() {
     })()
   }, [slug, revPage, revLimit])
 
-  // fetch my review
+  // fetch my reviews count
   useEffect(() => {
-    if (!user) { setMyReview(null); setRating(0); setComment(''); return }
+    if (!user) { setMyTotal(0); return }
     (async () => {
       try {
-        const { data } = await api.get(`/products/${slug}/reviews/me`)
-        setMyReview(data.review)
-        if (data.review) { setRating(data.review.rating); setComment(data.review.comment) }
+        const { data } = await api.get(`/products/${slug}/reviews/me`, { params: { page: 1, limit: 1 } })
+        setMyTotal(data.total || 0)
       } catch {
-        // ignore (user might have no review)
+        setMyTotal(0)
       }
     })()
   }, [slug, user])
@@ -160,6 +164,7 @@ export default function ProductDetails() {
 
   const currentImg = p.images?.[imgIndex] || p.images?.[0]
   const canLoadMore = reviews.length < revTotal
+  const reachedLimit = user && !editingId && myTotal >= 5
 
   async function toggleFavorite() {
     if (!user) return navigate('/login?next=' + encodeURIComponent(`/products/${slug}`))
@@ -176,46 +181,75 @@ export default function ProductDetails() {
     }
   }
 
+  function startEdit(review) {
+    setEditingId(review.id)
+    setRating(review.rating)
+    setComment(review.comment)
+    setSendErr(''); setSendMsg('')
+    // scroll to form
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setRating(0)
+    setComment('')
+    setSendErr(''); setSendMsg('')
+  }
+
   async function submitReview() {
     if (!user) return navigate('/login?next=' + encodeURIComponent(`/products/${slug}`))
     setSendErr(''); setSendMsg('')
+
     try {
-      await api.post(`/products/${slug}/reviews`, { rating, comment })
-      setSendMsg('Review saved')
-      // refresh product stats & reviews list
-      const [prod, list, mine] = await Promise.all([
+      if (editingId) {
+        // update existing
+        await api.patch(`/products/${slug}/reviews/${editingId}`, { rating, comment })
+        setSendMsg('Review updated')
+      } else {
+        // create new
+        await api.post(`/products/${slug}/reviews`, { rating, comment })
+        setSendMsg('Review submitted')
+      }
+
+      // refresh product stats, reviews list (first page), and my count
+      const [prod, list, myList] = await Promise.all([
         api.get(`/products/${slug}`),
         api.get(`/products/${slug}/reviews`, { params: { page: 1, limit: revLimit } }),
-        api.get(`/products/${slug}/reviews/me`)
+        api.get(`/products/${slug}/reviews/me`, { params: { page: 1, limit: 1 } })
       ])
       setP(prod.data.product)
       setReviews(list.data.items)
       setRevTotal(list.data.total)
       setRevPage(1)
-      setMyReview(mine.data.review)
+      setMyTotal(myList.data.total || 0)
+
+      // clear form if creating; keep values after update but exit edit mode
+      cancelEdit()
     } catch (e) {
       setSendErr(e.response?.data?.message || e.message)
     }
   }
 
-  async function deleteReview() {
+  async function deleteReview(id) {
     if (!user) return
-    setSendErr(''); setSendMsg('')
     try {
-      await api.delete(`/products/${slug}/reviews/me`)
-      setSendMsg('Review deleted')
-      setRating(0); setComment('')
-      const [prod, list] = await Promise.all([
+      await api.delete(`/products/${slug}/reviews/${id}`)
+      const [prod, list, myList] = await Promise.all([
         api.get(`/products/${slug}`),
-        api.get(`/products/${slug}/reviews`, { params: { page: 1, limit: revLimit } })
+        api.get(`/products/${slug}/reviews`, { params: { page: 1, limit: revLimit } }),
+        api.get(`/products/${slug}/reviews/me`, { params: { page: 1, limit: 1 } })
       ])
       setP(prod.data.product)
       setReviews(list.data.items)
       setRevTotal(list.data.total)
       setRevPage(1)
-      setMyReview(null)
+      setMyTotal(myList.data.total || 0)
+
+      // if we were editing this one, reset the form
+      if (editingId === id) cancelEdit()
     } catch (e) {
-      setSendErr(e.response?.data?.message || e.message)
+      // optionally show toast
     }
   }
 
@@ -288,34 +322,45 @@ export default function ProductDetails() {
       {/* Reviews Section */}
       <section className="mt-10 grid gap-6 lg:grid-cols-3">
         {/* Write / Edit Review */}
-        <div className="lg:col-span-1 rounded-2xl border p-5 h-max">
-          <h2 className="font-semibold mb-2">{myReview ? 'Edit your review' : 'Write a review'}</h2>
+        <div ref={formRef} className="lg:col-span-1 rounded-2xl border p-5 h-max">
+          <h2 className="font-semibold mb-2">{editingId ? 'Edit your review' : 'Write a review'}</h2>
           {!user ? (
             <p className="text-sm opacity-80">
               Please <button className="underline" onClick={() => navigate('/login?next=' + encodeURIComponent(`/products/${slug}`))}>log in</button> to review.
             </p>
           ) : (
             <>
+              {reachedLimit && !editingId && (
+                <div className="mb-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                  You have reached the maximum of 5 reviews for this product. You can edit or delete one of your reviews.
+                </div>
+              )}
               <StarInput value={rating} onChange={setRating} />
               <textarea
                 className="mt-2 w-full border rounded-lg px-3 py-2 h-28 focus:outline-none focus:ring-2 focus:ring-black/10"
-                placeholder="Share your experience with this product…"
+                placeholder={editingId ? 'Update your review…' : 'Share your experience with this product…'}
                 value={comment}
                 onChange={e => setComment(e.target.value)}
               />
               {sendErr && <p className="text-red-600 text-sm mt-1">{sendErr}</p>}
               {sendMsg && <p className="text-green-600 text-sm mt-1">{sendMsg}</p>}
               <div className="mt-2 flex items-center gap-2">
-                <button className="rounded-lg border px-3 py-1" onClick={submitReview} disabled={rating < 1 || comment.trim().length < 3}>
-                  {myReview ? 'Update review' : 'Submit review'}
+                <button
+                  className="rounded-lg border px-3 py-1"
+                  onClick={submitReview}
+                  disabled={rating < 1 || comment.trim().length < 3 || (reachedLimit && !editingId)}
+                >
+                  {editingId ? 'Save changes' : 'Submit review'}
                 </button>
-                {myReview && (
-                  <button className="rounded-lg border px-3 py-1" onClick={deleteReview}>
-                    Delete
+                {editingId && (
+                  <button className="rounded-lg border px-3 py-1" onClick={cancelEdit}>
+                    Cancel
                   </button>
                 )}
               </div>
-              <p className="text-xs opacity-70 mt-1">You can update or delete your review at any time.</p>
+              <p className="text-xs opacity-70 mt-1">
+                {editingId ? 'You are editing an existing review.' : 'You can submit up to 5 reviews for this product.'}
+              </p>
             </>
           )}
         </div>
@@ -329,18 +374,41 @@ export default function ProductDetails() {
           {reviews.length === 0 && !revLoading && <div className="opacity-70">No reviews yet. Be the first!</div>}
 
           <div className="space-y-4">
-            {reviews.map((r) => (
-              <div key={r.id} className="border rounded-xl p-3">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{r.user?.name || 'User'}</div>
-                  <div className="text-xs opacity-70">{new Date(r.createdAt).toLocaleString()}</div>
+            {reviews.map((r) => {
+              const isOwner = userId && String(r.user?.id) === String(userId)
+              return (
+                <div key={r.id} className="border rounded-xl p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{r.user?.name || 'User'}</div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-xs opacity-70">{new Date(r.createdAt).toLocaleString()}</span>
+                      {isOwner && (
+                        <>
+                          <button
+                            className="rounded border px-2 py-0.5"
+                            title="Edit"
+                            onClick={() => startEdit(r)}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            className="rounded border px-2 py-0.5"
+                            title="Delete"
+                            onClick={() => deleteReview(r.id)}
+                          >
+                            🗑
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-1">
+                    <Stars rating={r.rating} />
+                  </div>
+                  <p className="text-sm mt-1 whitespace-pre-line">{r.comment}</p>
                 </div>
-                <div className="mt-1">
-                  <Stars rating={r.rating} />
-                </div>
-                <p className="text-sm mt-1 whitespace-pre-line">{r.comment}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {canLoadMore && (

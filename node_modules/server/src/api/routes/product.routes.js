@@ -3,15 +3,18 @@ import { listProducts, getProductBySlug } from '../controllers/product.controlle
 import { requireAuth } from '../../middlewares/auth.js'
 import { validate } from '../../middlewares/validate.js'
 import {
-  reviewUpsertSchema,
+  reviewCreateSchema,
+  reviewUpdateSchema,
+  reviewDeleteSchema,
   reviewsListSchema,
-  reviewMeParamSchema
+  myReviewsListSchema
 } from '../validators/review.validator.js'
 import {
   listReviews,
-  getMyReview,
-  upsertMyReview,
-  deleteMyReview
+  listMyReviews,
+  createReview,
+  updateMyReviewById,
+  deleteMyReviewById
 } from '../controllers/review.controller.js'
 
 const router = Router()
@@ -23,9 +26,14 @@ router.get('/:slug', getProductBySlug)
 // reviews (public read)
 router.get('/:slug/reviews', validate(reviewsListSchema), listReviews)
 
-// my review (auth + validated params)
-router.get('/:slug/reviews/me', validate(reviewMeParamSchema), requireAuth, getMyReview)
-router.post('/:slug/reviews', validate(reviewUpsertSchema), requireAuth, upsertMyReview)
-router.delete('/:slug/reviews/me', validate(reviewMeParamSchema), requireAuth, deleteMyReview)
+// my reviews (auth)
+router.get('/:slug/reviews/me', requireAuth, validate(myReviewsListSchema), listMyReviews)
+
+// create new review (auth)
+router.post('/:slug/reviews', requireAuth, validate(reviewCreateSchema), createReview)
+
+// update/delete specific review (auth)
+router.patch('/:slug/reviews/:id', requireAuth, validate(reviewUpdateSchema), updateMyReviewById)
+router.delete('/:slug/reviews/:id', requireAuth, validate(reviewDeleteSchema), deleteMyReviewById)
 
 export default router

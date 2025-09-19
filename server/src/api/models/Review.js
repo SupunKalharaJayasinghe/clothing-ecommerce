@@ -11,8 +11,9 @@ const reviewSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
-// 1 review per user per product
-reviewSchema.index({ product: 1, user: 1 }, { unique: true })
+// ⚠️ Multi-review per user per product (up to 5) → NO unique index on {product,user}.
+// Keep indexes for performance only.
+reviewSchema.index({ product: 1, user: 1 })
 
 // static helper to recompute product rating & count
 reviewSchema.statics.recalcProductRating = async function (productId) {
