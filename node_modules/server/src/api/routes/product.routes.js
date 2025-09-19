@@ -1,5 +1,10 @@
 import { Router } from 'express'
-import { listProducts, getProductBySlug } from '../controllers/product.controller.js'
+import {
+  listProducts,
+  getProductBySlug,
+  getHighlights,
+  suggestProducts
+} from '../controllers/product.controller.js'
 import { requireAuth } from '../../middlewares/auth.js'
 import { validate } from '../../middlewares/validate.js'
 import {
@@ -18,6 +23,10 @@ import {
 } from '../controllers/review.controller.js'
 
 const router = Router()
+
+// home-page helpers
+router.get('/highlights', getHighlights)
+router.get('/suggest', suggestProducts)
 
 // products listing & details
 router.get('/', listProducts)

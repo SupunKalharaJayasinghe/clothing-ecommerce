@@ -157,6 +157,69 @@ export const listProducts = catchAsync(async (req, res) => {
   })
 })
 
+// GET /api/products/highlights
+export const getHighlights = catchAsync(async (req, res) => {
+  const { q = '', category, limit = '8' } = req.query
+  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 8, 1), 16)
+
+  const filter = {}
+  if (q && String(q).trim()) filter.$text = { $search: String(q).trim() }
+
+  if (category && ['men', 'women', 'kids'].includes(String(category).toLowerCase())) {
+    const cat = String(category).toLowerCase()
+    const catClause = { $or: [{ category: cat }, { tags: cat }] }
+    const hasAny = await Product.countDocuments(catClause)
+    if (hasAny > 0) {
+      filter.$and = (filter.$and || []).concat([catClause])
+    }
+  }
+
+  const pick = 'name slug images price discountPercent rating reviewsCount stock mainTags color createdAt'
+
+  const [latest, topRated, popular] = await Promise.all([
+    Product.find(filter).sort({ createdAt: -1 }).limit(limitNum).select(pick).lean(),
+    Product.find(filter).sort({ rating: -1, reviewsCount: -1, createdAt: -1 }).limit(limitNum).select(pick).lean(),
+    Product.find(filter).sort({ purchases: -1, reviewsCount: -1, rating: -1, createdAt: -1 }).limit(limitNum).select(pick).lean()
+  ])
+
+  const mapLite = (arr) =>
+    (arr || []).map(p => ({
+      ...p,
+      id: p._id,
+      finalPrice: p.discountPercent
+        ? Math.round(p.price * (100 - p.discountPercent)) / 100
+        : p.price,
+      lowStock: p.stock > 0 && p.stock <= (p.lowStockThreshold || 5)
+    }))
+
+  res.json({ ok: true, latest: mapLite(latest), topRated: mapLite(topRated), popular: mapLite(popular) })
+})
+
+// GET /api/products/suggest?q=...
+export const suggestProducts = catchAsync(async (req, res) => {
+  const { q } = req.query
+  if (!q || !String(q).trim()) return res.json({ ok: true, items: [] })
+
+  const items = await Product.find(
+    { $text: { $search: String(q).trim() } },
+    { score: { $meta: 'textScore' } }
+  )
+    .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+    .limit(8)
+    .select('name slug images price discountPercent')
+    .lean()
+
+  const mapped = items.map(p => ({
+    ...p,
+    id: p._id,
+    finalPrice: p.discountPercent
+      ? Math.round(p.price * (100 - p.discountPercent)) / 100
+      : p.price
+  }))
+
+  res.json({ ok: true, items: mapped })
+})
+
 // GET /api/products/:slug
 export const getProductBySlug = catchAsync(async (req, res) => {
   const { slug } = req.params
