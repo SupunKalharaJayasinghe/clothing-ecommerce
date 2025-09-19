@@ -25,6 +25,7 @@ export default function RootLayout() {
             aria-label="Toggle menu"
           >☰</button>
           <nav className="hidden md:flex items-center gap-6">
+            <NavLink to="/" end className="hover:underline">Home</NavLink>
             <NavLink to="/products" className="hover:underline">Shop</NavLink>
             <NavLink to="/favorites" className="hover:underline">Favorites</NavLink>
             <NavLink to="/cart" className="hover:underline">Cart</NavLink>
@@ -35,6 +36,7 @@ export default function RootLayout() {
               </>
             ) : (
               <div className="flex items-center gap-3">
+                <NavLink to="/orders" className="hover:underline">Orders</NavLink>
                 <NavLink to="/account" className="hover:underline">Account</NavLink>
                 <span className="text-sm opacity-80">
                   {status === 'loading' ? 'Loading…' : `Hi, ${user.firstName || user.username}`}
@@ -49,6 +51,7 @@ export default function RootLayout() {
         {open && (
           <nav className="md:hidden border-t">
             <div className="px-4 py-3 flex flex-col gap-2">
+              <NavLink to="/" end onClick={() => setOpen(false)}>Home</NavLink>
               <NavLink to="/products" onClick={() => setOpen(false)}>Shop</NavLink>
               <NavLink to="/favorites" onClick={() => setOpen(false)}>Favorites</NavLink>
               <NavLink to="/cart" onClick={() => setOpen(false)}>Cart</NavLink>
@@ -59,6 +62,7 @@ export default function RootLayout() {
                 </>
               ) : (
                 <>
+                  <NavLink to="/orders" onClick={() => setOpen(false)}>Orders</NavLink>
                   <NavLink to="/account" onClick={() => setOpen(false)}>Account</NavLink>
                   <button
                     className="rounded-lg border px-3 py-1 w-max"
