@@ -45,6 +45,9 @@ const productSchema = new mongoose.Schema(
       default: []
     },
 
+    // NEW: normalized top-level category for tabs/filters
+    category: { type: String, enum: ['men', 'women', 'kids'], index: true },
+
     metaTitle: { type: String },
     metaDescription: { type: String }
   },
@@ -96,6 +99,7 @@ productSchema.index({ mainTags: 1 })
 productSchema.index({ createdAt: -1 })
 productSchema.index({ price: 1 })
 productSchema.index({ rating: -1 })
+// category has its own index via the field definition above
 
 export default mongoose.model('Product', productSchema)
 export { toSlug }
