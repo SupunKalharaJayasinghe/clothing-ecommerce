@@ -43,7 +43,13 @@ export const register = catchAsync(async (req, res) => {
   }
 
   const hash = await bcrypt.hash(password, 12)
-  const user = await User.create({ firstName, lastName, username, email, password: hash })
+  const user = await User.create({
+    firstName,
+    lastName,
+    username: username.toLowerCase(),
+    email: email.toLowerCase(),
+    password: hash
+  })
 
   const token = signJwt({ sub: user._id, email: user.email, roles: user.roles })
   res.cookie('access_token', token, accessCookie)
@@ -71,12 +77,13 @@ export const login = catchAsync(async (req, res) => {
       try {
         const payload = verifyJwt(rememberToken)
         if (payload.kind === '2fa_remember' && String(payload.sub) === String(user._id)) {
-          // allow login without new TOTP
           const token = signJwt({ sub: user._id, email: user.email, roles: user.roles })
           res.cookie('access_token', token, accessCookie)
           return res.json({ ok: true, user: sanitize(user) })
         }
-      } catch { /* invalid remember cookie -> fall through to challenge */ }
+      } catch {
+        // invalid remember token -> fall through to challenge
+      }
     }
 
     // issue short-lived tmp token for TOTP verification
@@ -109,8 +116,8 @@ export const verify2FAOnLogin = catchAsync(async (req, res) => {
 
   if (!isTotp && !isBackup) throw new ApiError(400, 'Invalid 2FA code')
 
-  // If used a backup code, remove it (one-time use)
   if (isBackup) {
+    // one-time use backup code
     user.twoFA.backupCodes = user.twoFA.backupCodes.filter(c => c !== code)
     await user.save()
   }
@@ -133,8 +140,12 @@ export const me = catchAsync(async (req, res) => {
 })
 
 export const logout = catchAsync(async (_req, res) => {
-  res.clearCookie('access_token', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' })
-  res.clearCookie('twofa_remember', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' })
+  res.clearCookie('access_token', {
+    httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production'
+  })
+  res.clearCookie('twofa_remember', {
+    httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production'
+  })
   res.json({ ok: true })
 })
 

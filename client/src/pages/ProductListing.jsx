@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector } from '../app/hooks'
@@ -48,6 +48,18 @@ function Badge({ children, tone = 'gray' }) {
 
 const RESERVED = new Set(['men', 'women', 'kids'])
 
+// tiny in-memory cache for recent queries
+const cache = new Map()
+
+function useDebounced(value, delay = 350) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(t)
+  }, [value, delay])
+  return debounced
+}
+
 export default function ProductListing() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -70,6 +82,8 @@ export default function ProductListing() {
   const tags = params.get('tags') || ''
   const mainTag = params.get('mainTag') || 'any'
 
+  const qDebounced = useDebounced(q, 350)
+
   const colorList = useMemo(() => color.split(',').filter(Boolean), [color])
   const tagList = useMemo(() => tags.split(',').filter(Boolean), [tags])
 
@@ -90,26 +104,51 @@ export default function ProductListing() {
     setParam(key, Array.from(set))
   }
 
+  // request cancellation
+  const abortRef = useRef(null)
+
   useEffect(() => {
-    (async () => {
-      setLoading(true); setError('')
+    const queryKey = JSON.stringify({ q: qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag })
+
+    if (cache.has(queryKey)) {
+      const { items, facets } = cache.get(queryKey)
+      setItems(items)
+      setFacets(facets)
+      setLoading(false)
+      return
+    }
+
+    setLoading(true); setError('')
+
+    if (abortRef.current) abortRef.current.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
+    ;(async () => {
       try {
         const { data } = await api.get('/products', {
-          params: { q, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag }
+          params: { q: qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag },
+          signal: ctrl.signal
         })
-        setItems(data.items || [])
-        setFacets(data.facets || { colors: [], tags: [], mainTags: [] })
+        const payload = { items: data.items || [], facets: data.facets || { colors: [], tags: [], mainTags: [] } }
+        cache.set(queryKey, payload)
+        setItems(payload.items)
+        setFacets(payload.facets)
       } catch (e) {
-        setError(e.response?.data?.message || e.message)
+        if (e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
+          setError(e.response?.data?.message || e.message)
+        }
       } finally {
-        setLoading(false)
+        if (!ctrl.signal.aborted) setLoading(false)
       }
     })()
-  }, [q, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag])
+
+    return () => ctrl.abort()
+  }, [qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag])
 
   useEffect(() => {
     if (!user) { setFavSlugs(new Set()); return }
-    (async () => {
+    ;(async () => {
       try {
         const { data } = await api.get('/favorites/ids')
         setFavSlugs(new Set(data.slugs || []))
@@ -152,7 +191,6 @@ export default function ProductListing() {
 
   const colorsFacet = (facets.colors || []).filter(Boolean)
   const tagsFacet = (facets.tags || []).filter(t => t && !RESERVED.has(String(t).toLowerCase()))
-  const hasNew = (facets.mainTags || []).includes('new')
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -291,8 +329,6 @@ export default function ProductListing() {
               <button
                 className={`px-2 py-1 rounded border text-sm ${mainTag === 'new' ? 'bg-black text-white' : 'bg-white'}`}
                 onClick={() => setParam('mainTag', 'new')}
-                disabled={!(facets.mainTags || []).includes('new')}
-                title={!(facets.mainTags || []).includes('new') ? 'No new-tagged products in this view' : 'Filter New'}
               >New</button>
               <button
                 className={`px-2 py-1 rounded border text-sm ${mainTag === 'old' ? 'bg-black text-white' : 'bg-white'}`}
@@ -322,7 +358,6 @@ export default function ProductListing() {
             </div>
           </div>
 
-          {/* Empty state */}
           {items.length === 0 && (
             <div className="mt-8 border rounded-2xl p-6 text-center text-sm opacity-80">
               No products found for this selection. Try another tab or clear filters.

@@ -1,13 +1,18 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { APP_NAME } from '../lib/constants'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { logoutUser } from '../features/auth/authSlice'
+import { logoutUser, fetchMe } from '../features/auth/authSlice'
 
 export default function RootLayout() {
   const [open, setOpen] = useState(false)
-  const { user } = useAppSelector(s => s.auth)
+  const { user, status } = useAppSelector(s => s.auth)
   const dispatch = useAppDispatch()
+
+  // hydrate session from cookie
+  useEffect(() => {
+    dispatch(fetchMe())
+  }, [dispatch])
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -30,8 +35,10 @@ export default function RootLayout() {
               </>
             ) : (
               <div className="flex items-center gap-3">
-                <NavLink to="/account" className="hover:underline">Account</NavLink> {/* NEW */}
-                <span className="text-sm opacity-80">Hi, {user.firstName || user.username}</span>
+                <NavLink to="/account" className="hover:underline">Account</NavLink>
+                <span className="text-sm opacity-80">
+                  {status === 'loading' ? 'Loading…' : `Hi, ${user.firstName || user.username}`}
+                </span>
                 <button className="rounded-lg border px-3 py-1" onClick={() => dispatch(logoutUser())}>
                   Logout
                 </button>
@@ -52,7 +59,7 @@ export default function RootLayout() {
                 </>
               ) : (
                 <>
-                  <NavLink to="/account" onClick={() => setOpen(false)}>Account</NavLink> {/* NEW */}
+                  <NavLink to="/account" onClick={() => setOpen(false)}>Account</NavLink>
                   <button
                     className="rounded-lg border px-3 py-1 w-max"
                     onClick={() => { setOpen(false); dispatch(logoutUser()) }}

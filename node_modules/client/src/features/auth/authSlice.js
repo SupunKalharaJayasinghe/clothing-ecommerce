@@ -23,7 +23,6 @@ export const loginUser = createAsyncThunk('auth/loginUser', async (payload, thun
   try {
     const clean = { identifier: payload.identifier?.trim().toLowerCase(), password: payload.password }
     const { data } = await api.post('/auth/login', clean)
-    // If 2FA is required, return the challenge info instead of user
     if (data.twoFARequired) return { twoFARequired: true, tmpToken: data.tmpToken }
     return { user: data.user }
   } catch (err) {
@@ -45,7 +44,7 @@ export const forgotPassword = createAsyncThunk('auth/forgotPassword', async (pay
   try {
     const { identifier } = payload
     const { data } = await api.post('/auth/forgot-password', { identifier })
-    return data // includes devToken (for local testing)
+    return data
   } catch (err) {
     return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
   }
