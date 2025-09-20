@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { APP_NAME } from '../lib/constants'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
@@ -9,16 +9,6 @@ export default function RootLayout() {
   const [open, setOpen] = useState(false)
   const { user, status } = useAppSelector(s => s.auth)
   const dispatch = useAppDispatch()
-  const navigate = useNavigate()
-
-  function avatarUrlFromUser(u) {
-    if (!u) return ''
-    if (u.avatarUrl) return u.avatarUrl
-    if (u.image) return u.image
-    const seed = encodeURIComponent(`${u.firstName || ''} ${u.lastName || u.username || ''}`.trim() || 'User')
-    // Dicebear initials avatar (SVG served as an image URL)
-    return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&radius=50&fontWeight=700`
-  }
 
   // hydrate session from cookie
   useEffect(() => {
@@ -66,19 +56,10 @@ export default function RootLayout() {
                   <NavLink to="/register" className={({isActive}) => `px-4 py-2 rounded-full transition ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`}>Register</NavLink>
                 </>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <NavLink to="/orders" className={({isActive}) => `px-4 py-2 rounded-full transition ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`}>Orders</NavLink>
-                  {/* Avatar button for Account */}
-                  <button
-                    onClick={() => navigate('/account')}
-                    className="w-9 h-9 rounded-full border bg-white overflow-hidden flex items-center justify-center hover:shadow-sm"
-                    aria-label="Open account"
-                    title={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Account'}
-                  >
-                    <img src={avatarUrlFromUser(user)} alt="User avatar" className="w-full h-full object-cover" />
-                  </button>
-                  {/* Logout as blue primary rounded pill */}
-                  <button className="btn btn-primary btn-sm rounded-full" onClick={() => dispatch(logoutUser())}>
+                  <NavLink to="/account" className={({isActive}) => `px-4 py-2 rounded-full transition ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`}>Account</NavLink>
+                  <button className="btn btn-primary btn-sm rounded-lg" onClick={() => dispatch(logoutUser())}>
                     Logout
                   </button>
                 </div>
@@ -100,11 +81,9 @@ export default function RootLayout() {
                 ) : (
                   <>
                     <NavLink to="/orders" className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>Orders</NavLink>
-                    <NavLink to="/account" className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>
-                  <span className="inline-flex items-center gap-2"><img src={avatarUrlFromUser(user)} alt="User" className="w-6 h-6 rounded-full object-cover" /> Account</span>
-                </NavLink>
+                    <NavLink to="/account" className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>Account</NavLink>
                     <button
-                      className="btn btn-primary btn-sm rounded-full w-max"
+                      className="btn btn-primary btn-sm rounded-lg w-max"
                       onClick={() => { setOpen(false); dispatch(logoutUser()) }}
                     >
                       Logout

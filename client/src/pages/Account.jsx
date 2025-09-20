@@ -240,7 +240,7 @@ export default function Account() {
           <div className="card">
             <div className="card-body">
             <h2 className="font-semibold mb-3">Account information</h2>
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               <input className={input} placeholder="First name" value={profile.firstName} onChange={e=>setProfile({...profile, firstName:e.target.value})}/>
               <input className={input} placeholder="Last name" value={profile.lastName} onChange={e=>setProfile({...profile, lastName:e.target.value})}/>
               <input className={input} placeholder="Username" value={profile.username} onChange={e=>setProfile({...profile, username:e.target.value})}/>
@@ -266,9 +266,11 @@ export default function Account() {
             <div className="card">
               <div className="card-body">
               <h2 className="font-semibold mb-3">Change password</h2>
-              <input className={input} type="password" placeholder="Current password" value={pwd.currentPassword} onChange={e=>setPwd({...pwd, currentPassword:e.target.value})}/>
-              <input className={input} type="password" placeholder="New password" value={pwd.newPassword} onChange={e=>setPwd({...pwd, newPassword:e.target.value})}/>
-              <input className={input} type="password" placeholder="Confirm new password" value={pwd.confirmPassword} onChange={e=>setPwd({...pwd, confirmPassword:e.target.value})}/>
+              <div className="grid gap-4">
+                <input className={input} type="password" placeholder="Current password" value={pwd.currentPassword} onChange={e=>setPwd({...pwd, currentPassword:e.target.value})}/>
+                <input className={input} type="password" placeholder="New password" value={pwd.newPassword} onChange={e=>setPwd({...pwd, newPassword:e.target.value})}/>
+                <input className={input} type="password" placeholder="Confirm new password" value={pwd.confirmPassword} onChange={e=>setPwd({...pwd, confirmPassword:e.target.value})}/>
+              </div>
               <ul className="mt-2 text-xs space-y-1">
                 <li className={pwdStrong.len ? 'text-green-600':'opacity-70'}>• ≥ 8 chars</li>
                 <li className={pwdStrong.lower ? 'text-green-600':'opacity-70'}>• lowercase</li>

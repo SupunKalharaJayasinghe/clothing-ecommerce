@@ -136,10 +136,10 @@ export default function Home() {
       {/* HERO */}
       <section className="hero section relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" />
-        <div className="container-app pt-8 md:pt-10 pb-24">
-          <div className="grid lg:grid-cols-2 gap-xl items-center">
+        <div className="container-app pt-4 md:pt-8 pb-16">
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div className="animate-slide-up space-lg">
-              <h1 className="text-5xl md:text-7xl font-black leading-tight gradient-text mb-6">
+              <h1 className="text-5xl md:text-7xl font-black leading-tight gradient-text mb-4">
                 Dress & Go — Fresh fits for every day.
               </h1>
               <p className="text-lg text-[--color-muted] max-w-prose leading-relaxed">
