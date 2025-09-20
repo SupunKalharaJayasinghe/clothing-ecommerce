@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { registerUser } from '../features/auth/authSlice'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { getNextFromSearch, getLoginPathWithNext } from '../lib/nextParam'
+import { APP_NAME } from '../lib/constants'
 
 const usernameRegex = /^[a-z0-9_.]+$/ // lower letters, numbers, _, .
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -40,6 +41,14 @@ function validate(form) {
   return errors
 }
 
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 5) return 'Good night'
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
 export default function Register() {
   const dispatch = useAppDispatch()
   const nav = useNavigate()
@@ -47,6 +56,7 @@ export default function Register() {
   const { status, error } = useAppSelector(s => s.auth)
 
   const nextPath = useMemo(() => getNextFromSearch(location.search), [location.search])
+  const greeting = useMemo(() => getGreeting(), [])
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', username: '', email: '',
@@ -76,126 +86,181 @@ export default function Register() {
     if (registerUser.fulfilled.match(res)) nav(nextPath, { replace: true })
   }
 
-  const inputCls = "input"
+  const inputCls = 'input'
+
+  // concise, icon-based getting-started tiles
+  const steps = useMemo(() => ([
+    { icon: '👤', title: 'Profile', hint: 'Add your info', to: '/account' },
+    { icon: '📍', title: 'Address', hint: 'Set delivery', to: '/account' },
+    { icon: '💳', title: 'Card (opt.)', hint: 'Save for 1-click', to: '/account' },
+    { icon: '🛒', title: 'Shop', hint: 'Browse & add', to: '/products' },
+    { icon: '🏦', title: 'Pay', hint: 'COD / Card / Bank', to: '/checkout' },
+    { icon: '📦', title: 'Track', hint: 'Live order status', to: '/orders' },
+    { icon: '⭐', title: 'Review', hint: 'Share feedback', to: '/products' },
+    { icon: '🔐', title: '2FA (opt.)', hint: 'Extra security', to: '/account' }
+  ]), [])
 
   return (
-    <div className="container-app section max-w-md">
-      <h1 className="section-title">Create account</h1>
-      {nextPath !== '/' && (
-        <p className="text-xs text-[--color-muted] mt-1">You’ll be returned to <span className="font-mono">{nextPath}</span> after signup.</p>
-      )}
-      <form onSubmit={onSubmit} className="mt-6 grid grid-cols-1 gap-3">
-        <div>
-          <label className="block text-sm mb-1">First name</label>
-          <input
-            className={inputCls}
-            value={form.firstName}
-            onChange={e => setForm({ ...form, firstName: e.target.value })}
-            onBlur={() => setTouched({ ...touched, firstName: true })}
-            autoComplete="given-name"
-            required
-          />
-          {touched.firstName && errors.firstName && <p className="text-red-600 text-sm mt-1">{errors.firstName}</p>}
-        </div>
+    <div className="container-app section">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+        {/* Left: Welcome & concise icon steps */}
+        <aside className="order-2 lg:order-1">
+          <div className="rounded-2xl border p-6 bg-white">
+            <p className="text-sm text-[--color-muted]">{greeting},</p>
+            <h1 className="text-3xl font-extrabold tracking-tight mt-1">
+              Welcome to {APP_NAME}
+            </h1>
+            <p className="mt-2 text-[--color-muted]">
+              Quick start guide
+            </p>
 
-        <div>
-          <label className="block text-sm mb-1">Last name</label>
-          <input
-            className={inputCls}
-            value={form.lastName}
-            onChange={e => setForm({ ...form, lastName: e.target.value })}
-            onBlur={() => setTouched({ ...touched, lastName: true })}
-            autoComplete="family-name"
-            required
-          />
-          {touched.lastName && errors.lastName && <p className="text-red-600 text-sm mt-1">{errors.lastName}</p>}
-        </div>
+            <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {steps.map((s, i) => (
+                <Link
+                  to={s.to}
+                  key={i}
+                  className="flex flex-col gap-2 rounded-xl border p-3 hover:shadow-sm transition bg-white"
+                >
+                  <div className="w-10 h-10 rounded-full border flex items-center justify-center text-xl">
+                    <span aria-hidden>{s.icon}</span>
+                  </div>
+                  <div>
+                    <div className="font-semibold leading-tight">{s.title}</div>
+                    <div className="text-xs text-[--color-muted]">{s.hint}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
 
-        <div>
-          <label className="block text-sm mb-1">Username</label>
-          <input
-            className={inputCls}
-            value={form.username}
-            onChange={e => setForm({ ...form, username: e.target.value })}
-            onBlur={() => setTouched({ ...touched, username: true })}
-            placeholder="yourname"
-            autoComplete="username"
-            required
-          />
-          {touched.username && errors.username && <p className="text-red-600 text-sm mt-1">{errors.username}</p>}
-        </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link to="/products" className="btn btn-primary">Start shopping</Link>
+              <Link to="/favorites" className="btn">View favorites</Link>
+            </div>
+          </div>
+        </aside>
 
-        <div>
-          <label className="block text-sm mb-1">Email</label>
-          <input
-            className={inputCls}
-            type="email"
-            value={form.email}
-            onChange={e => setForm({ ...form, email: e.target.value })}
-            onBlur={() => setTouched({ ...touched, email: true })}
-            autoComplete="email"
-            required
-          />
-          {touched.email && errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
-        </div>
+        {/* Right: Registration Form */}
+        <section className="order-1 lg:order-2">
+          <div className="max-w-md ml-auto">
+            <h2 className="section-title">Create account</h2>
+            {nextPath !== '/' && (
+              <p className="text-xs text-[--color-muted] mt-1">
+                You’ll be returned to <span className="font-mono">{nextPath}</span> after signup.
+              </p>
+            )}
 
-        <div>
-          <label className="block text-sm mb-1">Password</label>
-          <input
-            className={inputCls}
-            type="password"
-            value={form.password}
-            onChange={e => setForm({ ...form, password: e.target.value })}
-            onBlur={() => setTouched({ ...touched, password: true })}
-            autoComplete="new-password"
-            required
-          />
-          {touched.password && errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
-          <ul className="mt-2 text-xs space-y-1">
-            <li className={strong.len ? 'text-green-600' : 'opacity-70'}>• At least 8 characters</li>
-            <li className={strong.lower ? 'text-green-600' : 'opacity-70'}>• Lowercase letter</li>
-            <li className={strong.upper ? 'text-green-600' : 'opacity-70'}>• Uppercase letter</li>
-            <li className={strong.num ? 'text-green-600' : 'opacity-70'}>• Number</li>
-            <li className={strong.sym ? 'text-green-600' : 'opacity-70'}>• Symbol</li>
-            <li className={strong.nospace ? 'text-green-600' : 'opacity-70'}>• No spaces</li>
-          </ul>
-        </div>
+            <form onSubmit={onSubmit} className="mt-6 grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-sm mb-1">First name</label>
+                <input
+                  className={inputCls}
+                  value={form.firstName}
+                  onChange={e => setForm({ ...form, firstName: e.target.value })}
+                  onBlur={() => setTouched({ ...touched, firstName: true })}
+                  autoComplete="given-name"
+                  required
+                />
+                {touched.firstName && errors.firstName && <p className="text-red-600 text-sm mt-1">{errors.firstName}</p>}
+              </div>
 
-        <div>
-          <label className="block text-sm mb-1">Confirm password</label>
-          <input
-            className={inputCls}
-            type="password"
-            value={form.confirmPassword}
-            onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
-            onBlur={() => setTouched({ ...touched, confirmPassword: true })}
-            autoComplete="new-password"
-            required
-          />
-          {touched.confirmPassword && errors.confirmPassword && (
-            <p className="text-red-600 text-sm mt-1">{errors.confirmPassword}</p>
-          )}
-        </div>
+              <div>
+                <label className="block text-sm mb-1">Last name</label>
+                <input
+                  className={inputCls}
+                  value={form.lastName}
+                  onChange={e => setForm({ ...form, lastName: e.target.value })}
+                  onBlur={() => setTouched({ ...touched, lastName: true })}
+                  autoComplete="family-name"
+                  required
+                />
+                {touched.lastName && errors.lastName && <p className="text-red-600 text-sm mt-1">{errors.lastName}</p>}
+              </div>
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+              <div>
+                <label className="block text-sm mb-1">Username</label>
+                <input
+                  className={inputCls}
+                  value={form.username}
+                  onChange={e => setForm({ ...form, username: e.target.value })}
+                  onBlur={() => setTouched({ ...touched, username: true })}
+                  placeholder="yourname"
+                  autoComplete="username"
+                  required
+                />
+                {touched.username && errors.username && <p className="text-red-600 text-sm mt-1">{errors.username}</p>}
+              </div>
 
-        <button
-          disabled={status === 'loading' || Object.keys(errors).length > 0 || !allGood}
-          className="mt-2 w-full btn btn-primary disabled:opacity-50"
-        >
-          {status === 'loading' ? 'Creating…' : 'Sign up'}
-        </button>
+              <div>
+                <label className="block text-sm mb-1">Email</label>
+                <input
+                  className={inputCls}
+                  type="email"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  onBlur={() => setTouched({ ...touched, email: true })}
+                  autoComplete="email"
+                  required
+                />
+                {touched.email && errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
+              </div>
 
-        <p className="text-sm mt-2">
-          Already have an account?{' '}
-          <Link
-            className="underline"
-            to={getLoginPathWithNext(nextPath)}
-          >
-            Login
-          </Link>
-        </p>
-      </form>
+              <div>
+                <label className="block text-sm mb-1">Password</label>
+                <input
+                  className={inputCls}
+                  type="password"
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  onBlur={() => setTouched({ ...touched, password: true })}
+                  autoComplete="new-password"
+                  required
+                />
+                {touched.password && errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
+                <ul className="mt-2 text-xs space-y-1">
+                  <li className={strong.len ? 'text-green-600' : 'opacity-70'}>• At least 8 characters</li>
+                  <li className={strong.lower ? 'text-green-600' : 'opacity-70'}>• Lowercase letter</li>
+                  <li className={strong.upper ? 'text-green-600' : 'opacity-70'}>• Uppercase letter</li>
+                  <li className={strong.num ? 'text-green-600' : 'opacity-70'}>• Number</li>
+                  <li className={strong.sym ? 'text-green-600' : 'opacity-70'}>• Symbol</li>
+                  <li className={strong.nospace ? 'text-green-600' : 'opacity-70'}>• No spaces</li>
+                </ul>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-1">Confirm password</label>
+                <input
+                  className={inputCls}
+                  type="password"
+                  value={form.confirmPassword}
+                  onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                  onBlur={() => setTouched({ ...touched, confirmPassword: true })}
+                  autoComplete="new-password"
+                  required
+                />
+                {touched.confirmPassword && errors.confirmPassword && (
+                  <p className="text-red-600 text-sm mt-1">{errors.confirmPassword}</p>
+                )}
+              </div>
+
+              {error && <p className="text-red-600 text-sm">{error}</p>}
+
+              <button
+                disabled={status === 'loading' || Object.keys(errors).length > 0 || !allGood}
+                className="mt-2 w-full btn btn-primary disabled:opacity-50"
+              >
+                {status === 'loading' ? 'Creating…' : 'Sign up'}
+              </button>
+
+              <p className="text-sm mt-2">
+                Already have an account?{' '}
+                <Link className="underline" to={getLoginPathWithNext(nextPath)}>
+                  Login
+                </Link>
+              </p>
+            </form>
+          </div>
+        </section>
+      </div>
     </div>
   )
 }
