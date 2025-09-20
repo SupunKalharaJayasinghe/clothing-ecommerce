@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { removeFromCart, setQty, clearCart } from '../features/cart/cartSlice'
-import { Trash2 } from '../lib/icons'
+import { Trash2, Minus, Plus } from '../lib/icons'
 import Price from '../components/ui/Price'
 
 export default function Cart() {
@@ -18,8 +18,11 @@ export default function Cart() {
   if (items.length === 0) {
     return (
       <div className="container-app section max-w-4xl text-center">
-        <h1 className="text-2xl font-bold mb-2">Your cart is empty</h1>
-        <Link to="/products" className="underline">Browse products</Link>
+        <h1 className="section-title">Cart</h1>
+        <div className="card card-body max-w-md mx-auto">
+          <p className="mb-2">Your cart is empty.</p>
+          <Link to="/products" className="btn btn-primary w-max mx-auto">Start shopping</Link>
+        </div>
       </div>
     )
   }
@@ -32,22 +35,38 @@ export default function Cart() {
         <div className="md:col-span-2 space-y-3">
           {items.map(it => (
             <div key={it.slug} className="card p-3 flex gap-3 items-start">
-              <div className="w-24 h-24 bg-[--color-bg-soft] rounded overflow-hidden">
+              <div className="w-24 h-24 bg-[--color-bg-soft] rounded-lg overflow-hidden">
                 <img src={it.image} alt={it.name} className="w-full h-full object-cover" />
               </div>
-              <div className="flex-1">
-                <div className="font-medium leading-snug">{it.name}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium leading-snug line-clamp-2">{it.name}</div>
                 <div className="text-sm text-[--color-muted]">Color: {it.color}</div>
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={99}
-                    className="input w-24"
-                    value={it.quantity}
-                    onChange={e => dispatch(setQty({ slug: it.slug, quantity: Number(e.target.value) }))}
-                  />
-                  <button className="btn btn-outline btn-sm" onClick={() => dispatch(removeFromCart({ slug: it.slug }))}>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="inline-flex items-center rounded-md border bg-white">
+                    <button
+                      className="px-2 py-1 hover:bg-[--color-bg-soft]"
+                      onClick={() => dispatch(setQty({ slug: it.slug, quantity: Math.max(1, it.quantity - 1) }))}
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      className="w-14 text-center outline-none border-x"
+                      value={it.quantity}
+                      onChange={e => dispatch(setQty({ slug: it.slug, quantity: Math.max(1, Math.min(99, Number(e.target.value)||1)) }))}
+                    />
+                    <button
+                      className="px-2 py-1 hover:bg-[--color-bg-soft]"
+                      onClick={() => dispatch(setQty({ slug: it.slug, quantity: Math.min(99, it.quantity + 1) }))}
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                  <button className="btn btn-ghost btn-sm" onClick={() => dispatch(removeFromCart({ slug: it.slug }))}>
                     <Trash2 size={14} /> Remove
                   </button>
                 </div>
@@ -61,11 +80,11 @@ export default function Cart() {
           <button className="btn btn-ghost btn-sm w-max" onClick={() => dispatch(clearCart())}>Clear cart</button>
         </div>
 
-        <aside className="card h-max">
+        <aside className="card h-max md:sticky md:top-24">
           <div className="card-body">
           <h2 className="card-title mb-3">Summary</h2>
-          <div className="flex justify-between"><span>Subtotal</span><span><Price price={totals.subtotal} /></span></div>
-          <div className="flex justify-between"><span>Shipping</span><span>Free</span></div>
+          <div className="flex justify-between text-sm"><span>Subtotal</span><span><Price price={totals.subtotal} /></span></div>
+          <div className="flex justify-between text-sm"><span>Shipping</span><span>Free</span></div>
           <div className="flex justify-between font-semibold mt-2"><span>Total</span><span><Price price={totals.grand} /></span></div>
           <button
             className="mt-4 w-full btn btn-primary"

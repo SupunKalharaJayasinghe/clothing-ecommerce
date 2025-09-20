@@ -4,6 +4,10 @@ import ApiError from '../../utils/ApiError.js'
 
 const RESERVED_CATEGORY_TAGS = ['men', 'women', 'kids']
 
+function escapeRegExp(str = '') {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function parseArray(v) {
   if (!v) return []
   if (Array.isArray(v)) return v.filter(Boolean)
@@ -56,12 +60,16 @@ export const listProducts = catchAsync(async (req, res) => {
   // category (tab): prefer top-level field, fallback to tag
   if (category && ['men', 'women', 'kids'].includes(String(category).toLowerCase())) {
     const cat = String(category).toLowerCase()
-    catClause = { $or: [{ category: cat }, { tags: cat }] }
+    const catRx = new RegExp(`^${escapeRegExp(cat)}$`, 'i')
+    catClause = { $or: [{ category: catRx }, { tags: catRx }] }
   }
 
-  // color (array csv)
-  const colors = parseArray(color).map(c => c.toLowerCase())
-  if (colors.length) match.color = { $in: colors }
+  // color (array csv) - case-insensitive exact matches
+  const colors = parseArray(color)
+  if (colors.length) {
+    const colorRegexes = colors.map((c) => new RegExp(`^${escapeRegExp(String(c).trim())}$`, 'i'))
+    match.color = { $in: colorRegexes }
+  }
 
   // price
   const priceFilter = {}
@@ -79,8 +87,11 @@ export const listProducts = catchAsync(async (req, res) => {
     if (stock === 'in') {
       match.stock = { $gt: 0 }
     } else if (stock === 'low') {
-      // use $expr to compare fields
-      match.$expr = { $and: [{ $gt: ['$stock', 0] }, { $lte: ['$stock', '$lowStockThreshold'] }] }
+      // use $expr to compare fields; if lowStockThreshold is missing, default to 5
+      match.$expr = { $and: [
+        { $gt: ['$stock', 0] },
+        { $lte: ['$stock', { $ifNull: ['$lowStockThreshold', 5] }] }
+      ] }
     } else if (stock === 'out') {
       match.stock = { $lte: 0 }
     }
@@ -90,7 +101,10 @@ export const listProducts = catchAsync(async (req, res) => {
   let tagList = parseArray(tags)
   if (tag && !tagList.includes(tag)) tagList.push(tag)
   tagList = tagList.filter(t => !RESERVED_CATEGORY_TAGS.includes(String(t).toLowerCase()))
-  if (tagList.length) match.tags = { $in: tagList }
+  if (tagList.length) {
+    const tagRegexes = tagList.map((t) => new RegExp(`^${escapeRegExp(String(t).trim())}$`, 'i'))
+    match.tags = { $in: tagRegexes }
+  }
 
   // mainTag: 'new' | 'old' | 'any'
   if (mainTag && mainTag !== 'any') {
@@ -101,12 +115,9 @@ export const listProducts = catchAsync(async (req, res) => {
     }
   }
 
-  // Only apply category filter if DB actually has any rows for it (prevents blank screens)
+  // Always apply category filter so results and facets remain scoped (even if 0 items)
   if (catClause) {
-    const hasAnyForCategory = await Product.countDocuments(catClause)
-    if (hasAnyForCategory > 0) {
-      match.$and = (match.$and || []).concat([catClause])
-    }
+    match.$and = (match.$and || []).concat([catClause])
   }
 
   // sort options

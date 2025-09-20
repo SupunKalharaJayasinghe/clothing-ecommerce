@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector } from '../app/hooks'
-import { Heart } from '../lib/icons'
+import { Heart, Trash2 } from '../lib/icons'
 import Price from '../components/ui/Price'
 import Stars from '../components/ui/Stars'
 import Badge from '../components/ui/Badge'
@@ -16,6 +16,12 @@ export default function Favorites() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  async function clearAll() {
+    const slugs = items.map(p => p.slug)
+    setItems([])
+    await Promise.allSettled(slugs.map(s => api.delete(`/favorites/${s}`)))
+  }
 
   useEffect(() => {
     if (!user) {
@@ -49,15 +55,21 @@ export default function Favorites() {
 
   return (
     <div className="container-app section">
-      <div className="text-center mb-8">
-        <h1 className="section-title">💖 Your Favorites</h1>
-        <p className="section-subtitle mt-2">Your handpicked collection of amazing products</p>
+      <div className="mb-4 border-b pb-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Favorites</h1>
+            <p className="text-sm text-[--color-muted] mt-1">Your handpicked collection of amazing products</p>
+          </div>
+        </div>
       </div>
       
       {items.length === 0 ? (
         <div className="max-w-md mx-auto text-center">
           <div className="card card-body space-y-4">
-            <div className="text-6xl opacity-20">💔</div>
+            <div className="flex justify-center">
+              <Heart size={56} className="opacity-20" />
+            </div>
             <div>
               <h3 className="font-semibold text-lg mb-2">No favorites yet</h3>
               <p className="text-sm opacity-80 mb-4">Discover amazing products and tap the heart to save your favorites here.</p>
@@ -69,23 +81,12 @@ export default function Favorites() {
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <p className="text-sm opacity-70">{items.length} item{items.length !== 1 ? 's' : ''} in your favorites</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs opacity-60">Sort by:</span>
-              <select className="select text-sm">
-                <option>Recently Added</option>
-                <option>Price: Low to High</option>
-                <option>Price: High to Low</option>
-                <option>Name A-Z</option>
-              </select>
-            </div>
-          </div>
+          <div className="mb-3 text-sm opacity-70">{items.length} item{items.length !== 1 ? 's' : ''} in your favorites</div>
           
-          <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {items.map(p => (
-              <Link key={p.id} to={`/products/${p.slug}`} className="group card card-hover overflow-hidden block">
-                <div className="product-img relative">
+              <Link key={p.id} to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden block">
+                <div className="product-img relative" style={{ aspectRatio: '3 / 4' }}>
                   <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
                   {/* Remove button */}
                   <button
@@ -98,7 +99,7 @@ export default function Favorites() {
                     title="Remove from favorites"
                     aria-label="Remove from favorites"
                   >
-                    <Heart size={12} className="fill-white" />
+                    <Trash2 size={14} />
                   </button>
                   {/* Tags positioned on image */}
                   <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -113,7 +114,7 @@ export default function Favorites() {
                     </div>
                   )}
                 </div>
-                <div className="card-body space-y-3 p-4">
+                <div className="card-body space-y-2 p-3">
                   <div>
                     <div className="card-title leading-snug line-clamp-2 mb-1">{p.name}</div>
                     <div className="flex items-center gap-2 text-xs">

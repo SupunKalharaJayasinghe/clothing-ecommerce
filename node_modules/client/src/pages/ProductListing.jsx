@@ -36,6 +36,7 @@ export default function ProductListing() {
   const sort = params.get('sort') || 'new'
   const category = params.get('category') || 'men'
   const color = params.get('color') || ''
+
   const priceMin = params.get('priceMin') || ''
   const priceMax = params.get('priceMax') || ''
   const ratingMin = params.get('ratingMin') || ''
@@ -45,8 +46,39 @@ export default function ProductListing() {
 
   const qDebounced = useDebounced(q, 350)
 
-  const colorList = useMemo(() => color.split(',').filter(Boolean), [color])
-  const tagList = useMemo(() => tags.split(',').filter(Boolean), [tags])
+  // Local UI state for price inputs; only applied when user clicks Filter
+  const [priceMinInput, setPriceMinInput] = useState(priceMin)
+  const [priceMaxInput, setPriceMaxInput] = useState(priceMax)
+  useEffect(() => {
+    setPriceMinInput(priceMin)
+    setPriceMaxInput(priceMax)
+  }, [priceMin, priceMax])
+
+  const priceDirty = (priceMinInput !== priceMin) || (priceMaxInput !== priceMax)
+
+  function applyPriceFilter() {
+    const min = priceMinInput === '' ? '' : Math.max(0, Number(priceMinInput))
+    const max = priceMaxInput === '' ? '' : Math.max(0, Number(priceMaxInput))
+    if (min !== '' && max !== '' && min > max) {
+      // If min > max, clamp max up to min to keep a valid range
+      setParam('priceMin', String(min))
+      setParam('priceMax', String(min))
+    } else {
+      setParam('priceMin', min === '' ? '' : String(min))
+      setParam('priceMax', max === '' ? '' : String(max))
+    }
+  }
+
+  function resetPriceFilter() {
+    setPriceMinInput('')
+    setPriceMaxInput('')
+    setParam('priceMin', '')
+    setParam('priceMax', '')
+  }
+
+  // normalize CSV params to lowercase arrays for case-insensitive matching
+  const colorList = useMemo(() => color.split(',').filter(Boolean).map(s => s.toLowerCase()), [color])
+  const tagList = useMemo(() => tags.split(',').filter(Boolean).map(s => s.toLowerCase()), [tags])
 
   function setParam(key, value) {
     const next = new URLSearchParams(params)
@@ -59,7 +91,7 @@ export default function ProductListing() {
   }
 
   function toggleInList(key, currentCSV, value) {
-    const set = new Set(currentCSV ? currentCSV.split(',').filter(Boolean) : [])
+    const set = new Set((currentCSV ? currentCSV.split(',').filter(Boolean) : []).map(s => s.toLowerCase()))
     if (set.has(value)) set.delete(value)
     else set.add(value)
     setParam(key, Array.from(set))
@@ -114,6 +146,7 @@ export default function ProductListing() {
   function clearFilters() {
     const keep = new URLSearchParams()
     keep.set('category', category)
+    keep.set('sort', 'new')
     setParams(keep)
   }
 
@@ -164,14 +197,22 @@ export default function ProductListing() {
             <div className="flex flex-wrap gap-2">
               {colorsFacet.length === 0 && <div className="text-xs opacity-60">No colors</div>}
               {colorsFacet.map(c => {
-                const active = colorList.includes(c)
+                const key = String(c).toLowerCase()
+                const active = colorList.includes(key)
                 return (
                   <button
                     key={c}
                     className={`btn ${active ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
-                    onClick={() => toggleInList('color', color, c)}
+                    onClick={() => toggleInList('color', color.toLowerCase(), key)}
                   >
-                    {c}
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="inline-block w-3 h-3 rounded-full border"
+                        style={{ backgroundColor: getColorValue(c) }}
+                        aria-hidden="true"
+                      />
+                      {c}
+                    </span>
                   </button>
                 )
               })}
@@ -186,16 +227,22 @@ export default function ProductListing() {
                 type="number"
                 className="input w-1/2"
                 placeholder="Min"
-                value={priceMin}
-                onChange={e => setParam('priceMin', e.target.value)}
+                value={priceMinInput}
+                onChange={e => setPriceMinInput(e.target.value)}
               />
               <input
                 type="number"
                 className="input w-1/2"
                 placeholder="Max"
-                value={priceMax}
-                onChange={e => setParam('priceMax', e.target.value)}
+                value={priceMaxInput}
+                onChange={e => setPriceMaxInput(e.target.value)}
               />
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <button className="btn btn-primary btn-sm" onClick={applyPriceFilter} disabled={!priceDirty}>Filter</button>
+              {(priceMin || priceMax) && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={resetPriceFilter}>Reset</button>
+              )}
             </div>
           </div>
 
@@ -236,12 +283,13 @@ export default function ProductListing() {
             <div className="flex flex-wrap gap-2">
               {(tagsFacet || []).length === 0 && <div className="text-xs opacity-60">No tags</div>}
               {tagsFacet.map(t => {
-                const active = tagList.includes(t)
+                const key = String(t).toLowerCase()
+                const active = tagList.includes(key)
                 return (
                   <button
                     key={t}
                     className={`btn ${active ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
-                    onClick={() => toggleInList('tags', tags, t)}
+                    onClick={() => toggleInList('tags', tags.toLowerCase(), key)}
                   >
                     {t}
                   </button>
@@ -297,10 +345,10 @@ export default function ProductListing() {
             </div>
           )}
 
-          <div className="grid gap-6 mt-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid gap-6 mt-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
             {items.map(p => {
               return (
-                <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group card card-hover overflow-hidden relative">
+                <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden relative">
                   <div className="product-img relative">
                     <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
                     {/* Tags positioned on image */}
