@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { } from 'react-router-dom'
 import { useAppSelector } from '../app/hooks'
 import api from '../lib/axios'
 import Price from '../components/ui/Price'
@@ -12,9 +11,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([])
   const [uploading, setUploading] = useState('') // orderId currently uploading slip
 
-  useEffect(() => {
-    // route-level protection handles redirects
-  }, [user])
+  // route-level protection handles redirects; no page-level redirects needed
 
   useEffect(() => {
     (async () => {

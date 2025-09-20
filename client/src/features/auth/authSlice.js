@@ -78,8 +78,23 @@ export const logoutUser = createAsyncThunk('auth/logoutUser', async (_, thunkAPI
   }
 })
 
+// Persist minimal user snapshot to reduce UI flicker on reload
+const LS_AUTH_USER = 'auth_user_v1'
+function loadUserFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_AUTH_USER)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+function saveUserToStorage(user) {
+  try {
+    if (user) localStorage.setItem(LS_AUTH_USER, JSON.stringify(user))
+    else localStorage.removeItem(LS_AUTH_USER)
+  } catch {}
+}
+
 const initialState = {
-  user: null,
+  user: loadUserFromStorage(),
   status: 'idle',
   error: null,
   hydrated: false, // set true after first fetchMe completes (success or fail)
@@ -97,23 +112,24 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(registerUser.pending, (s) => { s.status = 'loading'; s.error = null })
-      .addCase(registerUser.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload })
+      .addCase(registerUser.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload; saveUserToStorage(s.user) })
       .addCase(registerUser.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
 
       .addCase(loginUser.pending, (s) => { s.status = 'loading'; s.error = null; s.twoFA = { required: false, tmpToken: null } })
       .addCase(loginUser.fulfilled, (s, a) => {
-        s.status = 'succeeded'
+        s.status = 'succeeded'; s.error = null
+        // if 2FA required, do not set user yet
         if (a.payload?.twoFARequired) {
           s.twoFA = { required: true, tmpToken: a.payload.tmpToken }
         } else {
-          s.user = a.payload.user
-          s.twoFA = { required: false, tmpToken: null }
+          s.user = a.payload
+          saveUserToStorage(s.user)
         }
       })
       .addCase(loginUser.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
 
       .addCase(verifyTwoFA.pending, (s) => { s.status = 'loading'; s.error = null })
-      .addCase(verifyTwoFA.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload; s.twoFA = { required: false, tmpToken: null } })
+      .addCase(verifyTwoFA.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload; s.twoFA = { required: false, tmpToken: null }; saveUserToStorage(s.user) })
       .addCase(verifyTwoFA.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
 
       .addCase(forgotPassword.pending, (s) => { s.forgot.status = 'loading'; s.forgot.message = null; s.forgot.devToken = null; s.error = null })
@@ -125,10 +141,10 @@ const authSlice = createSlice({
       .addCase(resetPassword.rejected, (s, a) => { s.reset.status = 'failed'; s.error = a.payload })
 
       .addCase(fetchMe.pending, (s) => { s.status = 'loading'; s.hydrated = false })
-      .addCase(fetchMe.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload; s.hydrated = true })
-      .addCase(fetchMe.rejected, (s) => { s.status = 'idle'; s.hydrated = true })
+      .addCase(fetchMe.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload; s.hydrated = true; saveUserToStorage(s.user) })
+      .addCase(fetchMe.rejected, (s) => { s.status = 'idle'; s.hydrated = true; s.user = null; saveUserToStorage(null) })
 
-      .addCase(logoutUser.fulfilled, (s) => { s.user = null; s.status = 'idle'; s.hydrated = true; s.twoFA = { required: false, tmpToken: null } })
+      .addCase(logoutUser.fulfilled, (s) => { s.user = null; s.status = 'idle'; s.hydrated = true; s.twoFA = { required: false, tmpToken: null }; saveUserToStorage(null) })
   }
 })
 

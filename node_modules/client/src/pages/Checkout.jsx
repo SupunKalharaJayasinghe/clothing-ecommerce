@@ -64,6 +64,7 @@ export default function Checkout() {
       const { data } = await api.post('/orders', payload)
       if (method === 'CARD' && data?.requiresConfirmation && data.preview) {
         setPreview(data.preview)
+        setLoading(false)
         return
       }
       const orderId = data.orderId
@@ -191,7 +192,7 @@ export default function Checkout() {
             {method === 'BANK' && (
               <div className="mt-3">
                 <label className="text-sm block mb-1">Upload bank slip (image)</label>
-                <input type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} />
+                <input type="file" accept="image/*,application/pdf" onChange={e => setSlip(e.target.files?.[0] || null)} />
                 <p className="text-xs opacity-70 mt-1">You can also upload later from your orders page.</p>
               </div>
             )}
@@ -231,7 +232,7 @@ export default function Checkout() {
                     <div className="mt-3">
                       <div className="flex justify-between"><span>Subtotal</span><span><Price v={preview.totals?.subtotal} /></span></div>
                       <div className="flex justify-between"><span>Shipping</span><span>Free</span></div>
-                      <div className="flex justify-between font-semibold mt-1"><span>Total</span><span><Price v={preview.totals?.grand} /></span></div>
+                      <div className="flex justify-between font-semibold mt-1"><span>Total</span><span><Price v={preview.totals?.grandTotal ?? preview.totals?.grand} /></span></div>
                     </div>
                   </div>
                 </div>
