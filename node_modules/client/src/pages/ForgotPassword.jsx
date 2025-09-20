@@ -27,7 +27,7 @@ export default function ForgotPassword() {
         {forgot.message && <p className="text-green-600 text-sm">{forgot.message}</p>}
 
         {/* For local dev convenience only */}
-        {forgot.devToken && (
+        {import.meta.env.DEV && forgot.devToken && (
           <div className="text-xs mt-2 card">
             <div className="card-body p-2">
             Dev token: <code>{forgot.devToken}</code><br/>

@@ -100,8 +100,16 @@ export default function RootLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t py-8 text-center text-sm">
-        © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+      <footer className="border-t py-8 text-sm">
+        <div className="container-app flex flex-col md:flex-row items-center justify-between gap-3">
+          <div>© {new Date().getFullYear()} {APP_NAME}. All rights reserved.</div>
+          <nav className="flex items-center gap-4">
+            <Link className="hover:underline" to="/about">About</Link>
+            <Link className="hover:underline" to="/privacy">Privacy</Link>
+            <Link className="hover:underline" to="/terms">Terms</Link>
+            <Link className="hover:underline" to="/contact">Contact</Link>
+          </nav>
+        </div>
       </footer>
     </div>
   )

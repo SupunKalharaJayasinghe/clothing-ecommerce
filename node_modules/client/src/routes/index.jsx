@@ -14,12 +14,17 @@ import Account from '../pages/Account'
 import About from '../pages/About'
 import ForgotPassword from '../pages/ForgotPassword'     // <-- NEW
 import ResetPassword from '../pages/ResetPassword'       // <-- NEW
+import Loader from '../components/ui/Loader'
+import Privacy from '../pages/Privacy'
+import Terms from '../pages/Terms'
+import Contact from '../pages/Contact'
+import NotFound from '../pages/NotFound'
 
 function Protected({ children }) {
   const { user, status, hydrated } = useAppSelector(s => s.auth)
   const location = useLocation()
   // Wait until the initial session hydration completes to avoid premature redirects
-  if (!hydrated || status === 'loading') return <div className="p-6">Loading…</div>
+  if (!hydrated || status === 'loading') return <Loader />
   if (user) return children
   const next = encodeURIComponent(location.pathname + location.search)
   return <Navigate to={`/login?next=${next}`} replace />
@@ -40,9 +45,12 @@ export default function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/about" element={<About />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />    {/* NEW */}
         <Route path="/reset-password/:token" element={<ResetPassword />} />{/* NEW */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   )

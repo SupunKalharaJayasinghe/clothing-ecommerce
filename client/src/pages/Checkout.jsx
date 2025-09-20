@@ -19,15 +19,15 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [slip, setSlip] = useState(null) // bank
+  const [preview, setPreview] = useState(null) // for CARD two-step { items, totals, address }
 
   const totals = useMemo(() => {
     const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0)
     return { subtotal, shipping: 0, discount: 0, grand: subtotal }
   }, [items])
 
-  useEffect(() => {
-    if (!user) navigate('/login?next=' + encodeURIComponent('/checkout'))
-  }, [user, navigate])
+  // Route-level protection handles redirects
+  useEffect(() => {}, [user])
 
   // Load saved addresses for convenience
   useEffect(() => {
@@ -60,7 +60,12 @@ export default function Checkout() {
           : { addressId: addressId || undefined }),
         items: items.map(i => ({ slug: i.slug, quantity: i.quantity }))
       }
+      // For CARD: request preview first; backend may return requiresConfirmation
       const { data } = await api.post('/orders', payload)
+      if (method === 'CARD' && data?.requiresConfirmation && data.preview) {
+        setPreview(data.preview)
+        return
+      }
       const orderId = data.orderId
 
       // BANK: upload slip immediately if provided
@@ -95,6 +100,56 @@ export default function Checkout() {
       setError(e.response?.data?.message || e.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function confirmPlace() {
+    if (!preview) return
+    setLoading(true); setError('')
+    try {
+      const hasTypedAddress = addr.line1.trim() && addr.city.trim() && addr.country.trim() && addr.phone.trim()
+      const payload = {
+        method,
+        confirm: true,
+        ...(hasTypedAddress
+          ? { address: { ...addr, line1: addr.line1.trim(), city: addr.city.trim(), country: addr.country.trim(), phone: addr.phone.trim() } }
+          : { addressId: addressId || undefined }),
+        items: items.map(i => ({ slug: i.slug, quantity: i.quantity }))
+      }
+      const { data } = await api.post('/orders', payload)
+      const orderId = data.orderId
+
+      if (method === 'CARD' && data.payhere?.action) {
+        const form = document.createElement('form')
+        form.method = 'POST'
+        form.action = data.payhere.action
+        for (const [k, v] of Object.entries(data.payhere.params || {})) {
+          const input = document.createElement('input')
+          input.type = 'hidden'
+          input.name = k
+          input.value = v
+          form.appendChild(input)
+        }
+        document.body.appendChild(form)
+        form.submit()
+        dispatch(clearCart())
+        return
+      }
+
+      // BANK: upload slip immediately if provided
+      if (method === 'BANK' && slip) {
+        const form = new FormData()
+        form.append('slip', slip)
+        await api.post(`/payments/bank/${orderId}/slip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      }
+
+      dispatch(clearCart())
+      navigate('/orders')
+    } catch (e) {
+      setError(e.response?.data?.message || e.message)
+    } finally {
+      setLoading(false)
+      setPreview(null)
     }
   }
 
@@ -150,9 +205,51 @@ export default function Checkout() {
 
           {error && <div className="text-red-600">{error}</div>}
 
-          <button className="btn btn-primary" onClick={place} disabled={loading}>
-            {loading ? 'Placing…' : 'Place order'}
-          </button>
+          {/* CARD: Confirmation preview step */}
+          {preview && method === 'CARD' ? (
+            <div className="card border-amber-300">
+              <div className="card-body">
+                <h3 className="font-semibold mb-2">Confirm your order</h3>
+                <div className="grid md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="font-medium mb-1">Items</div>
+                    <div className="space-y-1">
+                      {(preview.items || []).map((it, idx) => (
+                        <div key={idx} className="flex justify-between">
+                          <div className="truncate mr-2">{it.name} × {it.quantity}</div>
+                          <div><Price v={(it.price || 0) * (it.quantity || 0)} /></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-medium mb-1">Delivery</div>
+                    <div className="opacity-80">
+                      {preview.address?.line1}, {preview.address?.city}, {preview.address?.country}
+                      {preview.address?.phone ? ` — ${preview.address?.phone}` : ''}
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex justify-between"><span>Subtotal</span><span><Price v={preview.totals?.subtotal} /></span></div>
+                      <div className="flex justify-between"><span>Shipping</span><span>Free</span></div>
+                      <div className="flex justify-between font-semibold mt-1"><span>Total</span><span><Price v={preview.totals?.grand} /></span></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button className="btn btn-primary" onClick={confirmPlace} disabled={loading}>
+                    {loading ? 'Processing…' : 'Confirm & Pay'}
+                  </button>
+                  <button className="btn btn-outline" onClick={() => setPreview(null)} disabled={loading}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-primary" onClick={place} disabled={loading}>
+              {loading ? 'Placing…' : 'Place order'}
+            </button>
+          )}
         </section>
 
         {/* Summary */}
