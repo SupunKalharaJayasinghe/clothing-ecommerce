@@ -14,6 +14,7 @@ const EnvSchema = z.object({
 
   // Payments (optional)
   PAYHERE_MERCHANT_ID: z.string().optional(),
+  PAYHERE_MERCHANT_SECRET: z.string().optional(),
   PAYHERE_RETURN_URL: z.string().optional(),
   PAYHERE_CANCEL_URL: z.string().optional(),
   PAYHERE_NOTIFY_URL: z.string().optional()
@@ -31,6 +32,7 @@ export const env = EnvSchema.parse({
   COOKIE_SECURE: process.env.COOKIE_SECURE,
 
   PAYHERE_MERCHANT_ID: process.env.PAYHERE_MERCHANT_ID,
+  PAYHERE_MERCHANT_SECRET: process.env.PAYHERE_MERCHANT_SECRET,
   PAYHERE_RETURN_URL: process.env.PAYHERE_RETURN_URL,
   PAYHERE_CANCEL_URL: process.env.PAYHERE_CANCEL_URL,
   PAYHERE_NOTIFY_URL: process.env.PAYHERE_NOTIFY_URL

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { registerUser } from '../features/auth/authSlice'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
+import { getNextFromSearch, getLoginPathWithNext } from '../lib/nextParam'
 
 const usernameRegex = /^[a-z0-9_.]+$/ // lower letters, numbers, _, .
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -42,7 +43,10 @@ function validate(form) {
 export default function Register() {
   const dispatch = useAppDispatch()
   const nav = useNavigate()
+  const location = useLocation()
   const { status, error } = useAppSelector(s => s.auth)
+
+  const nextPath = useMemo(() => getNextFromSearch(location.search), [location.search])
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', username: '', email: '',
@@ -69,7 +73,7 @@ export default function Register() {
     })
     if (Object.keys(errors).length) return
     const res = await dispatch(registerUser(form))
-    if (registerUser.fulfilled.match(res)) nav('/')
+    if (registerUser.fulfilled.match(res)) nav(nextPath, { replace: true })
   }
 
   const inputCls = "input"
@@ -77,6 +81,9 @@ export default function Register() {
   return (
     <div className="container-app section max-w-md">
       <h1 className="section-title">Create account</h1>
+      {nextPath !== '/' && (
+        <p className="text-xs text-[--color-muted] mt-1">You’ll be returned to <span className="font-mono">{nextPath}</span> after signup.</p>
+      )}
       <form onSubmit={onSubmit} className="mt-6 grid grid-cols-1 gap-3">
         <div>
           <label className="block text-sm mb-1">First name</label>
@@ -180,7 +187,13 @@ export default function Register() {
         </button>
 
         <p className="text-sm mt-2">
-          Already have an account? <Link className="underline" to="/login">Login</Link>
+          Already have an account?{' '}
+          <Link
+            className="underline"
+            to={getLoginPathWithNext(nextPath)}
+          >
+            Login
+          </Link>
         </p>
       </form>
     </div>

@@ -55,6 +55,8 @@ const orderSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
+      // pre-payment (card)
+      'pending_payment',
       // common
       'placed',
       // for card flow

@@ -1,12 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { loginUser, verifyTwoFA } from '../features/auth/authSlice'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
+import { getNextFromSearch, getRegisterPathWithNext } from '../lib/nextParam'
 
 export default function Login() {
   const dispatch = useAppDispatch()
   const nav = useNavigate()
-  const { status, error, twoFA } = useAppSelector(s => s.auth)
+  const location = useLocation()
+  const { status, error, twoFA, user, hydrated } = useAppSelector(s => s.auth)
+
+  // Determine where to go after successful auth
+  const nextPath = useMemo(() => getNextFromSearch(location.search), [location.search])
+
+  // If user is already authenticated after hydration, redirect away from login
+  useEffect(() => {
+    if (hydrated && user && !twoFA.required) {
+      nav(nextPath, { replace: true })
+    }
+  }, [hydrated, user, twoFA.required, nextPath, nav])
 
   // step 1 form
   const [form, setForm] = useState({ identifier: '', password: '' })
@@ -24,14 +36,14 @@ export default function Login() {
     setTouched({ identifier: true, password: true })
     if (Object.keys(errors).length) return
     const res = await dispatch(loginUser(form))
-    if (loginUser.fulfilled.match(res) && !res.payload?.twoFARequired) nav('/')
+    if (loginUser.fulfilled.match(res) && !res.payload?.twoFARequired) nav(nextPath, { replace: true })
   }
 
   async function onVerify(e) {
     e.preventDefault()
     if (!code.trim()) return
     const res = await dispatch(verifyTwoFA({ tmpToken: twoFA.tmpToken, code: code.trim(), remember }))
-    if (verifyTwoFA.fulfilled.match(res)) nav('/')
+    if (verifyTwoFA.fulfilled.match(res)) nav(nextPath, { replace: true })
   }
 
   const inputCls = "input"
@@ -39,6 +51,9 @@ export default function Login() {
   return (
     <div className="container-app section max-w-sm">
       <h1 className="section-title">Login</h1>
+      {nextPath !== '/' && (
+        <p className="text-xs text-[--color-muted] mt-1">You’ll be returned to <span className="font-mono">{nextPath}</span> after login.</p>
+      )}
 
       {!twoFA.required ? (
         <form onSubmit={onSubmit} className="mt-6 space-y-3">
@@ -83,7 +98,13 @@ export default function Login() {
           </button>
 
           <p className="text-sm mt-2">
-            New here? <Link className="underline" to="/register">Create an account</Link>
+            New here?{' '}
+            <Link
+              className="underline"
+              to={getRegisterPathWithNext(nextPath)}
+            >
+              Create an account
+            </Link>
           </p>
         </form>
       ) : (

@@ -54,45 +54,69 @@ export const placeOrder = catchAsync(async (req, res) => {
     }
   }
 
+  // If CARD and not yet confirmed, return a preview and require confirmation (two-step)
+  const { confirm: confirmCard } = req.body || {}
+  if (method === 'CARD' && confirmCard !== true) {
+    return res.json({
+      ok: true,
+      requiresConfirmation: true,
+      preview: {
+        items: orderItems.map(i => ({ slug: i.slug, name: i.name, quantity: i.quantity, price: i.price })),
+        totals,
+        address: addr
+      }
+    })
+  }
+
   // derive initial status & payment
-  let status = 'placed'
-  let payment = { method, status: 'pending' }
+  let status = method === 'CARD' ? 'pending_payment' : 'placed'
+  let payment = { method, status: method === 'CARD' ? 'initiated' : 'pending' }
 
   if (method === 'CARD') {
-    payment = { method, status: 'initiated', gateway: 'PAYHERE' }
+    payment.gateway = 'PAYHERE'
   }
   // BANK stays 'pending' until verify; COD stays 'pending' until delivery cash confirm
 
-  // Atomically reserve stock per product; use a transaction if available
-  const session = await mongoose.startSession()
   let order
-  await session.withTransaction(async () => {
-    // Ensure sufficient stock and decrement
-    const ops = orderItems.map(oi => ({
-      updateOne: {
-        filter: { _id: oi.product, stock: { $gte: oi.quantity } },
-        update: { $inc: { stock: -oi.quantity } }
-      }
-    }))
-    const resBulk = await Product.bulkWrite(ops, { session })
-    const modified = Object.values(resBulk.result).reduce((a, v) => a + (typeof v === 'number' ? v : 0), 0)
-    // Fallback check: ensure all matched and modified
-    if (resBulk.modifiedCount !== orderItems.length) {
-      throw new ApiError(400, 'One or more items are out of stock')
-    }
-
-    order = await Order.create([{
+  if (method === 'CARD') {
+    // Do NOT decrement stock yet; create a pre-order awaiting payment
+    order = await Order.create({
       user: req.user.sub,
       items: orderItems,
       address: addr,
       totals,
-      status,
+      status, // 'pending_payment'
       statusHistory: [{ status }],
       payment
-    }], { session })
-    order = order[0]
-  })
-  session.endSession()
+    })
+  } else {
+    // Atomically reserve stock for non-card methods
+    const session = await mongoose.startSession()
+    await session.withTransaction(async () => {
+      const ops = orderItems.map(oi => ({
+        updateOne: {
+          filter: { _id: oi.product, stock: { $gte: oi.quantity } },
+          update: { $inc: { stock: -oi.quantity } }
+        }
+      }))
+      const resBulk = await Product.bulkWrite(ops, { session })
+      if (resBulk.modifiedCount !== orderItems.length) {
+        throw new ApiError(400, 'One or more items are out of stock')
+      }
+
+      const created = await Order.create([{
+        user: req.user.sub,
+        items: orderItems,
+        address: addr,
+        totals,
+        status,
+        statusHistory: [{ status }],
+        payment
+      }], { session })
+      order = created[0]
+    })
+    session.endSession()
+  }
 
   // For CARD: return minimal payload you can use to build a PayHere form client-side (sandbox)
   let payhere = null

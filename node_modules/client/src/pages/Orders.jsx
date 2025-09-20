@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { } from 'react-router-dom'
 import { useAppSelector } from '../app/hooks'
 import api from '../lib/axios'
 import Price from '../components/ui/Price'
@@ -7,15 +7,14 @@ import Badge from '../components/ui/Badge'
 
 export default function Orders() {
   const { user } = useAppSelector(s => s.auth)
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [orders, setOrders] = useState([])
   const [uploading, setUploading] = useState('') // orderId currently uploading slip
 
   useEffect(() => {
-    if (!user) navigate('/login?next=' + encodeURIComponent('/orders'))
-  }, [user, navigate])
+    // route-level protection handles redirects
+  }, [user])
 
   useEffect(() => {
     (async () => {
@@ -59,59 +58,74 @@ export default function Orders() {
   return (
     <div className="container-app section">
       <h1 className="section-title">Your Orders</h1>
-      {orders.length === 0 && <div className="mt-3 opacity-70">You have no orders yet.</div>}
+      {orders.length === 0 && (
+        <div className="mt-3 card card-body max-w-md">
+          <div className="text-sm opacity-80">You have no orders yet.</div>
+        </div>
+      )}
 
-      <div className="mt-8 space-y-4">
+      <div className="mt-8 space-y-5">
         {orders.map(o => (
-          <div key={o._id} className="card p-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="text-sm opacity-70">#{o._id}</div>
+          <div key={o._id} className="card">
+            <div className="p-4 border-b flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="text-xs opacity-60">Order</div>
+                <div className="font-medium text-sm">#{o._id}</div>
+                <div className="text-xs opacity-70 mt-0.5">{new Date(o.createdAt).toLocaleString()}</div>
+              </div>
               <div className="flex items-center gap-2">
                 <Badge tone={statusTone(o.status)}>{o.status}</Badge>
                 <Badge>{o.payment?.method}</Badge>
-                {o.payment?.status && <Badge tone={o.payment.status === 'paid' ? 'green' : (o.payment.status === 'failed' ? 'red' : 'gray')}>{o.payment.status}</Badge>}
+                {o.payment?.status && (
+                  <Badge tone={o.payment.status === 'paid' ? 'green' : (o.payment.status === 'failed' ? 'red' : 'gray')}>
+                    {o.payment.status}
+                  </Badge>
+                )}
+                <div className="ml-2 font-semibold whitespace-nowrap">Total: <Price price={o.totals?.grandTotal} /></div>
               </div>
             </div>
 
-            <div className="text-sm opacity-70 mt-1">{new Date(o.createdAt).toLocaleString()}</div>
-
-            <div className="grid md:grid-cols-3 gap-4 mt-3">
+            <div className="p-4 grid md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
                 <h3 className="font-semibold mb-2">Items</h3>
-                <div className="space-y-2">
+                <div className="divide-y">
                   {o.items.map(it => (
-                    <div key={it.slug} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        {it.image && <img src={it.image} alt={it.name} className="w-10 h-12 object-cover rounded border" />}
-                        <div>
-                          <div className="font-medium leading-tight">{it.name}</div>
+                    <div key={it.slug} className="py-2 flex items-center justify-between text-sm gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {it.image && <img src={it.image} alt={it.name} className="w-12 h-12 object-cover rounded border" />}
+                        <div className="min-w-0">
+                          <div className="font-medium leading-tight truncate">{it.name}</div>
                           <div className="opacity-70">{it.color} × {it.quantity}</div>
                         </div>
                       </div>
-                      <div className="font-medium"><Price price={it.price * it.quantity} /></div>
+                      <div className="font-medium whitespace-nowrap"><Price price={it.price * it.quantity} /></div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <aside>
-                <h3 className="font-semibold mb-2">Delivery</h3>
-                <div className="text-sm">
-                  <div>{o.address?.line1}{o.address?.line2 ? `, ${o.address.line2}` : ''}</div>
-                  <div>{o.address?.city}{o.address?.region ? `, ${o.address.region}` : ''}</div>
-                  <div>{o.address?.country}{o.address?.postalCode ? `, ${o.address.postalCode}` : ''}</div>
-                  <div className="opacity-70 mt-1">Phone: {o.address?.phone}</div>
+              <aside className="space-y-3">
+                <div>
+                  <h3 className="font-semibold mb-1">Delivery</h3>
+                  <div className="text-sm">
+                    <div>{o.address?.line1}{o.address?.line2 ? `, ${o.address.line2}` : ''}</div>
+                    <div>{o.address?.city}{o.address?.region ? `, ${o.address.region}` : ''}</div>
+                    <div>{o.address?.country}{o.address?.postalCode ? `, ${o.address.postalCode}` : ''}</div>
+                    <div className="opacity-70 mt-1">Phone: {o.address?.phone}</div>
+                  </div>
                 </div>
 
-                <h3 className="font-semibold mt-4 mb-1">Totals</h3>
-                <div className="text-sm">
-                  <div className="flex justify-between"><span>Subtotal</span><span><Price price={o.totals?.subtotal} /></span></div>
-                  <div className="flex justify-between"><span>Shipping</span><span><Price price={o.totals?.shipping} /></span></div>
-                  <div className="flex justify-between font-semibold"><span>Total</span><span><Price price={o.totals?.grandTotal} /></span></div>
+                <div>
+                  <h3 className="font-semibold mb-1">Totals</h3>
+                  <div className="text-sm">
+                    <div className="flex justify-between"><span>Subtotal</span><span><Price price={o.totals?.subtotal} /></span></div>
+                    <div className="flex justify-between"><span>Shipping</span><span><Price price={o.totals?.shipping} /></span></div>
+                    <div className="flex justify-between font-semibold"><span>Total</span><span><Price price={o.totals?.grandTotal} /></span></div>
+                  </div>
                 </div>
 
                 {o.payment?.method === 'BANK' && o.payment?.status !== 'paid' && (
-                  <div className="mt-3">
+                  <div>
                     <label className="text-sm">Upload bank slip</label>
                     <input
                       type="file"

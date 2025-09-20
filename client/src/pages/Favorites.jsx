@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector } from '../app/hooks'
 import { Heart, Trash2 } from '../lib/icons'
@@ -12,7 +12,6 @@ import { getColorValue } from '../lib/colors'
 
 export default function Favorites() {
   const { user } = useAppSelector(s => s.auth)
-  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -24,10 +23,6 @@ export default function Favorites() {
   }
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login?next=' + encodeURIComponent('/favorites'))
-      return
-    }
     (async () => {
       try {
         const { data } = await api.get('/favorites')
@@ -38,7 +33,7 @@ export default function Favorites() {
         setLoading(false)
       }
     })()
-  }, [user, navigate])
+  }, [user])
 
   async function remove(slug) {
     try {

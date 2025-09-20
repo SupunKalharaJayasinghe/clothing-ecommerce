@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import RootLayout from '../layouts/RootLayout'
 import Home from '../pages/Home'
 import ProductListing from '../pages/ProductListing'
@@ -15,9 +15,13 @@ import ForgotPassword from '../pages/ForgotPassword'     // <-- NEW
 import ResetPassword from '../pages/ResetPassword'       // <-- NEW
 
 function Protected({ children }) {
-  const { user, status } = useAppSelector(s => s.auth)
-  if (status === 'loading') return <div className="p-6">Loading…</div>
-  return user ? children : <Navigate to="/login" replace />
+  const { user, status, hydrated } = useAppSelector(s => s.auth)
+  const location = useLocation()
+  // Wait until the initial session hydration completes to avoid premature redirects
+  if (!hydrated || status === 'loading') return <div className="p-6">Loading…</div>
+  if (user) return children
+  const next = encodeURIComponent(location.pathname + location.search)
+  return <Navigate to={`/login?next=${next}`} replace />
 }
 
 export default function AppRoutes() {

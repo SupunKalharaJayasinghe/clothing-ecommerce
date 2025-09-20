@@ -49,6 +49,7 @@ export default function Account() {
   const [twoFA, setTwoFA] = useState({ enabled: false })
   const [twoFASetup, setTwoFASetup] = useState({ qr: '', code: '' })
   const [twoFAMsg, setTwoFAMsg] = useState('')
+  const [backupCodes, setBackupCodes] = useState([])
   const [twoFAErr, setTwoFAErr] = useState('')
 
   // Deletion request
@@ -177,7 +178,8 @@ export default function Account() {
     try {
       const { data } = await api.post('/account/security/2fa/verify', { token: twoFASetup.code })
       setTwoFA({ enabled: true })
-      setTwoFAMsg(`2FA enabled. Save these backup codes: ${data.backupCodes.join(', ')}`)
+      setTwoFAMsg('2FA enabled. Save these backup codes:')
+      setBackupCodes(data.backupCodes || [])
       setTwoFASetup({ qr: '', code: '' })
     } catch (e) {
       setTwoFAErr(e.response?.data?.message || e.message)
@@ -187,10 +189,12 @@ export default function Account() {
     await api.delete('/account/security/2fa')
     setTwoFA({ enabled: false })
     setTwoFAMsg('2FA disabled')
+    setBackupCodes([])
   }
   async function regenCodes() {
     const { data } = await api.post('/account/security/2fa/backup/regenerate')
-    setTwoFAMsg(`New backup codes: ${data.backupCodes.join(', ')}`)
+    setTwoFAMsg('New backup codes generated:')
+    setBackupCodes(data.backupCodes || [])
   }
 
   // Deletion request
@@ -373,20 +377,27 @@ export default function Account() {
           <div className="card">
             <div className="card-body">
             <h2 className="font-semibold mb-3">Your addresses</h2>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {addresses.length === 0 && <div className="opacity-70">No addresses yet.</div>}
               {addresses.map(a => (
                 <div key={a._id} className="card p-3">
-                  <div className="font-medium">{a.label || 'Address'}</div>
-                  <div className="text-sm opacity-80">
-                    {a.line1}{a.line2 ? `, ${a.line2}` : ''}, {a.city}{a.region ? `, ${a.region}` : ''}, {a.postalCode ? `${a.postalCode}, ` : ''}{a.country}
-                    {a.phone ? ` — ${a.phone}` : ''}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium">{a.label || 'Address'}</div>
+                      <div className="text-sm opacity-80 mt-0.5">
+                        {a.line1}{a.line2 ? `, ${a.line2}` : ''}, {a.city}{a.region ? `, ${a.region}` : ''}, {a.postalCode ? `${a.postalCode}, ` : ''}{a.country}
+                        {a.phone ? ` — ${a.phone}` : ''}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {a.isDefault ? (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-[--color-bg-soft]">Default</span>
+                      ) : (
+                        <button className="btn btn-outline btn-sm" onClick={() => updateAddress({...a, isDefault:true})}>Make default</button>
+                      )}
+                      <button className="btn btn-danger btn-sm" onClick={() => deleteAddress(a._id)}>Delete</button>
+                    </div>
                   </div>
-                  <div className="flex gap-2 mt-2">
-                    {!a.isDefault && <button className="btn btn-outline btn-sm" onClick={() => updateAddress({...a, isDefault:true})}>Make default</button>}
-                    <button className="btn btn-danger btn-sm" onClick={() => deleteAddress(a._id)}>Delete</button>
-                  </div>
-                  {a.isDefault && <div className="text-xs mt-1">Default</div>}
                 </div>
               ))}
             </div>
@@ -406,7 +417,22 @@ export default function Account() {
                 <button className="btn btn-outline btn-sm" onClick={regenCodes}>Regenerate backup codes</button>
                 <button className="btn btn-danger btn-sm" onClick={disable2FA}>Disable 2FA</button>
               </div>
-              {twoFAMsg && <p className="text-green-600 text-sm">{twoFAMsg}</p>}
+              {twoFAMsg && <p className="text-green-600 text-sm mt-2">{twoFAMsg}</p>}
+              {backupCodes.length > 0 && (
+                <div className="mt-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {backupCodes.map(code => (
+                      <div key={code} className="rounded-lg border bg-[--color-bg-soft] px-3 py-2 font-mono text-sm tracking-wider">
+                        {code}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button className="btn btn-outline btn-sm" onClick={() => navigator.clipboard.writeText(backupCodes.join('\n'))}>Copy all</button>
+                    <span className="text-xs opacity-70">Each code can be used once. Store them securely.</span>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>

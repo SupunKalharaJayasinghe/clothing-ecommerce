@@ -82,6 +82,7 @@ const initialState = {
   user: null,
   status: 'idle',
   error: null,
+  hydrated: false, // set true after first fetchMe completes (success or fail)
   twoFA: { required: false, tmpToken: null },
   forgot: { status: 'idle', message: null, devToken: null },
   reset: { status: 'idle', message: null }
@@ -123,11 +124,11 @@ const authSlice = createSlice({
       .addCase(resetPassword.fulfilled, (s, a) => { s.reset.status = 'succeeded'; s.reset.message = a.payload.message })
       .addCase(resetPassword.rejected, (s, a) => { s.reset.status = 'failed'; s.error = a.payload })
 
-      .addCase(fetchMe.pending, (s) => { s.status = 'loading' })
-      .addCase(fetchMe.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload })
-      .addCase(fetchMe.rejected, (s) => { s.status = 'idle' })
+      .addCase(fetchMe.pending, (s) => { s.status = 'loading'; s.hydrated = false })
+      .addCase(fetchMe.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload; s.hydrated = true })
+      .addCase(fetchMe.rejected, (s) => { s.status = 'idle'; s.hydrated = true })
 
-      .addCase(logoutUser.fulfilled, (s) => { s.user = null; s.status = 'idle'; s.twoFA = { required: false, tmpToken: null } })
+      .addCase(logoutUser.fulfilled, (s) => { s.user = null; s.status = 'idle'; s.hydrated = true; s.twoFA = { required: false, tmpToken: null } })
   }
 })
 
