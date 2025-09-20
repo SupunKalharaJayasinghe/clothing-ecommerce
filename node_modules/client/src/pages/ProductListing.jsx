@@ -2,79 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector } from '../app/hooks'
-import { Heart } from '../lib/icons'
+import Price from '../components/ui/Price'
+import Stars from '../components/ui/Stars'
+import Badge from '../components/ui/Badge'
+import { getColorValue } from '../lib/colors'
 
-function Price({ price, discountPercent, finalPrice }) {
-  if (discountPercent > 0) {
-    return (
-      <div className="flex items-baseline gap-2">
-        <span className="price">Rs. {Number(finalPrice ?? price).toLocaleString()}</span>
-        <span className="price-old">Rs. {Number(price).toLocaleString()}</span>
-      </div>
-    )
-  }
-  return <div className="price">Rs. {Number(price).toLocaleString()}</div>
-}
-
-function Stars({ rating }) {
-  const r = Math.round((rating || 0) * 2) / 2
-  return (
-    <div className="text-yellow-500" aria-label={`Rating ${r} out of 5`}>
-      {'★★★★★'.split('').map((s, i) => {
-        const full = i + 1 <= Math.floor(r)
-        const half = !full && i + 0.5 < r + 0.001
-        return (
-          <span key={i} className={half ? 'relative' : ''}>
-            {full ? '★' : '☆'}
-            {half && <span className="absolute left-0 overflow-hidden w-1/2">★</span>}
-          </span>
-        )
-      })}
-    </div>
-  )
-}
-
-function Badge({ children, tone = 'neutral' }) {
-  const tones = {
-    neutral: 'badge badge-neutral',
-    green: 'badge badge-success',
-    red: 'badge badge-danger',
-    blue: 'badge badge-info',
-    amber: 'badge badge-warning',
-    purple: 'badge badge-accent'
-  }
-  return <span className={tones[tone] || tones.neutral}>{children}</span>
-}
-
-// Helper function to get proper color values with good contrast
-function getColorValue(colorName) {
-  if (!colorName) return '#6b7280' // gray-500 default
-  
-  const color = colorName.toLowerCase().trim()
-  const colorMap = {
-    // Basic colors with good contrast
-    'red': '#ef4444',
-    'blue': '#3b82f6', 
-    'mid blue': '#3b82f6',
-    'navy': '#1e40af',
-    'green': '#22c55e',
-    'yellow': '#eab308',
-    'orange': '#f97316',
-    'purple': '#a855f7',
-    'pink': '#ec4899',
-    'black': '#1f2937',
-    'white': '#f9fafb',
-    'gray': '#6b7280',
-    'grey': '#6b7280',
-    'brown': '#92400e',
-    'beige': '#d6d3d1',
-    'cream': '#fef7cd',
-    // Add more color mappings as needed
-  }
-  
-  // Return mapped color or try to use the color name directly
-  return colorMap[color] || color || '#6b7280'
-}
+ 
 
 const RESERVED = new Set(['men', 'women', 'kids'])
 
@@ -97,8 +30,6 @@ export default function ProductListing() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAppSelector(s => s.auth)
-
-  const [favSlugs, setFavSlugs] = useState(new Set())
   const [facets, setFacets] = useState({ colors: [], tags: [], mainTags: [] })
 
   const q = params.get('q') || ''
@@ -176,39 +107,9 @@ export default function ProductListing() {
     return () => ctrl.abort()
   }, [qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag])
 
-  useEffect(() => {
-    if (!user) { setFavSlugs(new Set()); return }
-    ;(async () => {
-      try {
-        const { data } = await api.get('/favorites/ids')
-        setFavSlugs(new Set(data.slugs || []))
-      } catch {
-        setFavSlugs(new Set())
-      }
-    })()
-  }, [user])
+  // favorites button removed on listing; keep UI stateless here
 
-  async function toggleFavorite(e, slug) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!user) return navigate('/login?next=' + encodeURIComponent('/products?' + params.toString()))
-    const next = new Set(favSlugs)
-    const isFav = next.has(slug)
-    try {
-      if (isFav) {
-        next.delete(slug)
-        setFavSlugs(next)
-        await api.delete(`/favorites/${slug}`)
-      } else {
-        next.add(slug)
-        setFavSlugs(next)
-        await api.post(`/favorites/${slug}`)
-      }
-    } catch {
-      if (isFav) next.add(slug); else next.delete(slug)
-      setFavSlugs(new Set(next))
-    }
-  }
+  // no favorite toggle on listing cards (clean, simplified layout)
 
   function clearFilters() {
     const keep = new URLSearchParams()
@@ -398,7 +299,6 @@ export default function ProductListing() {
 
           <div className="grid gap-6 mt-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {items.map(p => {
-              const isFav = favSlugs.has(p.slug)
               return (
                 <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group card card-hover overflow-hidden relative">
                   <div className="product-img relative">

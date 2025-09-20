@@ -51,6 +51,7 @@ export function createServer() {
   // Apply a separate burst limiter only to sensitive auth endpoints
   app.use('/api/auth/login', authBurstLimiter)
   app.use('/api/auth/register', authBurstLimiter)
+  app.use('/api/auth/2fa/verify', authBurstLimiter)
 
   // serve uploaded bank slips (read-only)
   app.use('/files/receipts', express.static(path.resolve(__dirname, 'files', 'receipts')))

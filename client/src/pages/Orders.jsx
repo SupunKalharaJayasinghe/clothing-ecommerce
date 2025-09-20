@@ -2,19 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../app/hooks'
 import api from '../lib/axios'
-
-function Price({ v }) { return <span>Rs. {Number(v || 0).toLocaleString()}</span> }
-
-function Badge({ tone = 'gray', children }) {
-  const tones = {
-    gray: 'badge',
-    blue: 'badge bg-blue-100 text-blue-700 border-transparent',
-    green: 'badge bg-green-100 text-green-700 border-transparent',
-    red: 'badge bg-red-100 text-red-700 border-transparent',
-    amber: 'badge bg-amber-100 text-amber-700 border-transparent'
-  }
-  return <span className={tones[tone]}>{children}</span>
-}
+import Price from '../components/ui/Price'
+import Badge from '../components/ui/Badge'
 
 export default function Orders() {
   const { user } = useAppSelector(s => s.auth)
@@ -99,7 +88,7 @@ export default function Orders() {
                           <div className="opacity-70">{it.color} × {it.quantity}</div>
                         </div>
                       </div>
-                      <div className="font-medium"><Price v={it.price * it.quantity} /></div>
+                      <div className="font-medium"><Price price={it.price * it.quantity} /></div>
                     </div>
                   ))}
                 </div>
@@ -116,9 +105,9 @@ export default function Orders() {
 
                 <h3 className="font-semibold mt-4 mb-1">Totals</h3>
                 <div className="text-sm">
-                  <div className="flex justify-between"><span>Subtotal</span><span><Price v={o.totals?.subtotal} /></span></div>
-                  <div className="flex justify-between"><span>Shipping</span><span><Price v={o.totals?.shipping} /></span></div>
-                  <div className="flex justify-between font-semibold"><span>Total</span><span><Price v={o.totals?.grandTotal} /></span></div>
+                  <div className="flex justify-between"><span>Subtotal</span><span><Price price={o.totals?.subtotal} /></span></div>
+                  <div className="flex justify-between"><span>Shipping</span><span><Price price={o.totals?.shipping} /></span></div>
+                  <div className="flex justify-between font-semibold"><span>Total</span><span><Price price={o.totals?.grandTotal} /></span></div>
                 </div>
 
                 {o.payment?.method === 'BANK' && o.payment?.status !== 'paid' && (

@@ -2,11 +2,8 @@ import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { removeFromCart, setQty, clearCart } from '../features/cart/cartSlice'
-import { Trash2 } from 'lucide-react'
-
-function Price({ v }) {
-  return <span>Rs. {Number(v || 0).toLocaleString()}</span>
-}
+import { Trash2 } from '../lib/icons'
+import Price from '../components/ui/Price'
 
 export default function Cart() {
   const { items } = useAppSelector(s => s.cart)
@@ -56,8 +53,8 @@ export default function Cart() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="price"><Price v={it.price * it.quantity} /></div>
-                <div className="text-sm text-[--color-muted]"><Price v={it.price} /> each</div>
+                <div className="price"><Price price={it.price * it.quantity} /></div>
+                <div className="text-sm text-[--color-muted]"><Price price={it.price} /> each</div>
               </div>
             </div>
           ))}
@@ -67,9 +64,9 @@ export default function Cart() {
         <aside className="card h-max">
           <div className="card-body">
           <h2 className="card-title mb-3">Summary</h2>
-          <div className="flex justify-between"><span>Subtotal</span><span><Price v={totals.subtotal} /></span></div>
+          <div className="flex justify-between"><span>Subtotal</span><span><Price price={totals.subtotal} /></span></div>
           <div className="flex justify-between"><span>Shipping</span><span>Free</span></div>
-          <div className="flex justify-between font-semibold mt-2"><span>Total</span><span><Price v={totals.grand} /></span></div>
+          <div className="flex justify-between font-semibold mt-2"><span>Total</span><span><Price price={totals.grand} /></span></div>
           <button
             className="mt-4 w-full btn btn-primary"
             onClick={() => navigate('/checkout')}

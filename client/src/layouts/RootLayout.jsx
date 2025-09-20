@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { APP_NAME } from '../lib/constants'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { logoutUser, fetchMe } from '../features/auth/authSlice'
+import { Menu } from '../lib/icons'
 
 export default function RootLayout() {
   const [open, setOpen] = useState(false)
@@ -23,7 +24,9 @@ export default function RootLayout() {
             className="md:hidden rounded-lg border px-3 py-1"
             onClick={() => setOpen(o => !o)}
             aria-label="Toggle menu"
-          >☰</button>
+          >
+            <Menu size={18} />
+          </button>
           <nav className="hidden md:flex items-center gap-6">
             <NavLink to="/" end className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Home</NavLink>
             <NavLink to="/products" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Shop</NavLink>
