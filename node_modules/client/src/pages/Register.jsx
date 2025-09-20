@@ -5,6 +5,8 @@ import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { getNextFromSearch, getLoginPathWithNext } from '../lib/nextParam'
 import { APP_NAME } from '../lib/constants'
 import { User, MapPin, CreditCard, ShoppingCart as CartIcon, Package as PackageIcon, Star as StarIcon, Shield as ShieldIcon } from '../lib/icons'
+import TextField from '../components/ui/TextField'
+import PasswordField from '../components/ui/PasswordField'
 
 const usernameRegex = /^[a-z0-9_.]+$/ // lower letters, numbers, _, .
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -46,8 +48,9 @@ function getGreeting() {
   const h = new Date().getHours()
   if (h < 5) return 'Good night'
   if (h < 12) return 'Good morning'
-  if (h < 18) return 'Good afternoon'
-  return 'Good evening'
+  if (h < 17) return 'Good afternoon'
+  if (h < 22) return 'Good evening'
+  return 'Good night'
 }
 
 export default function Register() {
@@ -103,26 +106,27 @@ export default function Register() {
 
   return (
     <div className="container-app section">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+      <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+        {/* Vertical divider on large screens */}
+        <div className="hidden lg:block absolute top-0 bottom-0 left-1/2 w-px bg-[--color-border]" aria-hidden="true" />
         {/* Left: Welcome & concise icon steps */}
         <aside className="order-2 lg:order-1">
-          <div className="rounded-2xl border p-6 bg-white">
+          <div>
             <p className="text-sm text-[--color-muted]">{greeting},</p>
             <h1 className="text-3xl font-extrabold tracking-tight mt-1">
               Welcome to {APP_NAME}
             </h1>
-            <p className="mt-2 text-[--color-muted]">
-              Quick start guide
-            </p>
+            <p className="mt-2 text-[--color-muted]">Quick start guide</p>
 
             <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
               {steps.map((s, i) => (
                 <Link
                   to={s.to}
                   key={i}
-                  className="flex flex-col gap-2 rounded-xl border p-3 hover:shadow-sm transition bg-white"
+                  className="group flex items-center gap-3 rounded-xl border bg-white p-3 hover-lift"
+                  aria-label={`${s.title} – ${s.hint}`}
                 >
-                  <div className="w-10 h-10 rounded-full border flex items-center justify-center bg-[--color-bg-soft] rounded-xl">
+                  <div className="w-10 h-10 rounded-xl bg-[--color-brand-50] text-[--color-brand-700] flex items-center justify-center shadow-soft">
                     {s.Icon ? <s.Icon size={18} /> : null}
                   </div>
                   <div>
@@ -150,98 +154,77 @@ export default function Register() {
               </p>
             )}
 
-            <form onSubmit={onSubmit} className="mt-6 grid grid-cols-1 gap-3">
-              <div>
-                <label className="block text-sm mb-1">First name</label>
-                <input
-                  className={inputCls}
-                  value={form.firstName}
-                  onChange={e => setForm({ ...form, firstName: e.target.value })}
-                  onBlur={() => setTouched({ ...touched, firstName: true })}
-                  autoComplete="given-name"
-                  required
-                />
-                {touched.firstName && errors.firstName && <p className="text-red-600 text-sm mt-1">{errors.firstName}</p>}
-              </div>
+            <form onSubmit={onSubmit} className="mt-6 form-grid form-grid-sm-2">
+              <TextField
+                label="First name"
+                value={form.firstName}
+                onChange={e => setForm({ ...form, firstName: e.target.value })}
+                onBlur={() => setTouched({ ...touched, firstName: true })}
+                autoComplete="given-name"
+                required
+                error={touched.firstName ? errors.firstName : ''}
+                Icon={User}
+              />
 
-              <div>
-                <label className="block text-sm mb-1">Last name</label>
-                <input
-                  className={inputCls}
-                  value={form.lastName}
-                  onChange={e => setForm({ ...form, lastName: e.target.value })}
-                  onBlur={() => setTouched({ ...touched, lastName: true })}
-                  autoComplete="family-name"
-                  required
-                />
-                {touched.lastName && errors.lastName && <p className="text-red-600 text-sm mt-1">{errors.lastName}</p>}
-              </div>
+              <TextField
+                label="Last name"
+                value={form.lastName}
+                onChange={e => setForm({ ...form, lastName: e.target.value })}
+                onBlur={() => setTouched({ ...touched, lastName: true })}
+                autoComplete="family-name"
+                required
+                error={touched.lastName ? errors.lastName : ''}
+                Icon={User}
+              />
 
-              <div>
-                <label className="block text-sm mb-1">Username</label>
-                <input
-                  className={inputCls}
-                  value={form.username}
-                  onChange={e => setForm({ ...form, username: e.target.value })}
-                  onBlur={() => setTouched({ ...touched, username: true })}
-                  placeholder="yourname"
-                  autoComplete="username"
-                  required
-                />
-                {touched.username && errors.username && <p className="text-red-600 text-sm mt-1">{errors.username}</p>}
-              </div>
+              <TextField
+                label="Username"
+                value={form.username}
+                onChange={e => setForm({ ...form, username: e.target.value })}
+                onBlur={() => setTouched({ ...touched, username: true })}
+                placeholder="yourname"
+                autoComplete="username"
+                required
+                error={touched.username ? errors.username : ''}
+                Icon={User}
+              />
 
-              <div>
-                <label className="block text-sm mb-1">Email</label>
-                <input
-                  className={inputCls}
-                  type="email"
-                  value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                  onBlur={() => setTouched({ ...touched, email: true })}
-                  autoComplete="email"
-                  required
-                />
-                {touched.email && errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
-              </div>
+              <TextField
+                label="Email"
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                onBlur={() => setTouched({ ...touched, email: true })}
+                autoComplete="email"
+                required
+                error={touched.email ? errors.email : ''}
+                Icon={MapPin}
+              />
 
-              <div>
-                <label className="block text-sm mb-1">Password</label>
-                <input
-                  className={inputCls}
-                  type="password"
+              <div className="md:col-span-1">
+                <PasswordField
+                  label="Password"
                   value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
                   onBlur={() => setTouched({ ...touched, password: true })}
-                  autoComplete="new-password"
                   required
+                  error={touched.password ? errors.password : ''}
                 />
-                {touched.password && errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
-                <ul className="mt-2 text-xs space-y-1">
-                  <li className={strong.len ? 'text-green-600' : 'opacity-70'}>• At least 8 characters</li>
-                  <li className={strong.lower ? 'text-green-600' : 'opacity-70'}>• Lowercase letter</li>
-                  <li className={strong.upper ? 'text-green-600' : 'opacity-70'}>• Uppercase letter</li>
-                  <li className={strong.num ? 'text-green-600' : 'opacity-70'}>• Number</li>
-                  <li className={strong.sym ? 'text-green-600' : 'opacity-70'}>• Symbol</li>
-                  <li className={strong.nospace ? 'text-green-600' : 'opacity-70'}>• No spaces</li>
-                </ul>
+                <div className="strength-meter">
+                  {['len','lower','upper','num','sym','nospace'].map((k, i) => (
+                    <span key={i} className={`strength-bar ${strong[k] ? 'on' : ''}`} />
+                  ))}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm mb-1">Confirm password</label>
-                <input
-                  className={inputCls}
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
-                  onBlur={() => setTouched({ ...touched, confirmPassword: true })}
-                  autoComplete="new-password"
-                  required
-                />
-                {touched.confirmPassword && errors.confirmPassword && (
-                  <p className="text-red-600 text-sm mt-1">{errors.confirmPassword}</p>
-                )}
-              </div>
+              <PasswordField
+                label="Confirm password"
+                value={form.confirmPassword}
+                onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                onBlur={() => setTouched({ ...touched, confirmPassword: true })}
+                required
+                error={touched.confirmPassword ? errors.confirmPassword : ''}
+              />
 
               {error && <p className="text-red-600 text-sm">{error}</p>}
 
@@ -249,7 +232,7 @@ export default function Register() {
                 disabled={status === 'loading' || Object.keys(errors).length > 0 || !allGood}
                 className="mt-2 w-full btn btn-primary disabled:opacity-50"
               >
-                {status === 'loading' ? 'Creating…' : 'Sign up'}
+                {status === 'loading' ? 'Creating…' : 'Create account'}
               </button>
 
               <p className="text-sm mt-2">

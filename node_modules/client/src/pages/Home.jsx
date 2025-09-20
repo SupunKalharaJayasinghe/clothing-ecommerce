@@ -168,7 +168,7 @@ export default function Home() {
                         onClick={() => navigate(`/products/${item.slug}`)}
                         aria-label={`Go to ${item.name}`}
                       >
-                        <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded" loading="lazy" decoding="async" />
+                        <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded" />
                         <div className="flex-1">
                           <div className="text-sm font-medium line-clamp-1">{item.name}</div>
                           <div className="text-xs text-[--color-muted]">
@@ -200,6 +200,18 @@ export default function Home() {
                   Scroll down <ArrowRight size={16} />
                 </a>
               </div>
+
+              {/* Quick filter chips */}
+              <div className="chips mt-6">
+                {[
+                  { label: 'New', to: `/products?category=${category}&mainTag=new` },
+                  { label: 'Discounts', to: `/products?category=${category}&tags=discount` },
+                  { label: 'Limited', to: `/products?category=${category}&tags=limited` },
+                  { label: 'Best sellers', to: `/products?category=${category}&tags=bestseller` },
+                ].map((c) => (
+                  <Link key={c.label} to={c.to} className="chip hover-lift">{c.label}</Link>
+                ))}
+              </div>
             </div>
 
             {/* Hero image */}
@@ -220,7 +232,7 @@ export default function Home() {
       {/* BROWSE / HIGHLIGHTS */}
       <section id="browse" className="container-app m-section">
         {/* Category tabs */}
-        <div className="flex gap-md mb-12 justify-center">
+        <div className="flex gap-md mb-8 justify-center">
           {['men','women','kids'].map(t => (
             <button
               key={t}
@@ -232,55 +244,103 @@ export default function Home() {
           ))}
         </div>
 
+        {/* Featured categories */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+          {[
+            { label: 'Men', key: 'men', img: 'https://images.unsplash.com/photo-1617137968427-85924c800a3f?q=60&w=1200&auto=format&fit=crop' },
+            { label: 'Women', key: 'women', img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=60&w=1200&auto=format&fit=crop' },
+            { label: 'Kids', key: 'kids', img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=60&w=1200&auto=format&fit=crop' },
+          ].map(cat => (
+            <Link key={cat.key} to={`/products?category=${cat.key}`} className="category-card is-overlay">
+              <div className="img-wrap">
+                <img src={cat.img} alt={`${cat.label} category`} loading="lazy" decoding="async" />
+                <div className="overlay" />
+                <div className="caption">
+                  <div className="font-semibold">{cat.label}</div>
+                  <span className="cta">Shop now →</span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+
         {loadingHL && (
-          <div className="card card-body text-sm">Loading products…</div>
+          <div className="mt-8 skel-grid">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="skeleton-card">
+                <div className="img" />
+                <div className="text">
+                  <div className="line" />
+                  <div className="line" style={{ width: '60%' }} />
+                </div>
+              </div>
+            ))}
+          </div>
         )}
         {errHL && (
-          <div className="card card-body text-sm text-red-600">{errHL}</div>
+          <div className="card card-body text-sm text-red-600 mt-8">{errHL}</div>
+        )}
+
+        {!loadingHL && hasAny && (
+          <>
+            {/* Deal spotlight */}
+            {(topRated?.[0] || latest?.[0]) && (
+              <div className="mt-10 card">
+                <div className="card-body flex flex-col md:flex-row items-start md:items-center gap-6">
+                  <img src={(topRated?.[0] || latest?.[0])?.images?.[0]} alt="Spotlight" className="w-full md:w-56 h-40 object-cover rounded-[--radius-lg]" loading="lazy" decoding="async" />
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold mb-1">Editor’s pick</h3>
+                    <p className="text-sm text-[--color-muted]">A standout piece people love right now.</p>
+                  </div>
+                  <Link className="btn btn-primary" to={`/products/${(topRated?.[0] || latest?.[0])?.slug}`}>View product</Link>
+                </div>
+              </div>
+            )}
+
+            {/* Latest */}
+            {latest?.length > 0 && (
+              <div className="mt-10">
+                <div className="flex items-baseline justify-between">
+                  <h2 className="section-title text-2xl">Latest Drops</h2>
+                  <Link to={`/products?category=${category}&sort=new`} className="btn btn-ghost">View all</Link>
+                </div>
+                <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {latest.map(p => <Card key={p.id || p._id} p={p} />)}
+                </div>
+              </div>
+            )}
+
+            {/* Top Rated */}
+            {topRated?.length > 0 && (
+              <div className="mt-12">
+                <div className="flex items-baseline justify-between">
+                  <h2 className="section-title text-2xl">Top Rated</h2>
+                  <Link to={`/products?category=${category}&sort=rating`} className="btn btn-ghost">View all</Link>
+                </div>
+                <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {topRated.map(p => <Card key={p.id || p._id} p={p} />)}
+                </div>
+              </div>
+            )}
+
+            {/* Most Popular */}
+            {popular?.length > 0 && (
+              <div className="mt-12">
+                <div className="flex items-baseline justify-between">
+                  <h2 className="section-title text-2xl">Trending Now</h2>
+                  <Link to={`/products?category=${category}`} className="btn btn-ghost">View all</Link>
+                </div>
+                <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {popular.map(p => <Card key={p.id || p._id} p={p} />)}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {!loadingHL && !hasAny && (
-          <div className="card card-body text-sm opacity-80">
+          <div className="card card-body text-sm opacity-80 mt-8">
             No products to show here yet. Try another tab or check back later.
-          </div>
-        )}
-
-        {/* Latest */}
-        {latest?.length > 0 && (
-          <div className="mt-10">
-            <div className="flex items-baseline justify-between">
-              <h2 className="section-title text-2xl">Latest Drops</h2>
-              <Link to={`/products?category=${category}&sort=new`} className="btn btn-ghost">View all</Link>
-            </div>
-            <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {latest.map(p => <Card key={p.id || p._id} p={p} />)}
-            </div>
-          </div>
-        )}
-
-        {/* Top Rated */}
-        {topRated?.length > 0 && (
-          <div className="mt-12">
-            <div className="flex items-baseline justify-between">
-              <h2 className="section-title text-2xl">Top Rated</h2>
-              <Link to={`/products?category=${category}&sort=rating`} className="btn btn-ghost">View all</Link>
-            </div>
-            <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {topRated.map(p => <Card key={p.id || p._id} p={p} />)}
-            </div>
-          </div>
-        )}
-
-        {/* Most Popular */}
-        {popular?.length > 0 && (
-          <div className="mt-12">
-            <div className="flex items-baseline justify-between">
-              <h2 className="section-title text-2xl">Trending Now</h2>
-              <Link to={`/products?category=${category}`} className="btn btn-ghost">View all</Link>
-            </div>
-            <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {popular.map(p => <Card key={p.id || p._id} p={p} />)}
-            </div>
           </div>
         )}
       </section>

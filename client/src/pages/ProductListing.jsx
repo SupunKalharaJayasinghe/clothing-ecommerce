@@ -26,11 +26,18 @@ function useDebounced(value, delay = 350) {
 export default function ProductListing() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [fetchingMore, setFetchingMore] = useState(false)
   const [error, setError] = useState('')
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAppSelector(s => s.auth)
   const [facets, setFacets] = useState({ colors: [], tags: [], mainTags: [] })
+  const [total, setTotal] = useState(0)
+  const [showFiltersMobile, setShowFiltersMobile] = useState(false)
+  const [page, setPage] = useState(1)
+  const [limit] = useState(24)
+  const [hasMore, setHasMore] = useState(true)
+  const loadMoreRef = useRef(null)
 
   const q = params.get('q') || ''
   const sort = params.get('sort') || 'new'
@@ -45,6 +52,14 @@ export default function ProductListing() {
   const mainTag = params.get('mainTag') || 'any'
 
   const qDebounced = useDebounced(q, 350)
+
+  // Reset list when key filters change
+  useEffect(() => {
+    setItems([])
+    setTotal(0)
+    setPage(1)
+    setHasMore(true)
+  }, [qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag])
 
   // Local UI state for price inputs; only applied when user clicks Filter
   const [priceMinInput, setPriceMinInput] = useState(priceMin)
@@ -101,17 +116,20 @@ export default function ProductListing() {
   const abortRef = useRef(null)
 
   useEffect(() => {
-    const queryKey = JSON.stringify({ q: qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag })
+  const queryKey = JSON.stringify({ q: qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag, page, limit })
 
+    // We cache per page; still allow network fetch for subsequent pages
     if (cache.has(queryKey)) {
-      const { items, facets } = cache.get(queryKey)
-      setItems(items)
+      const { items, facets, total } = cache.get(queryKey)
+      setItems(prev => page === 1 ? items : [...prev, ...items])
       setFacets(facets)
+      setTotal(total)
       setLoading(false)
-      return
+      // Note: allow network fetch as fresh data below
     }
 
-    setLoading(true); setError('')
+    setError('')
+    if (page === 1) setLoading(true); else setFetchingMore(true)
 
     if (abortRef.current) abortRef.current.abort()
     const ctrl = new AbortController()
@@ -129,39 +147,60 @@ export default function ProductListing() {
           ratingMin: ratingMin || undefined,
           stock,
           tags: tags || undefined,
-          mainTag
+          mainTag,
+          page,
+          limit
         }
         let { data } = await api.get('/products', { params: qp, signal: ctrl.signal })
         // fallback: if server rejected (older validation or transient error), try minimal query
         if (!data?.items && !data?.ok) {
           data = (await api.get('/products', { params: { sort, category }, signal: ctrl.signal })).data
         }
-        const payload = { items: data.items || [], facets: data.facets || { colors: [], tags: [], mainTags: [] } }
+        const payload = { items: data.items || [], facets: data.facets || { colors: [], tags: [], mainTags: [] }, total: data.total || 0 }
         cache.set(queryKey, payload)
-        setItems(payload.items)
+        setItems(prev => page === 1 ? payload.items : [...prev, ...payload.items])
         setFacets(payload.facets)
+        setTotal(payload.total)
+        setHasMore((page * limit) < (payload.total || 0))
         setError('')
       } catch (e) {
         if (e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
           try {
             // ultimate fallback: no params
-            const { data } = await api.get('/products', { signal: ctrl.signal })
-            const payload = { items: data.items || [], facets: data.facets || { colors: [], tags: [], mainTags: [] } }
+            const { data } = await api.get('/products', { params: { page, limit }, signal: ctrl.signal })
+            const payload = { items: data.items || [], facets: data.facets || { colors: [], tags: [], mainTags: [] }, total: data.total || 0 }
             cache.set(queryKey, payload)
-            setItems(payload.items)
+            setItems(prev => page === 1 ? payload.items : [...prev, ...payload.items])
             setFacets(payload.facets)
+            setTotal(payload.total)
+            setHasMore((page * limit) < (payload.total || 0))
             setError('')
           } catch (inner) {
             setError(inner.response?.data?.message || inner.message)
           }
         }
       } finally {
-        if (!ctrl.signal.aborted) setLoading(false)
+        if (!ctrl.signal.aborted) { setLoading(false); setFetchingMore(false) }
       }
     })()
 
     return () => ctrl.abort()
   }, [qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag])
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const el = loadMoreRef.current
+    if (!el) return
+    const obs = new IntersectionObserver((entries) => {
+      const first = entries[0]
+      if (first.isIntersecting && hasMore && !loading && !fetchingMore) {
+        setPage(p => p + 1)
+      }
+    }, { rootMargin: '200px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [hasMore, loading, fetchingMore])
+
 
   // favorites button removed on listing; keep UI stateless here
 
@@ -197,11 +236,14 @@ export default function ProductListing() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Filters */}
-        <aside className="md:col-span-1 card h-max">
-          <div className="card-body">
+        <aside className="md:col-span-1 card h-max md:sticky md:top-24">
+          <div className="card-body" style={{ display: showFiltersMobile ? 'block' : undefined }}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Filters</h2>
             <button className="text-sm underline" onClick={clearFilters}>Clear</button>
+            <button className="md:hidden text-sm underline ml-2" onClick={() => setShowFiltersMobile(v => !v)}>
+              {showFiltersMobile ? 'Hide' : 'Show'} filters
+            </button>
           </div>
 
           {/* Name */}
@@ -350,6 +392,7 @@ export default function ProductListing() {
               {(category === 'all' ? 'All' : category[0].toUpperCase() + category.slice(1))} — Products
             </h1>
             <div className="flex items-center gap-3">
+              <div className="text-sm text-[--color-muted] hidden md:block">{total ? `Showing ${total.toLocaleString()} items` : ''}</div>
               <select
                 className="select"
                 value={sort}
@@ -363,16 +406,51 @@ export default function ProductListing() {
             </div>
           </div>
 
-          {items.length === 0 && (
+          {/* Active filter chips */}
+          <div className="chips mt-4">
+            {q && <button className="chip" onClick={() => setParam('q','')}>Name: “{q}” ×</button>}
+            {colorList.map(c => (
+              <button key={c} className="chip" onClick={() => toggleInList('color', color.toLowerCase(), c)}>Color: {c} ×</button>
+            ))}
+            {tagList.map(t => (
+              <button key={t} className="chip" onClick={() => toggleInList('tags', tags.toLowerCase(), t)}>Tag: {t} ×</button>
+            ))}
+            {ratingMin && <button className="chip" onClick={() => setParam('ratingMin','')}>Rating ≥ {ratingMin} ×</button>}
+            {(priceMin || priceMax) && (
+              <button className="chip" onClick={resetPriceFilter}>Price {priceMin || 0}–{priceMax || '∞'} ×</button>
+            )}
+            {stock !== 'any' && <button className="chip" onClick={() => setParam('stock','any')}>Stock: {stock} ×</button>}
+            {mainTag !== 'any' && <button className="chip" onClick={() => setParam('mainTag','any')}>Main: {mainTag} ×</button>}
+            { (q || colorList.length || tagList.length || ratingMin || priceMin || priceMax || stock !== 'any' || mainTag !== 'any') && (
+              <button className="chip" onClick={clearFilters}>Clear all</button>
+            )}
+          </div>
+
+          {loading && (
+            <div className="mt-6 skel-grid">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="skeleton-card">
+                  <div className="img" />
+                  <div className="text">
+                    <div className="line" />
+                    <div className="line" style={{ width: '60%' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loading && items.length === 0 && (
             <div className="mt-8 card card-body text-center text-sm opacity-80">
               No products found for this selection. Try another tab or clear filters.
             </div>
           )}
 
-          <div className="grid gap-6 mt-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-            {items.map(p => {
-              return (
-                <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden relative">
+          {!loading && items.length > 0 && (
+            <div className="grid gap-6 mt-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
+              {items.map(p => {
+                return (
+                  <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden relative">
                   <div className="product-img relative">
                     <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     {/* Tags positioned on image */}
@@ -420,7 +498,15 @@ export default function ProductListing() {
                 </Link>
               )
             })}
-          </div>
+            </div>
+          )}
+
+          {/* Sentinel for infinite scroll */}
+          <div ref={loadMoreRef} />
+
+          {fetchingMore && (
+            <div className="text-center text-sm opacity-70 py-4">Loading more…</div>
+          )}
         </section>
       </div>
     </div>

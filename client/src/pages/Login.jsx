@@ -4,6 +4,9 @@ import { loginUser, verifyTwoFA } from '../features/auth/authSlice'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { getNextFromSearch, getRegisterPathWithNext } from '../lib/nextParam'
 import { APP_NAME } from '../lib/constants'
+import TextField from '../components/ui/TextField'
+import PasswordField from '../components/ui/PasswordField'
+import { User as UserIcon } from '../lib/icons'
 
 export default function Login() {
   const dispatch = useAppDispatch()
@@ -61,9 +64,12 @@ export default function Login() {
 
   return (
     <div className="container-app section">
-      <div className="grid md:grid-cols-2 gap-8 items-start">
+      <div className="relative grid md:grid-cols-2 gap-8 items-start">
+        {/* Vertical divider on large screens */}
+        <div className="hidden md:block absolute top-0 bottom-0 left-1/2 w-px bg-[--color-border]" aria-hidden="true" />
+
         {/* Left: Greeting / Brand panel */}
-        <section className="hidden md:block">
+        <section className="hidden md:block pr-8">
           <div className="space-y-2">
             <h1 className="text-4xl font-extrabold tracking-tight">
               {greeting}, welcome back
@@ -74,7 +80,7 @@ export default function Login() {
                 <> You’ll be returned to <span className="font-mono">{nextPath}</span> after login.</>
               )}
             </p>
-            <div className="mt-6 rounded-2xl border bg-[--color-bg-soft] p-4">
+            <div className="mt-6 rounded-2xl border p-4">
               <div className="font-medium mb-1">Why sign in?</div>
               <ul className="text-sm list-disc ml-5 space-y-1 opacity-90">
                 <li>Access orders and favorites</li>
@@ -93,37 +99,32 @@ export default function Login() {
           )}
 
           {!twoFA.required ? (
-            <form onSubmit={onSubmit} className="mt-6 space-y-3">
-              <div>
-                <label className="block text-sm mb-1">Username or Email</label>
-                <input
-                  className={inputCls}
-                  value={form.identifier}
-                  onChange={e => setForm({ ...form, identifier: e.target.value })}
-                  onBlur={() => setTouched({ ...touched, identifier: true })}
-                  autoComplete="username"
-                  required
-                />
-                {touched.identifier && errors.identifier && <p className="text-red-600 text-sm mt-1">{errors.identifier}</p>}
-              </div>
+            <form onSubmit={onSubmit} className="mt-6 form-grid">
+              <TextField
+                label="Username or Email"
+                value={form.identifier}
+                onChange={e => setForm({ ...form, identifier: e.target.value })}
+                onBlur={() => setTouched({ ...touched, identifier: true })}
+                autoComplete="username"
+                required
+                error={touched.identifier ? errors.identifier : ''}
+                Icon={UserIcon}
+              />
 
-              <div>
-                <label className="block text-sm mb-1">Password</label>
-                <input
-                  className={inputCls}
-                  type="password"
-                  value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
-                  onBlur={() => setTouched({ ...touched, password: true })}
-                  autoComplete="current-password"
-                  required
-                />
-                {touched.password && errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
-              </div>
+              <PasswordField
+                label="Password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                onBlur={() => setTouched({ ...touched, password: true })}
+                autoComplete="current-password"
+                required
+                error={touched.password ? errors.password : ''}
+              />
 
               {error && <p className="text-red-600 text-sm">{error}</p>}
 
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-between -mt-1">
+                <span />
                 <Link to="/forgot-password" className="text-sm underline">Forgot password?</Link>
               </div>
 
@@ -145,14 +146,14 @@ export default function Login() {
               </p>
             </form>
           ) : (
-            <form onSubmit={onVerify} className="mt-6 space-y-3">
+            <form onSubmit={onVerify} className="mt-6 form-grid">
               <p className="text-sm">Two-step verification is enabled. Enter your 6-digit code (or a backup code).</p>
-              <input
-                className={inputCls}
+              <TextField
+                label="Verification code"
                 placeholder="Enter 6-digit code"
                 value={code}
                 onChange={e => setCode(e.target.value)}
-                autoFocus
+                required
               />
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
