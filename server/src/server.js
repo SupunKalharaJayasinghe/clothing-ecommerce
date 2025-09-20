@@ -29,6 +29,8 @@ const __dirname = path.dirname(__filename)
 export function createServer() {
   const app = express()
 
+  // Security: hide Express signature
+  app.disable('x-powered-by')
   app.set('trust proxy', 1)
 
   app.use(

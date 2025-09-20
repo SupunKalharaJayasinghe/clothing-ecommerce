@@ -256,7 +256,7 @@ export default function ProductDetails() {
                 <button key={i}
                   className={`border rounded-lg overflow-hidden aspect-square ${i===imgIndex ? 'ring-2 ring-[--color-brand-600]' : ''}`}
                   onClick={() => setImgIndex(i)}>
-                  <img src={img} alt={`${p.name} ${i+1}`} className="w-full h-full object-cover" />
+                  <img src={img} alt={`${p.name} ${i+1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 </button>
               ))}
             </div>

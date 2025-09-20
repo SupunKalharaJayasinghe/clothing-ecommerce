@@ -4,6 +4,7 @@ import { registerUser } from '../features/auth/authSlice'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { getNextFromSearch, getLoginPathWithNext } from '../lib/nextParam'
 import { APP_NAME } from '../lib/constants'
+import { User, MapPin, CreditCard, ShoppingCart as CartIcon, Package as PackageIcon, Star as StarIcon, Shield as ShieldIcon } from '../lib/icons'
 
 const usernameRegex = /^[a-z0-9_.]+$/ // lower letters, numbers, _, .
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -90,14 +91,14 @@ export default function Register() {
 
   // concise, icon-based getting-started tiles
   const steps = useMemo(() => ([
-    { icon: '👤', title: 'Profile', hint: 'Add your info', to: '/account' },
-    { icon: '📍', title: 'Address', hint: 'Set delivery', to: '/account' },
-    { icon: '💳', title: 'Card (opt.)', hint: 'Save for 1-click', to: '/account' },
-    { icon: '🛒', title: 'Shop', hint: 'Browse & add', to: '/products' },
-    { icon: '🏦', title: 'Pay', hint: 'COD / Card / Bank', to: '/checkout' },
-    { icon: '📦', title: 'Track', hint: 'Live order status', to: '/orders' },
-    { icon: '⭐', title: 'Review', hint: 'Share feedback', to: '/products' },
-    { icon: '🔐', title: '2FA (opt.)', hint: 'Extra security', to: '/account' }
+    { Icon: User, title: 'Profile', hint: 'Add your info', to: '/account' },
+    { Icon: MapPin, title: 'Address', hint: 'Set delivery', to: '/account' },
+    { Icon: CreditCard, title: 'Card (opt.)', hint: 'Save for 1-click', to: '/account' },
+    { Icon: CartIcon, title: 'Shop', hint: 'Browse & add', to: '/products' },
+    { Icon: CreditCard, title: 'Pay', hint: 'COD / Card / Bank', to: '/checkout' },
+    { Icon: PackageIcon, title: 'Track', hint: 'Live order status', to: '/orders' },
+    { Icon: StarIcon, title: 'Review', hint: 'Share feedback', to: '/products' },
+    { Icon: ShieldIcon, title: '2FA (opt.)', hint: 'Extra security', to: '/account' }
   ]), [])
 
   return (
@@ -121,8 +122,8 @@ export default function Register() {
                   key={i}
                   className="flex flex-col gap-2 rounded-xl border p-3 hover:shadow-sm transition bg-white"
                 >
-                  <div className="w-10 h-10 rounded-full border flex items-center justify-center text-xl">
-                    <span aria-hidden>{s.icon}</span>
+                  <div className="w-10 h-10 rounded-full border flex items-center justify-center bg-[--color-bg-soft] rounded-xl">
+                    {s.Icon ? <s.Icon size={18} /> : null}
                   </div>
                   <div>
                     <div className="font-semibold leading-tight">{s.title}</div>

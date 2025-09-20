@@ -12,7 +12,7 @@ function Card({ p }) {
   return (
     <Link to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden block">
       <div className="product-img relative">
-        <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
+        <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
         {/* Tags positioned on image */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
@@ -168,7 +168,7 @@ export default function Home() {
                         onClick={() => navigate(`/products/${item.slug}`)}
                         aria-label={`Go to ${item.name}`}
                       >
-                        <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded" />
+                        <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded" loading="lazy" decoding="async" />
                         <div className="flex-1">
                           <div className="text-sm font-medium line-clamp-1">{item.name}</div>
                           <div className="text-xs text-[--color-muted]">

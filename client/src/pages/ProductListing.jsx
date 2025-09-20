@@ -34,7 +34,7 @@ export default function ProductListing() {
 
   const q = params.get('q') || ''
   const sort = params.get('sort') || 'new'
-  const category = params.get('category') || 'men'
+  const category = params.get('category') || 'all'
   const color = params.get('color') || ''
 
   const priceMin = params.get('priceMin') || ''
@@ -119,17 +119,41 @@ export default function ProductListing() {
 
     ;(async () => {
       try {
-        const { data } = await api.get('/products', {
-          params: { q: qDebounced, sort, category, color, priceMin, priceMax, ratingMin, stock, tags, mainTag },
-          signal: ctrl.signal
-        })
+        const qp = {
+          q: qDebounced || undefined,
+          sort,
+          category,
+          color: color || undefined,
+          priceMin: priceMin || undefined,
+          priceMax: priceMax || undefined,
+          ratingMin: ratingMin || undefined,
+          stock,
+          tags: tags || undefined,
+          mainTag
+        }
+        let { data } = await api.get('/products', { params: qp, signal: ctrl.signal })
+        // fallback: if server rejected (older validation or transient error), try minimal query
+        if (!data?.items && !data?.ok) {
+          data = (await api.get('/products', { params: { sort, category }, signal: ctrl.signal })).data
+        }
         const payload = { items: data.items || [], facets: data.facets || { colors: [], tags: [], mainTags: [] } }
         cache.set(queryKey, payload)
         setItems(payload.items)
         setFacets(payload.facets)
+        setError('')
       } catch (e) {
         if (e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
-          setError(e.response?.data?.message || e.message)
+          try {
+            // ultimate fallback: no params
+            const { data } = await api.get('/products', { signal: ctrl.signal })
+            const payload = { items: data.items || [], facets: data.facets || { colors: [], tags: [], mainTags: [] } }
+            cache.set(queryKey, payload)
+            setItems(payload.items)
+            setFacets(payload.facets)
+            setError('')
+          } catch (inner) {
+            setError(inner.response?.data?.message || inner.message)
+          }
         }
       } finally {
         if (!ctrl.signal.aborted) setLoading(false)
@@ -145,7 +169,7 @@ export default function ProductListing() {
 
   function clearFilters() {
     const keep = new URLSearchParams()
-    keep.set('category', category)
+    keep.set('category', 'all')
     keep.set('sort', 'new')
     setParams(keep)
   }
@@ -160,13 +184,13 @@ export default function ProductListing() {
     <div className="container-app section">
       {/* Tabs */}
       <div className="mb-8 flex gap-2">
-        {['men','women','kids'].map(t => (
+        {['all','men','women','kids'].map(t => (
           <button
             key={t}
             className={`btn ${category === t ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setParam('category', t)}
           >
-            {t[0].toUpperCase() + t.slice(1)}
+            {t === 'all' ? 'All' : t[0].toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -323,7 +347,7 @@ export default function ProductListing() {
         <section className="md:col-span-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <h1 className="text-2xl md:text-3xl font-bold">
-              {category[0].toUpperCase() + category.slice(1)} — Products
+              {(category === 'all' ? 'All' : category[0].toUpperCase() + category.slice(1))} — Products
             </h1>
             <div className="flex items-center gap-3">
               <select
@@ -350,7 +374,7 @@ export default function ProductListing() {
               return (
                 <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden relative">
                   <div className="product-img relative">
-                    <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
+                    <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     {/* Tags positioned on image */}
                     <div className="absolute top-2 left-2 flex flex-col gap-1">
                       {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}

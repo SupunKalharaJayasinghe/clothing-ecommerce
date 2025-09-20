@@ -17,6 +17,12 @@ function parseArray(v) {
     .filter(Boolean)
 }
 
+function toFiniteNumber(value) {
+  if (value === '' || value === null || value === undefined) return undefined
+  const n = Number(value)
+  return Number.isFinite(n) ? n : undefined
+}
+
 // GET /api/products
 export const listProducts = catchAsync(async (req, res) => {
   // support both old and new param names for compatibility
@@ -64,22 +70,32 @@ export const listProducts = catchAsync(async (req, res) => {
     catClause = { $or: [{ category: catRx }, { tags: catRx }] }
   }
 
-  // color (array csv) - case-insensitive exact matches
-  const colors = parseArray(color)
-  if (colors.length) {
-    const colorRegexes = colors.map((c) => new RegExp(`^${escapeRegExp(String(c).trim())}$`, 'i'))
-    match.color = { $in: colorRegexes }
+  // color (array csv) - normalized exact matches using indexed field
+  const colorsInput = parseArray(color).map((c) => String(c).toLowerCase().trim()).filter(Boolean)
+  if (colorsInput.length) {
+    // Prefer indexed colorLower, but fall back to evaluating on the fly
+    match.$and = (match.$and || []).concat([
+      {
+        $or: [
+          { colorLower: { $in: colorsInput } },
+          { $expr: { $in: [{ $toLower: '$color' }, colorsInput ] } }
+        ]
+      }
+    ])
   }
 
-  // price
+  // price (only include finite values)
   const priceFilter = {}
-  if (priceMin !== undefined && priceMin !== '') priceFilter.$gte = Number(priceMin)
-  if (priceMax !== undefined && priceMax !== '') priceFilter.$lte = Number(priceMax)
+  const pmin = toFiniteNumber(priceMin)
+  const pmax = toFiniteNumber(priceMax)
+  if (pmin !== undefined) priceFilter.$gte = pmin
+  if (pmax !== undefined) priceFilter.$lte = pmax
   if (Object.keys(priceFilter).length) match.price = priceFilter
 
-  // rating
-  if (ratingMin !== undefined && ratingMin !== '') {
-    match.rating = { $gte: Number(ratingMin) }
+  // rating (only include finite values)
+  const rmin = toFiniteNumber(ratingMin)
+  if (rmin !== undefined) {
+    match.rating = { $gte: rmin }
   }
 
   // stock
@@ -130,8 +146,9 @@ export const listProducts = catchAsync(async (req, res) => {
   const sortBy = sortMap[sort] || sortMap.new
 
   // query + count
+  const projection = 'name slug images price discountPercent rating reviewsCount stock lowStockThreshold mainTags tags color createdAt'
   const [docs, total] = await Promise.all([
-    Product.find(match).sort(sortBy).skip(skip).limit(limitNum).lean(),
+    Product.find(match).select(projection).sort(sortBy).skip(skip).limit(limitNum).lean(),
     Product.countDocuments(match)
   ])
 
@@ -146,11 +163,13 @@ export const listProducts = catchAsync(async (req, res) => {
     ...p,
     id: p._id,
     finalPrice: p.discountPercent
-      ? Math.round(p.price * (100 - p.discountPercent)) / 100
+      ? Math.round((p.price * (1 - p.discountPercent / 100)) * 100) / 100
       : p.price,
     lowStock: p.stock > 0 && p.stock <= (p.lowStockThreshold || 5)
   }))
 
+  // Short client-side caching to reduce repeat loads
+  res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
   res.json({
     ok: true,
     items,
@@ -198,11 +217,12 @@ export const getHighlights = catchAsync(async (req, res) => {
       ...p,
       id: p._id,
       finalPrice: p.discountPercent
-        ? Math.round(p.price * (100 - p.discountPercent)) / 100
+        ? Math.round((p.price * (1 - p.discountPercent / 100)) * 100) / 100
         : p.price,
       lowStock: p.stock > 0 && p.stock <= (p.lowStockThreshold || 5)
     }))
 
+  res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
   res.json({ ok: true, latest: mapLite(latest), topRated: mapLite(topRated), popular: mapLite(popular) })
 })
 
@@ -224,10 +244,11 @@ export const suggestProducts = catchAsync(async (req, res) => {
     ...p,
     id: p._id,
     finalPrice: p.discountPercent
-      ? Math.round(p.price * (100 - p.discountPercent)) / 100
+      ? Math.round((p.price * (1 - p.discountPercent / 100)) * 100) / 100
       : p.price
   }))
 
+  res.set('Cache-Control', 'public, max-age=30')
   res.json({ ok: true, items: mapped })
 })
 
@@ -241,10 +262,11 @@ export const getProductBySlug = catchAsync(async (req, res) => {
     ...p,
     id: p._id,
     finalPrice: p.discountPercent
-      ? Math.round(p.price * (100 - p.discountPercent)) / 100
+      ? Math.round((p.price * (1 - p.discountPercent / 100)) * 100) / 100
       : p.price,
     lowStock: p.stock > 0 && p.stock <= (p.lowStockThreshold || 5)
   }
 
+  res.set('Cache-Control', 'public, max-age=30')
   res.json({ ok: true, product })
 })

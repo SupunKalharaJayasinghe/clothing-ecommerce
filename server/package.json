@@ -8,7 +8,8 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "build": "echo \"(no build step)\"",
-    "seed": "node src/scripts/seed.js"
+    "seed": "node src/scripts/seed.js",
+    "backfill:color": "node src/scripts/backfill_color_lower.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
