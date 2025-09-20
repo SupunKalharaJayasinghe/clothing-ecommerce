@@ -11,6 +11,7 @@ import Login from '../pages/Login'
 import Register from '../pages/Register'
 import { useAppSelector } from '../app/hooks'
 import Account from '../pages/Account'
+import About from '../pages/About'
 import ForgotPassword from '../pages/ForgotPassword'     // <-- NEW
 import ResetPassword from '../pages/ResetPassword'       // <-- NEW
 
@@ -38,6 +39,7 @@ export default function AppRoutes() {
         <Route path="/account" element={<Protected><Account /></Protected>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/about" element={<About />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />    {/* NEW */}
         <Route path="/reset-password/:token" element={<ResetPassword />} />{/* NEW */}
         <Route path="*" element={<Navigate to="/" replace />} />
