@@ -10,7 +10,7 @@ import { getColorValue } from '../lib/colors'
 
 function Card({ p }) {
   return (
-    <Link to={`/products/${p.slug}`} className="group card card-hover overflow-hidden block">
+    <Link to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden block">
       <div className="product-img relative">
         <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
         {/* Tags positioned on image */}
@@ -136,7 +136,7 @@ export default function Home() {
       {/* HERO */}
       <section className="hero section relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" />
-        <div className="container-app pt-16 pb-24">
+        <div className="container-app pt-8 md:pt-10 pb-24">
           <div className="grid lg:grid-cols-2 gap-xl items-center">
             <div className="animate-slide-up space-lg">
               <h1 className="text-5xl md:text-7xl font-black leading-tight gradient-text mb-6">
