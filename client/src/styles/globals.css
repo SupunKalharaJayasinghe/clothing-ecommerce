@@ -225,9 +225,9 @@ a { @apply text-[--color-brand-600] hover:text-[--color-brand-700] transition-co
 /* Skeletons for cards */
 .skel-grid { @apply grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4; }
 .skeleton-card { @apply rounded-[--radius-lg] border bg-white overflow-hidden; }
-.skeleton-card .img { @apply h-48 shimmer; }
+.skeleton-card .img { @apply h-48; }
 .skeleton-card .text { @apply p-4; }
-.skeleton-card .line { @apply h-3 rounded bg-[--color-border] mb-2 shimmer; }
+.skeleton-card .line { @apply h-3 rounded bg-[--color-border] mb-2; }
 
 /* Creative Navigation */
 .nav-link { 
