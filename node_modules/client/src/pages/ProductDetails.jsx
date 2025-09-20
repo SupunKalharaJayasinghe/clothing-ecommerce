@@ -9,13 +9,12 @@ function Price({ price, discountPercent, finalPrice }) {
   if (discountPercent > 0) {
     return (
       <div className="flex items-baseline gap-3">
-        <span className="text-2xl price">Rs. {finalPrice.toLocaleString()}</span>
-        <span className="price-old">Rs. {price.toLocaleString()}</span>
-        <span className="badge badge-accent">-{discountPercent}%</span>
+        <span className="text-2xl price">Rs. {Number(finalPrice ?? price).toLocaleString()}</span>
+        <span className="price-old text-lg">Rs. {Number(price).toLocaleString()}</span>
       </div>
     )
   }
-  return <div className="text-2xl price">Rs. {price.toLocaleString()}</div>
+  return <div className="text-2xl price">Rs. {Number(price).toLocaleString()}</div>
 }
 
 function Stars({ rating }) {
@@ -46,6 +45,36 @@ function Badge({ children, tone = 'neutral' }) {
     purple: 'badge badge-accent'
   }
   return <span className={tones[tone] || tones.neutral}>{children}</span>
+}
+
+// Helper function to get proper color values with good contrast
+function getColorValue(colorName) {
+  if (!colorName) return '#6b7280' // gray-500 default
+  
+  const color = colorName.toLowerCase().trim()
+  const colorMap = {
+    // Basic colors with good contrast
+    'red': '#ef4444',
+    'blue': '#3b82f6', 
+    'mid blue': '#3b82f6',
+    'navy': '#1e40af',
+    'green': '#22c55e',
+    'yellow': '#eab308',
+    'orange': '#f97316',
+    'purple': '#a855f7',
+    'pink': '#ec4899',
+    'black': '#1f2937',
+    'white': '#f9fafb',
+    'gray': '#6b7280',
+    'grey': '#6b7280',
+    'brown': '#92400e',
+    'beige': '#d6d3d1',
+    'cream': '#fef7cd',
+    // Add more color mappings as needed
+  }
+  
+  // Return mapped color or try to use the color name directly
+  return colorMap[color] || color || '#6b7280'
 }
 
 function StarInput({ value, onChange, size='text-2xl' }) {
@@ -272,16 +301,20 @@ export default function ProductDetails() {
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Gallery */}
         <div className="relative">
-          <button
-            onClick={toggleFavorite}
-            className={`absolute right-3 top-3 z-10 rounded-full border bg-white/90 p-2 ${isFav ? 'text-red-600 border-red-200' : 'text-gray-700 border-gray-200'}`}
-            title={isFav ? 'Remove from favorites' : 'Add to favorites'}
-            aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
-          >
-            <Heart size={18} className={isFav ? 'fill-red-600' : ''} />
-          </button>
-          <div className="product-img rounded-2xl overflow-hidden">
+          <div className="product-img rounded-2xl overflow-hidden relative">
             <img src={currentImg} alt={p.name} className="w-full h-full object-cover" />
+            {/* Tags positioned on image */}
+            <div className="absolute top-3 left-3 flex flex-col gap-2">
+              {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
+              {p.mainTags?.includes('limited') && <Badge tone="purple">Limited</Badge>}
+              {p.mainTags?.includes('bestseller') && <Badge tone="blue">Bestseller</Badge>}
+            </div>
+            {/* Discount tag on right side */}
+            {p.discountPercent > 0 && (
+              <div className="absolute top-3 right-3">
+                <Badge tone="red">-{p.discountPercent}%</Badge>
+              </div>
+            )}
           </div>
           {p.images?.length > 1 && (
             <div className="mt-3 grid grid-cols-6 md:grid-cols-8 gap-2">
@@ -297,14 +330,7 @@ export default function ProductDetails() {
         </div>
 
         {/* Info */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
-            {p.mainTags?.includes('limited') && <Badge tone="purple">Limited</Badge>}
-            {p.mainTags?.includes('bestseller') && <Badge tone="blue">Bestseller</Badge>}
-            {p.discountPercent > 0 && <Badge tone="red">-{p.discountPercent}%</Badge>}
-          </div>
-
+        <div className="space-y-5">
           <h1 className="text-2xl md:text-3xl font-bold">{p.name}</h1>
 
           <div className="flex items-center gap-2">
@@ -312,14 +338,26 @@ export default function ProductDetails() {
             <div className="text-sm opacity-70">({p.reviewsCount} reviews)</div>
           </div>
 
-          <div className="text-sm">Color: <span className="font-medium">{p.color}</span></div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">Color:</span>
+            <div 
+              className="w-6 h-6 rounded-full border-2 border-gray-400 shadow-sm"
+              style={{ 
+                backgroundColor: getColorValue(p.color),
+                minWidth: '24px',
+                minHeight: '24px'
+              }}
+              title={p.color}
+            ></div>
+            <span className="text-sm opacity-70">{p.color}</span>
+          </div>
 
           <Price price={p.price} discountPercent={p.discountPercent} finalPrice={p.finalPrice ?? p.price} />
 
           <div className="flex items-center gap-2">
             {p.stock > 0 ? (
               p.lowStock ? <Badge tone="red">Low stock ({p.stock} left)</Badge> : <Badge tone="green">In stock</Badge>
-            ) : <Badge>Out of stock</Badge>}
+            ) : <Badge tone="neutral">Out of stock</Badge>}
           </div>
 
           <p className="text-sm leading-relaxed opacity-90 whitespace-pre-line">{p.description}</p>
