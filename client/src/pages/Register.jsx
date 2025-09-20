@@ -72,11 +72,11 @@ export default function Register() {
     if (registerUser.fulfilled.match(res)) nav('/')
   }
 
-  const inputCls = "w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10"
+  const inputCls = "input"
 
   return (
-    <div className="max-w-md mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold">Create account</h1>
+    <div className="container-app section max-w-md">
+      <h1 className="section-title">Create account</h1>
       <form onSubmit={onSubmit} className="mt-6 grid grid-cols-1 gap-3">
         <div>
           <label className="block text-sm mb-1">First name</label>
@@ -174,7 +174,7 @@ export default function Register() {
 
         <button
           disabled={status === 'loading' || Object.keys(errors).length > 0 || !allGood}
-          className="mt-2 w-full rounded-lg border py-2 disabled:opacity-50"
+          className="mt-2 w-full btn btn-primary disabled:opacity-50"
         >
           {status === 'loading' ? 'Creating…' : 'Sign up'}
         </button>

@@ -8,7 +8,7 @@ export default function ForgotPassword() {
   const { forgot, error } = useAppSelector(s => s.auth)
   const [identifier, setIdentifier] = useState('')
 
-  const inputCls = "w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10"
+  const inputCls = "input"
 
   async function onSubmit(e) {
     e.preventDefault()
@@ -17,8 +17,8 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold">Forgot password</h1>
+    <div className="container-app section max-w-sm">
+      <h1 className="section-title">Forgot password</h1>
       <p className="text-sm opacity-80 mt-1">Enter your username or email. If an account exists, we’ll send a reset link.</p>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-3">
@@ -28,13 +28,15 @@ export default function ForgotPassword() {
 
         {/* For local dev convenience only */}
         {forgot.devToken && (
-          <div className="text-xs mt-2 p-2 border rounded">
+          <div className="text-xs mt-2 card">
+            <div className="card-body p-2">
             Dev token: <code>{forgot.devToken}</code><br/>
             Reset link: <Link className="underline" to={`/reset-password/${forgot.devToken}`}>Open reset form</Link>
+            </div>
           </div>
         )}
 
-        <button className="w-full rounded-lg border py-2">
+        <button className="w-full btn btn-primary">
           {forgot.status === 'loading' ? 'Sending…' : 'Send reset link'}
         </button>
 

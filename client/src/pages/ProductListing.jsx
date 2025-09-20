@@ -2,18 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector } from '../app/hooks'
+import { Heart } from '../lib/icons'
 
 function Price({ price, discountPercent, finalPrice }) {
   if (discountPercent > 0) {
     return (
       <div className="flex items-baseline gap-2">
-        <span className="font-semibold">Rs. {finalPrice.toLocaleString()}</span>
-        <span className="line-through text-sm opacity-70">Rs. {price.toLocaleString()}</span>
-        <span className="text-xs bg-red-100 text-red-700 rounded px-1 py-0.5">-{discountPercent}%</span>
+        <span className="price">Rs. {Number(finalPrice ?? price).toLocaleString()}</span>
+        <span className="price-old">Rs. {Number(price).toLocaleString()}</span>
       </div>
     )
   }
-  return <div className="font-semibold">Rs. {price.toLocaleString()}</div>
+  return <div className="price">Rs. {Number(price).toLocaleString()}</div>
 }
 
 function Stars({ rating }) {
@@ -34,16 +34,46 @@ function Stars({ rating }) {
   )
 }
 
-function Badge({ children, tone = 'gray' }) {
+function Badge({ children, tone = 'neutral' }) {
   const tones = {
-    gray: 'bg-gray-100 text-gray-700',
-    green: 'bg-green-100 text-green-700',
-    red: 'bg-red-100 text-red-700',
-    blue: 'bg-blue-100 text-blue-700',
-    amber: 'bg-amber-100 text-amber-700',
-    purple: 'bg-purple-100 text-purple-700'
+    neutral: 'badge badge-neutral',
+    green: 'badge badge-success',
+    red: 'badge badge-danger',
+    blue: 'badge badge-info',
+    amber: 'badge badge-warning',
+    purple: 'badge badge-accent'
   }
-  return <span className={`text-xs rounded px-2 py-0.5 ${tones[tone]}`}>{children}</span>
+  return <span className={tones[tone] || tones.neutral}>{children}</span>
+}
+
+// Helper function to get proper color values with good contrast
+function getColorValue(colorName) {
+  if (!colorName) return '#6b7280' // gray-500 default
+  
+  const color = colorName.toLowerCase().trim()
+  const colorMap = {
+    // Basic colors with good contrast
+    'red': '#ef4444',
+    'blue': '#3b82f6', 
+    'mid blue': '#3b82f6',
+    'navy': '#1e40af',
+    'green': '#22c55e',
+    'yellow': '#eab308',
+    'orange': '#f97316',
+    'purple': '#a855f7',
+    'pink': '#ec4899',
+    'black': '#1f2937',
+    'white': '#f9fafb',
+    'gray': '#6b7280',
+    'grey': '#6b7280',
+    'brown': '#92400e',
+    'beige': '#d6d3d1',
+    'cream': '#fef7cd',
+    // Add more color mappings as needed
+  }
+  
+  // Return mapped color or try to use the color name directly
+  return colorMap[color] || color || '#6b7280'
 }
 
 const RESERVED = new Set(['men', 'women', 'kids'])
@@ -186,20 +216,20 @@ export default function ProductListing() {
     setParams(keep)
   }
 
-  if (loading) return <div className="p-6">Loading products…</div>
-  if (error) return <div className="p-6 text-red-600">{error}</div>
+  if (loading) return <div className="container-app section">Loading products…</div>
+  if (error) return <div className="container-app section text-red-600">{error}</div>
 
   const colorsFacet = (facets.colors || []).filter(Boolean)
   const tagsFacet = (facets.tags || []).filter(t => t && !RESERVED.has(String(t).toLowerCase()))
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="container-app section">
       {/* Tabs */}
-      <div className="mb-4 flex gap-2">
+      <div className="mb-8 flex gap-2">
         {['men','women','kids'].map(t => (
           <button
             key={t}
-            className={`px-4 py-2 rounded-full border ${category === t ? 'bg-black text-white' : 'bg-white'}`}
+            className={`btn ${category === t ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setParam('category', t)}
           >
             {t[0].toUpperCase() + t.slice(1)}
@@ -209,7 +239,8 @@ export default function ProductListing() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Filters */}
-        <aside className="md:col-span-1 border rounded-2xl p-4 h-max">
+        <aside className="md:col-span-1 card h-max">
+          <div className="card-body">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Filters</h2>
             <button className="text-sm underline" onClick={clearFilters}>Clear</button>
@@ -219,7 +250,7 @@ export default function ProductListing() {
           <div className="mb-3">
             <label className="text-sm block mb-1">Name</label>
             <input
-              className="w-full border rounded-lg px-3 py-2"
+              className="input"
               placeholder="Search products…"
               value={q}
               onChange={e => setParam('q', e.target.value)}
@@ -236,7 +267,7 @@ export default function ProductListing() {
                 return (
                   <button
                     key={c}
-                    className={`px-2 py-1 rounded border text-sm ${active ? 'bg-black text-white' : 'bg-white'}`}
+                    className={`btn ${active ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
                     onClick={() => toggleInList('color', color, c)}
                   >
                     {c}
@@ -252,14 +283,14 @@ export default function ProductListing() {
             <div className="flex gap-2">
               <input
                 type="number"
-                className="w-1/2 border rounded-lg px-3 py-2"
+                className="input w-1/2"
                 placeholder="Min"
                 value={priceMin}
                 onChange={e => setParam('priceMin', e.target.value)}
               />
               <input
                 type="number"
-                className="w-1/2 border rounded-lg px-3 py-2"
+                className="input w-1/2"
                 placeholder="Max"
                 value={priceMax}
                 onChange={e => setParam('priceMax', e.target.value)}
@@ -271,7 +302,7 @@ export default function ProductListing() {
           <div className="mb-3">
             <label className="text-sm block mb-1">Rating</label>
             <select
-              className="w-full border rounded-lg px-3 py-2"
+              className="select"
               value={ratingMin}
               onChange={e => setParam('ratingMin', e.target.value)}
             >
@@ -287,7 +318,7 @@ export default function ProductListing() {
           <div className="mb-3">
             <label className="text-sm block mb-1">Stock</label>
             <select
-              className="w-full border rounded-lg px-3 py-2"
+              className="select"
               value={stock}
               onChange={e => setParam('stock', e.target.value)}
             >
@@ -308,7 +339,7 @@ export default function ProductListing() {
                 return (
                   <button
                     key={t}
-                    className={`px-2 py-1 rounded border text-sm ${active ? 'bg-black text-white' : 'bg-white'}`}
+                    className={`btn ${active ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
                     onClick={() => toggleInList('tags', tags, t)}
                   >
                     {t}
@@ -323,30 +354,31 @@ export default function ProductListing() {
             <label className="text-sm block mb-1">Main tag</label>
             <div className="flex gap-2 flex-wrap">
               <button
-                className={`px-2 py-1 rounded border text-sm ${mainTag === 'any' ? 'bg-black text-white' : 'bg-white'}`}
+                className={`btn ${mainTag === 'any' ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
                 onClick={() => setParam('mainTag', 'any')}
               >Any</button>
               <button
-                className={`px-2 py-1 rounded border text-sm ${mainTag === 'new' ? 'bg-black text-white' : 'bg-white'}`}
+                className={`btn ${mainTag === 'new' ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
                 onClick={() => setParam('mainTag', 'new')}
               >New</button>
               <button
-                className={`px-2 py-1 rounded border text-sm ${mainTag === 'old' ? 'bg-black text-white' : 'bg-white'}`}
+                className={`btn ${mainTag === 'old' ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
                 onClick={() => setParam('mainTag', 'old')}
               >Old</button>
             </div>
+          </div>
           </div>
         </aside>
 
         {/* Results */}
         <section className="md:col-span-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-2xl md:text-3xl font-bold">
               {category[0].toUpperCase() + category.slice(1)} — Products
             </h1>
             <div className="flex items-center gap-3">
               <select
-                className="border rounded-lg px-3 py-2"
+                className="select"
                 value={sort}
                 onChange={e => setParam('sort', e.target.value)}
               >
@@ -359,7 +391,7 @@ export default function ProductListing() {
           </div>
 
           {items.length === 0 && (
-            <div className="mt-8 border rounded-2xl p-6 text-center text-sm opacity-80">
+            <div className="mt-8 card card-body text-center text-sm opacity-80">
               No products found for this selection. Try another tab or clear filters.
             </div>
           )}
@@ -368,34 +400,49 @@ export default function ProductListing() {
             {items.map(p => {
               const isFav = favSlugs.has(p.slug)
               return (
-                <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group border rounded-2xl overflow-hidden hover:shadow-sm transition relative">
-                  <button
-                    aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
-                    onClick={(e) => toggleFavorite(e, p.slug)}
-                    className={`absolute right-2 top-2 rounded-full border px-2 py-1 text-lg bg-white/90 ${isFav ? 'text-red-600' : 'text-gray-700'}`}
-                    title={isFav ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    {isFav ? '♥' : '♡'}
-                  </button>
-                  <div className="aspect-[4/5] bg-gray-50 overflow-hidden">
-                    <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                  </div>
-                  <div className="p-3 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group card card-hover overflow-hidden relative">
+                  <div className="product-img relative">
+                    <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
+                    {/* Tags positioned on image */}
+                    <div className="absolute top-2 left-2 flex flex-col gap-1">
                       {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
                       {p.mainTags?.includes('limited') && <Badge tone="amber">Limited</Badge>}
                       {p.mainTags?.includes('bestseller') && <Badge tone="purple">Bestseller</Badge>}
-                      {p.discountPercent > 0 && <Badge tone="red">-{p.discountPercent}%</Badge>}
                     </div>
-                    <div className="font-medium leading-snug line-clamp-2">{p.name}</div>
-                    <div className="text-sm opacity-70">Color: {p.color}</div>
-                    <Price price={p.price} discountPercent={p.discountPercent} finalPrice={p.finalPrice ?? p.price} />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Stars rating={p.rating} />
-                        <span className="opacity-70">({p.reviewsCount})</span>
+                    {/* Discount tag on right side */}
+                    {p.discountPercent > 0 && (
+                      <div className="absolute top-2 right-2">
+                        <Badge tone="red">-{p.discountPercent}%</Badge>
                       </div>
-                      {p.lowStock ? <Badge tone="red">Low stock</Badge> : p.stock > 0 ? <Badge tone="blue">In stock</Badge> : <Badge>Out</Badge>}
+                    )}
+                  </div>
+                  <div className="card-body space-y-3 p-4">
+                    <div>
+                      <div className="card-title leading-snug line-clamp-2 mb-1">{p.name}</div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="card-subtitle">Color:</span>
+                        <div 
+                          className="w-4 h-4 rounded-full border-2 border-gray-400 shadow-sm"
+                          style={{ 
+                            backgroundColor: getColorValue(p.color),
+                            minWidth: '16px',
+                            minHeight: '16px'
+                          }}
+                          title={p.color}
+                        ></div>
+                      </div>
+                    </div>
+                    
+                    <Price price={p.price} discountPercent={p.discountPercent} finalPrice={p.finalPrice ?? p.price} />
+                    
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-1 text-xs">
+                        <Stars rating={p.rating} />
+                        <span className="opacity-70">({p.reviewsCount || 0})</span>
+                      </div>
+                      <div className="text-right">
+                        {p.lowStock ? <Badge tone="red">Low stock</Badge> : p.stock > 0 ? <Badge tone="green">In stock</Badge> : <Badge>Out of stock</Badge>}
+                      </div>
                     </div>
                   </div>
                 </Link>

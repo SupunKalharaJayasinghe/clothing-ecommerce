@@ -34,11 +34,11 @@ export default function Login() {
     if (verifyTwoFA.fulfilled.match(res)) nav('/')
   }
 
-  const inputCls = "w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10"
+  const inputCls = "input"
 
   return (
-    <div className="max-w-sm mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold">Login</h1>
+    <div className="container-app section max-w-sm">
+      <h1 className="section-title">Login</h1>
 
       {!twoFA.required ? (
         <form onSubmit={onSubmit} className="mt-6 space-y-3">
@@ -71,13 +71,13 @@ export default function Login() {
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-end">
             <Link to="/forgot-password" className="text-sm underline">Forgot password?</Link>
           </div>
 
           <button
             disabled={status === 'loading' || Object.keys(errors).length > 0}
-            className="w-full rounded-lg border py-2 disabled:opacity-50"
+            className="w-full btn btn-primary disabled:opacity-50"
           >
             {status === 'loading' ? 'Signing in…' : 'Login'}
           </button>
@@ -102,10 +102,10 @@ export default function Login() {
           </label>
           {error && <p className="text-red-600 text-sm">{error}</p>}
           <div className="flex gap-2">
-            <button className="rounded-lg border px-3 py-2" type="submit" disabled={status==='loading'}>
+            <button className="btn btn-primary" type="submit" disabled={status==='loading'}>
               {status==='loading' ? 'Verifying…' : 'Verify'}
             </button>
-            <button className="rounded-lg border px-3 py-2" type="button" onClick={() => window.location.reload()}>
+            <button className="btn btn-outline" type="button" onClick={() => window.location.reload()}>
               Cancel
             </button>
           </div>

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../lib/axios'
 
-const input = "w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10"
+const input = "input"
 
 function TabBtn({active, onClick, children}) {
   return (
     <button onClick={onClick}
-      className={`px-3 py-2 rounded-lg border ${active ? 'bg-gray-50' : ''}`}>
+      className={`btn ${active ? 'btn-primary' : 'btn-outline'}`}>
       {children}
     </button>
   )
@@ -105,8 +105,8 @@ export default function Account() {
     nospace: !/\s/.test(pwd.newPassword)
   }), [pwd.newPassword])
 
-  if (loading) return <div className="p-6">Loading account…</div>
-  if (err) return <div className="p-6 text-red-600">{err}</div>
+  if (loading) return <div className="container-app section">Loading account…</div>
+  if (err) return <div className="container-app section text-red-600">{err}</div>
 
   // actions
   async function saveProfile() {
@@ -223,10 +223,10 @@ export default function Account() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-2xl font-bold">My Account</h1>
+    <div className="container-app section max-w-5xl">
+      <h1 className="section-title">My Account</h1>
 
-      <div className="mt-4 flex gap-2 flex-wrap">
+      <div className="mt-6 flex gap-3 flex-wrap">
         <TabBtn active={tab==='info'} onClick={() => setTab('info')}>Info</TabBtn>
         <TabBtn active={tab==='payment'} onClick={() => setTab('payment')}>Payment</TabBtn>
         <TabBtn active={tab==='addresses'} onClick={() => setTab('addresses')}>Address Book</TabBtn>
@@ -237,7 +237,8 @@ export default function Account() {
       {tab === 'info' && (
         <section className="mt-6 grid gap-6 md:grid-cols-2">
           {/* Account info */}
-          <div className="rounded-2xl border p-5">
+          <div className="card">
+            <div className="card-body">
             <h2 className="font-semibold mb-3">Account information</h2>
             <div className="grid gap-3">
               <input className={input} placeholder="First name" value={profile.firstName} onChange={e=>setProfile({...profile, firstName:e.target.value})}/>
@@ -245,7 +246,7 @@ export default function Account() {
               <input className={input} placeholder="Username" value={profile.username} onChange={e=>setProfile({...profile, username:e.target.value})}/>
               <input className={input} type="email" placeholder="Email" value={profile.email} onChange={e=>setProfile({...profile, email:e.target.value})}/>
               <input className={input} placeholder="Mobile number" value={profile.mobile} onChange={e=>setProfile({...profile, mobile:e.target.value})}/>
-              <select className={input} value={profile.gender} onChange={e=>setProfile({...profile, gender:e.target.value})}>
+              <select className="select" value={profile.gender} onChange={e=>setProfile({...profile, gender:e.target.value})}>
                 <option value="prefer_not_to_say">Prefer not to say</option>
                 <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
               </select>
@@ -253,15 +254,17 @@ export default function Account() {
               <input className={input} placeholder="Country" value={profile.country} onChange={e=>setProfile({...profile, country:e.target.value})}/>
               {msg && <p className="text-green-600 text-sm">{msg}</p>}
               {err && <p className="text-red-600 text-sm">{err}</p>}
-              <button disabled={saving} className="rounded-lg border py-2" onClick={saveProfile}>
+              <button disabled={saving} className="btn btn-primary" onClick={saveProfile}>
                 {saving ? 'Saving…' : 'Save changes'}
               </button>
+            </div>
             </div>
           </div>
 
           {/* Password + Deletion request */}
           <div className="space-y-6">
-            <div className="rounded-2xl border p-5">
+            <div className="card">
+              <div className="card-body">
               <h2 className="font-semibold mb-3">Change password</h2>
               <input className={input} type="password" placeholder="Current password" value={pwd.currentPassword} onChange={e=>setPwd({...pwd, currentPassword:e.target.value})}/>
               <input className={input} type="password" placeholder="New password" value={pwd.newPassword} onChange={e=>setPwd({...pwd, newPassword:e.target.value})}/>
@@ -276,11 +279,13 @@ export default function Account() {
               </ul>
               {pwdMsg && <p className="text-green-600 text-sm mt-2">{pwdMsg}</p>}
               {pwdErr && <p className="text-red-600 text-sm mt-2">{pwdErr}</p>}
-              <button className="mt-2 rounded-lg border py-2" onClick={changePassword}>Update password</button>
+              <button className="mt-2 btn btn-outline" onClick={changePassword}>Update password</button>
               <p className="text-xs opacity-70 mt-2">Password is stored hashed; on this page we just show it as ••••••••••</p>
+              </div>
             </div>
 
-            <div className="rounded-2xl border p-5">
+            <div className="card">
+              <div className="card-body">
               <h2 className="font-semibold mb-2">Request account deletion</h2>
               {del.status === 'pending' ? (
                 <>
@@ -291,7 +296,7 @@ export default function Account() {
                   </p>
                   {del.reason && <p className="text-sm mt-1 opacity-80">Reason: {del.reason}</p>}
                   <div className="mt-3 flex items-center gap-2">
-                    <button className="rounded-lg border px-3 py-1" onClick={cancelDeletion}>Cancel request</button>
+                    <button className="btn btn-outline" onClick={cancelDeletion}>Cancel request</button>
                     {delMsg && <span className="text-green-600 text-sm">{delMsg}</span>}
                   </div>
                 </>
@@ -301,7 +306,7 @@ export default function Account() {
                 <>
                   <p className="text-sm opacity-80">You can request your account to be deleted. This will be reviewed by our team. You will not be able to use your account after deletion.</p>
                   <textarea
-                    className={`${input} mt-3 h-28`}
+                    className={`textarea mt-3 h-28`}
                     placeholder="Reason (optional, but helps us understand)"
                     value={del.reason}
                     onChange={e=>setDel({...del, reason:e.target.value})}
@@ -312,16 +317,18 @@ export default function Account() {
                   </label>
                   {delErr && <p className="text-red-600 text-sm mt-1">{delErr}</p>}
                   {delMsg && <p className="text-green-600 text-sm mt-1">{delMsg}</p>}
-                  <button className="mt-2 rounded-lg border py-2" onClick={requestDeletion}>Submit deletion request</button>
+                  <button className="mt-2 btn btn-danger" onClick={requestDeletion}>Submit deletion request</button>
                 </>
               )}
+              </div>
             </div>
           </div>
         </section>
       )}
 
       {tab === 'payment' && (
-        <section className="mt-6 rounded-2xl border p-5">
+        <section className="mt-6 card">
+          <div className="card-body">
           <h2 className="font-semibold mb-3">Payment methods</h2>
           <p className="text-sm opacity-80 mb-3">
             For security (PCI DSS), we don’t store card numbers. Cards are tokenized by PayHere.
@@ -331,18 +338,20 @@ export default function Account() {
           <div className="space-y-2">
             {cards.length === 0 && <div className="opacity-70">No saved cards.</div>}
             {cards.map(c => (
-              <div key={c._id} className="flex items-center justify-between border rounded-lg p-3">
+              <div key={c._id} className="flex items-center justify-between card p-3">
                 <div>{c.label || `${c.brand || 'Card'} •••• ${c.last4 || ''}`} {c.expMonth && c.expYear ? `(${c.expMonth}/${c.expYear})` : ''}</div>
-                <button className="rounded-lg border px-3 py-1" onClick={() => removeCard(c._id)}>Remove</button>
+                <button className="btn btn-outline btn-sm" onClick={() => removeCard(c._id)}>Remove</button>
               </div>
             ))}
+          </div>
           </div>
         </section>
       )}
 
       {tab === 'addresses' && (
         <section className="mt-6 grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border p-5">
+          <div className="card">
+            <div className="card-body">
             <h2 className="font-semibold mb-3">Add address</h2>
             <div className="grid gap-2">
               {['label','line1','line2','city','region','postalCode','country','phone'].map(k=>(
@@ -354,42 +363,46 @@ export default function Account() {
               </label>
               {addrMsg && <p className="text-green-600 text-sm">{addrMsg}</p>}
               {addrErr && <p className="text-red-600 text-sm">{addrErr}</p>}
-              <button className="rounded-lg border py-2" onClick={addAddress}>Save address</button>
+              <button className="btn btn-primary" onClick={addAddress}>Save address</button>
+              </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border p-5">
+          <div className="card">
+            <div className="card-body">
             <h2 className="font-semibold mb-3">Your addresses</h2>
             <div className="space-y-2">
               {addresses.length === 0 && <div className="opacity-70">No addresses yet.</div>}
               {addresses.map(a => (
-                <div key={a._id} className="border rounded-lg p-3">
+                <div key={a._id} className="card p-3">
                   <div className="font-medium">{a.label || 'Address'}</div>
                   <div className="text-sm opacity-80">
                     {a.line1}{a.line2 ? `, ${a.line2}` : ''}, {a.city}{a.region ? `, ${a.region}` : ''}, {a.postalCode ? `${a.postalCode}, ` : ''}{a.country}
                     {a.phone ? ` — ${a.phone}` : ''}
                   </div>
                   <div className="flex gap-2 mt-2">
-                    {!a.isDefault && <button className="rounded-lg border px-3 py-1" onClick={() => updateAddress({...a, isDefault:true})}>Make default</button>}
-                    <button className="rounded-lg border px-3 py-1" onClick={() => deleteAddress(a._id)}>Delete</button>
+                    {!a.isDefault && <button className="btn btn-outline btn-sm" onClick={() => updateAddress({...a, isDefault:true})}>Make default</button>}
+                    <button className="btn btn-danger btn-sm" onClick={() => deleteAddress(a._id)}>Delete</button>
                   </div>
                   {a.isDefault && <div className="text-xs mt-1">Default</div>}
                 </div>
               ))}
+            </div>
             </div>
           </div>
         </section>
       )}
 
       {tab === 'security' && (
-        <section className="mt-6 rounded-2xl border p-5 space-y-3">
+        <section className="mt-6 card space-y-3">
+          <div className="card-body">
           <h2 className="font-semibold">Two-step verification (TOTP)</h2>
           {twoFA.enabled ? (
             <>
               <p className="text-sm">2FA is enabled for your account.</p>
               <div className="flex gap-2">
-                <button className="rounded-lg border px-3 py-1" onClick={regenCodes}>Regenerate backup codes</button>
-                <button className="rounded-lg border px-3 py-1" onClick={disable2FA}>Disable 2FA</button>
+                <button className="btn btn-outline btn-sm" onClick={regenCodes}>Regenerate backup codes</button>
+                <button className="btn btn-danger btn-sm" onClick={disable2FA}>Disable 2FA</button>
               </div>
               {twoFAMsg && <p className="text-green-600 text-sm">{twoFAMsg}</p>}
             </>
@@ -397,23 +410,25 @@ export default function Account() {
             <>
               <p className="text-sm">Use Google Authenticator or any TOTP app.</p>
               {!twoFASetup.qr ? (
-                <button className="rounded-lg border px-3 py-1" onClick={start2FA}>Start setup</button>
+                <button className="btn btn-primary px-3 py-1" onClick={start2FA}>Start setup</button>
               ) : (
                 <div className="mt-3 space-y-2">
                   <img src={twoFASetup.qr} alt="Scan QR" className="w-40 h-40 border rounded-lg" />
                   <input className={input} placeholder="Enter 6-digit code" value={twoFASetup.code} onChange={e=>setTwoFASetup({...twoFASetup, code:e.target.value})}/>
-                  <button className="rounded-lg border px-3 py-1" onClick={verify2FA}>Verify & enable</button>
+                  <button className="btn btn-outline btn-sm" onClick={verify2FA}>Verify & enable</button>
                 </div>
               )}
               {twoFAMsg && <p className="text-green-600 text-sm">{twoFAMsg}</p>}
               {twoFAErr && <p className="text-red-600 text-sm">{twoFAErr}</p>}
             </>
           )}
+          </div>
         </section>
       )}
 
       {tab === 'notifications' && (
-        <section className="mt-6 rounded-2xl border p-5">
+        <section className="mt-6 card">
+          <div className="card-body">
           <h2 className="font-semibold mb-3">Email notifications</h2>
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm">
@@ -430,8 +445,9 @@ export default function Account() {
             </label>
           </div>
           <div className="mt-3 flex items-center gap-3">
-            <button className="rounded-lg border px-3 py-1" onClick={saveNoti}>Save</button>
+            <button className="btn btn-primary px-3 py-1" onClick={saveNoti}>Save</button>
             {notiMsg && <span className="text-green-600 text-sm">{notiMsg}</span>}
+          </div>
           </div>
         </section>
       )}

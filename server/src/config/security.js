@@ -1,11 +1,21 @@
 import rateLimit from 'express-rate-limit'
 import { env } from './env.js'
 
+// Allow multiple origins configured as comma-separated string in env.CORS_ORIGIN
+const allowedOrigins = String(env.CORS_ORIGIN || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+
 export const corsOptions = {
-  origin: [env.CORS_ORIGIN],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true) // allow same-origin or non-browser clients
+    if (allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(new Error('CORS not allowed from this origin: ' + origin), false)
+  },
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization']
+  allowedHeaders: ['Content-Type','Authorization','x-csrf-token']
 }
 
 // allow PayHere scripts/frames later; add your CDN if needed
@@ -17,7 +27,7 @@ export const cspDirectives = {
   "script-src": ["'self'", "https://www.payhere.lk"],
   "frame-src": ["'self'", "https://www.payhere.lk"],
   "style-src": ["'self'", "'unsafe-inline'", "https:"],
-  "connect-src": ["'self'", env.CORS_ORIGIN]
+  "connect-src": ["'self'", ...allowedOrigins]
 }
 
 const isProd = env.NODE_ENV === 'production'

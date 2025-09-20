@@ -2,19 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
 import useDebounce from '../hooks/useDebounce'
+import { Search, ArrowRight } from '../lib/icons'
 
 // Simple price + badges reused from listing
 function Price({ price, discountPercent, finalPrice }) {
   if (discountPercent > 0) {
     return (
       <div className="flex items-baseline gap-2">
-        <span className="font-semibold">Rs. {Number(finalPrice ?? price).toLocaleString()}</span>
-        <span className="line-through text-sm opacity-70">Rs. {Number(price).toLocaleString()}</span>
-        <span className="text-xs bg-red-100 text-red-700 rounded px-1 py-0.5">-{discountPercent}%</span>
+        <span className="price">Rs. {Number(finalPrice ?? price).toLocaleString()}</span>
+        <span className="price-old">Rs. {Number(price).toLocaleString()}</span>
       </div>
     )
   }
-  return <div className="font-semibold">Rs. {Number(price).toLocaleString()}</div>
+  return <div className="price">Rs. {Number(price).toLocaleString()}</div>
 }
 
 function Stars({ rating }) {
@@ -35,38 +35,91 @@ function Stars({ rating }) {
   )
 }
 
-function Badge({ children, tone = 'gray' }) {
+function Badge({ children, tone = 'neutral' }) {
   const tones = {
-    gray: 'bg-gray-100 text-gray-700',
-    green: 'bg-green-100 text-green-700',
-    red: 'bg-red-100 text-red-700',
-    blue: 'bg-blue-100 text-blue-700',
-    amber: 'bg-amber-100 text-amber-700',
-    purple: 'bg-purple-100 text-purple-700'
+    neutral: 'badge badge-neutral',
+    green: 'badge badge-success',
+    red: 'badge badge-danger',
+    blue: 'badge badge-info',
+    amber: 'badge badge-warning',
+    purple: 'badge badge-accent'
   }
-  return <span className={`text-xs rounded px-2 py-0.5 ${tones[tone]}`}>{children}</span>
+  return <span className={tones[tone] || tones.neutral}>{children}</span>
+}
+
+// Helper function to get proper color values with good contrast
+function getColorValue(colorName) {
+  if (!colorName) return '#6b7280' // gray-500 default
+  
+  const color = colorName.toLowerCase().trim()
+  const colorMap = {
+    // Basic colors with good contrast
+    'red': '#ef4444',
+    'blue': '#3b82f6', 
+    'mid blue': '#3b82f6',
+    'navy': '#1e40af',
+    'green': '#22c55e',
+    'yellow': '#eab308',
+    'orange': '#f97316',
+    'purple': '#a855f7',
+    'pink': '#ec4899',
+    'black': '#1f2937',
+    'white': '#f9fafb',
+    'gray': '#6b7280',
+    'grey': '#6b7280',
+    'brown': '#92400e',
+    'beige': '#d6d3d1',
+    'cream': '#fef7cd',
+    // Add more color mappings as needed
+  }
+  
+  // Return mapped color or try to use the color name directly
+  return colorMap[color] || color || '#6b7280'
 }
 
 function Card({ p }) {
   return (
-    <Link to={`/products/${p.slug}`} className="group border rounded-2xl overflow-hidden hover:shadow-sm transition block">
-      <div className="aspect-[4/5] bg-gray-50 overflow-hidden">
-        <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-      </div>
-      <div className="p-3 space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
+    <Link to={`/products/${p.slug}`} className="group card card-hover overflow-hidden block">
+      <div className="product-img relative">
+        <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
+        {/* Tags positioned on image */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
           {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
-          {p.discountPercent > 0 && <Badge tone="red">-{p.discountPercent}%</Badge>}
         </div>
-        <div className="font-medium leading-snug line-clamp-2">{p.name}</div>
-        <div className="text-sm opacity-70">Color: {p.color}</div>
+        {/* Discount tag on right side */}
+        {p.discountPercent > 0 && (
+          <div className="absolute top-2 right-2">
+            <Badge tone="red">-{p.discountPercent}%</Badge>
+          </div>
+        )}
+      </div>
+      <div className="card-body space-y-3 p-4">
+        <div>
+          <div className="card-title leading-snug line-clamp-2 mb-1">{p.name}</div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="card-subtitle">Color:</span>
+            <div 
+              className="w-4 h-4 rounded-full border-2 border-gray-400 shadow-sm"
+              style={{ 
+                backgroundColor: getColorValue(p.color),
+                minWidth: '16px',
+                minHeight: '16px'
+              }}
+              title={p.color}
+            ></div>
+          </div>
+        </div>
+        
         <Price price={p.price} discountPercent={p.discountPercent} finalPrice={p.finalPrice ?? p.price} />
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-sm">
+        
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-1 text-xs">
             <Stars rating={p.rating} />
             <span className="opacity-70">({p.reviewsCount || 0})</span>
           </div>
-          {p.lowStock ? <Badge tone="red">Low stock</Badge> : p.stock > 0 ? <Badge tone="blue">In stock</Badge> : <Badge>Out</Badge>}
+          <div className="text-right">
+            {p.lowStock ? <Badge tone="red">Low stock</Badge> : p.stock > 0 ? <Badge tone="green">In stock</Badge> : <Badge>Out of stock</Badge>}
+          </div>
         </div>
       </div>
     </Link>
@@ -150,15 +203,15 @@ export default function Home() {
   return (
     <div className="min-h-dvh">
       {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-50 via-white to-white pointer-events-none" />
-        <div className="mx-auto max-w-7xl px-4 pt-12 pb-16">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <h1 className="text-3xl md:text-5xl font-extrabold leading-tight">
+      <section className="hero section relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none" />
+        <div className="container-app pt-16 pb-24">
+          <div className="grid lg:grid-cols-2 gap-xl items-center">
+            <div className="animate-slide-up space-lg">
+              <h1 className="text-5xl md:text-7xl font-black leading-tight gradient-text mb-6">
                 Dress & Go — Fresh fits for every day.
               </h1>
-              <p className="mt-4 text-gray-600 max-w-prose">
+              <p className="text-lg text-[--color-muted] max-w-prose leading-relaxed">
                 Discover the latest arrivals, most-loved styles, and essentials for Men, Women, and Kids.
               </p>
 
@@ -170,7 +223,7 @@ export default function Home() {
                   onChange={(e) => { setQuery(e.target.value); setShowSuggest(true) }}
                   onFocus={() => setShowSuggest(true)}
                   placeholder="Search products…"
-                  className="w-full md:w-96 border rounded-xl px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+                  className="input w-full md:w-96"
                   aria-label="Search products"
                 />
                 {/* Suggestions */}
@@ -180,14 +233,14 @@ export default function Home() {
                       <button
                         type="button"
                         key={item.id}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-3"
+                        className="w-full text-left px-3 py-2 hover:bg-[--color-bg-soft] flex items-center gap-3"
                         onClick={() => navigate(`/products/${item.slug}`)}
                         aria-label={`Go to ${item.name}`}
                       >
                         <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded" />
                         <div className="flex-1">
                           <div className="text-sm font-medium line-clamp-1">{item.name}</div>
-                          <div className="text-xs text-gray-600">
+                          <div className="text-xs text-[--color-muted]">
                             Rs. {Number(item.finalPrice ?? item.price).toLocaleString()}
                           </div>
                         </div>
@@ -196,7 +249,7 @@ export default function Home() {
                     <div className="border-t">
                       <button
                         type="submit"
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                        className="w-full text-left px-3 py-2 hover:bg-[--color-bg-soft] text-sm"
                         aria-label="See all search results"
                       >
                         See all results
@@ -207,16 +260,20 @@ export default function Home() {
               </form>
 
               {/* CTAs */}
-              <div className="mt-6 flex items-center gap-3">
-                <Link to="/products" className="px-4 py-2 rounded-lg border bg-black text-white">Shop</Link>
-                <Link to="/about" className="px-4 py-2 rounded-lg border">About</Link>
-                <a href="#browse" className="ml-2 text-sm underline">Scroll down</a>
+              <div className="flex items-center gap-md mt-10">
+                <Link to="/products" className="btn btn-primary animate-pulse-glow hover-bounce">
+                  <Search size={20} /> Shop Now
+                </Link>
+                <Link to="/about" className="btn btn-secondary hover-glow">About</Link>
+                <a href="#browse" className="text-base font-semibold inline-flex items-center gap-2 hover-lift text-[--color-brand-600]">
+                  Scroll down <ArrowRight size={16} />
+                </a>
               </div>
             </div>
 
             {/* Hero image */}
-            <div className="hidden lg:block">
-              <div className="aspect-[4/3] rounded-3xl overflow-hidden border shadow-sm bg-gray-50">
+            <div className="hidden lg:block animate-float">
+              <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-glow bg-mesh hover-lift">
                 <img
                   src="https://images.unsplash.com/photo-1520975922203-bc4e16f6f3a0?q=80&w=1600&auto=format&fit=crop"
                   alt="Hero"
@@ -230,13 +287,13 @@ export default function Home() {
       </section>
 
       {/* BROWSE / HIGHLIGHTS */}
-      <section id="browse" className="mx-auto max-w-7xl px-4 pb-14">
+      <section id="browse" className="container-app m-section">
         {/* Category tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-md mb-12 justify-center">
           {['men','women','kids'].map(t => (
             <button
               key={t}
-              className={`px-4 py-2 rounded-full border ${category === t ? 'bg-black text-white' : 'bg-white'}`}
+              className={`btn ${category === t ? 'btn-primary shadow-glow animate-scale-in' : 'btn-outline'} hover-lift px-8 py-4`}
               onClick={() => setCategory(t)}
             >
               {t[0].toUpperCase() + t.slice(1)}
@@ -245,26 +302,26 @@ export default function Home() {
         </div>
 
         {loadingHL && (
-          <div className="border rounded-2xl p-6 text-sm">Loading products…</div>
+          <div className="card card-body text-sm">Loading products…</div>
         )}
         {errHL && (
-          <div className="border rounded-2xl p-6 text-sm text-red-600">{errHL}</div>
+          <div className="card card-body text-sm text-red-600">{errHL}</div>
         )}
 
         {!loadingHL && !hasAny && (
-          <div className="border rounded-2xl p-6 text-sm opacity-80">
+          <div className="card card-body text-sm opacity-80">
             No products to show here yet. Try another tab or check back later.
           </div>
         )}
 
         {/* Latest */}
         {latest?.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-10">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-xl font-bold">Latest</h2>
-              <Link to={`/products?category=${category}&sort=new`} className="text-sm underline">View all</Link>
+              <h2 className="section-title text-2xl">Latest Drops</h2>
+              <Link to={`/products?category=${category}&sort=new`} className="btn btn-ghost">View all</Link>
             </div>
-            <div className="grid gap-4 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {latest.map(p => <Card key={p.id || p._id} p={p} />)}
             </div>
           </div>
@@ -272,12 +329,12 @@ export default function Home() {
 
         {/* Top Rated */}
         {topRated?.length > 0 && (
-          <div className="mt-10">
+          <div className="mt-12">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-xl font-bold">Top rated</h2>
-              <Link to={`/products?category=${category}&sort=rating`} className="text-sm underline">View all</Link>
+              <h2 className="section-title text-2xl">Top Rated</h2>
+              <Link to={`/products?category=${category}&sort=rating`} className="btn btn-ghost">View all</Link>
             </div>
-            <div className="grid gap-4 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {topRated.map(p => <Card key={p.id || p._id} p={p} />)}
             </div>
           </div>
@@ -285,12 +342,12 @@ export default function Home() {
 
         {/* Most Popular */}
         {popular?.length > 0 && (
-          <div className="mt-10">
+          <div className="mt-12">
             <div className="flex items-baseline justify-between">
-              <h2 className="text-xl font-bold">Most popular</h2>
-              <Link to={`/products?category=${category}`} className="text-sm underline">View all</Link>
+              <h2 className="section-title text-2xl">Trending Now</h2>
+              <Link to={`/products?category=${category}`} className="btn btn-ghost">View all</Link>
             </div>
-            <div className="grid gap-4 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {popular.map(p => <Card key={p.id || p._id} p={p} />)}
             </div>
           </div>

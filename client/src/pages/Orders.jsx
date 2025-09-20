@@ -7,13 +7,13 @@ function Price({ v }) { return <span>Rs. {Number(v || 0).toLocaleString()}</span
 
 function Badge({ tone = 'gray', children }) {
   const tones = {
-    gray: 'bg-gray-100 text-gray-700',
-    blue: 'bg-blue-100 text-blue-700',
-    green: 'bg-green-100 text-green-700',
-    red: 'bg-red-100 text-red-700',
-    amber: 'bg-amber-100 text-amber-700'
+    gray: 'badge',
+    blue: 'badge bg-blue-100 text-blue-700 border-transparent',
+    green: 'badge bg-green-100 text-green-700 border-transparent',
+    red: 'badge bg-red-100 text-red-700 border-transparent',
+    amber: 'badge bg-amber-100 text-amber-700 border-transparent'
   }
-  return <span className={`text-xs rounded px-2 py-0.5 ${tones[tone]}`}>{children}</span>
+  return <span className={tones[tone]}>{children}</span>
 }
 
 export default function Orders() {
@@ -64,17 +64,17 @@ export default function Orders() {
     return 'gray'
   }
 
-  if (loading) return <div className="p-6">Loading orders…</div>
-  if (error) return <div className="p-6 text-red-600">{error}</div>
+  if (loading) return <div className="container-app section">Loading orders…</div>
+  if (error) return <div className="container-app section text-red-600">{error}</div>
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold">Your Orders</h1>
+    <div className="container-app section">
+      <h1 className="section-title">Your Orders</h1>
       {orders.length === 0 && <div className="mt-3 opacity-70">You have no orders yet.</div>}
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-8 space-y-4">
         {orders.map(o => (
-          <div key={o._id} className="border rounded-2xl p-4">
+          <div key={o._id} className="card p-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="text-sm opacity-70">#{o._id}</div>
               <div className="flex items-center gap-2">

@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build:
+      context: ./server
+    image: clothing-ecommerce-api:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      # Use the internal Docker network Mongo connection string
+      MONGO_URI: mongodb://root:example@mongo:27017/clothing?authSource=admin
+      CORS_ORIGIN: http://localhost
+      COOKIE_SAMESITE: lax
+      COOKIE_SECURE: false
+      JWT_SECRET: change-me-in-prod
+      JWT_EXPIRES_IN: 7d
+    depends_on:
+      - mongo
+    ports:
+      - "4000:4000"
+    volumes:
+      - receipts_data:/app/src/files/receipts
+
+  web:
+    build:
+      context: ./client
+    image: clothing-ecommerce-web:latest
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+
+volumes:
+  mongo_data:
+  receipts_data:

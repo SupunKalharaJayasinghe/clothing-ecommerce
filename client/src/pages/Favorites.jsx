@@ -2,18 +2,19 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector } from '../app/hooks'
+import { Heart } from '../lib/icons'
 
 function Price({ price, discountPercent, finalPrice }) {
   if (discountPercent > 0) {
     return (
       <div className="flex items-baseline gap-2">
-        <span className="font-semibold">Rs. {finalPrice.toLocaleString()}</span>
-        <span className="line-through text-sm opacity-70">Rs. {price.toLocaleString()}</span>
-        <span className="text-xs bg-red-100 text-red-700 rounded px-1 py-0.5">-{discountPercent}%</span>
+        <span className="price">Rs. {Number(finalPrice).toLocaleString()}</span>
+        <span className="price-old">Rs. {Number(price).toLocaleString()}</span>
+        <span className="badge badge-danger">-{discountPercent}%</span>
       </div>
     )
   }
-  return <div className="font-semibold">Rs. {price.toLocaleString()}</div>
+  return <div className="price">Rs. {Number(price).toLocaleString()}</div>
 }
 
 export default function Favorites() {
@@ -50,33 +51,33 @@ export default function Favorites() {
     }
   }
 
-  if (loading) return <div className="p-6">Loading favorites…</div>
-  if (error) return <div className="p-6 text-red-600">{error}</div>
+  if (loading) return <div className="container-app section">Loading favorites…</div>
+  if (error) return <div className="container-app section text-red-600">{error}</div>
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="text-2xl font-bold">Your Favorites</h1>
+    <div className="container-app section">
+      <h1 className="section-title">Your Favorites</h1>
       {items.length === 0 ? (
-        <div className="mt-4 opacity-70">No favorites yet.</div>
+        <div className="mt-2 card card-body text-sm opacity-80">No favorites yet. Explore products and tap the heart to save your favorites.</div>
       ) : (
-        <div className="grid gap-6 mt-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-6 mt-8 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {items.map(p => (
-            <div key={p.id} className="group border rounded-2xl overflow-hidden hover:shadow-sm transition relative">
+            <div key={p.id} className="group card card-hover overflow-hidden relative">
               <button
                 onClick={() => remove(p.slug)}
-                className="absolute right-2 top-2 rounded-full border px-2 py-1 text-lg bg-white/90 text-red-600"
+                className="absolute right-2 top-2 btn btn-danger btn-sm rounded-full shadow-soft"
                 title="Remove from favorites"
                 aria-label="Remove from favorites"
               >
-                ♥
+                <Heart size={14} className="fill-white" />
               </button>
               <Link to={`/products/${p.slug}`}>
-                <div className="aspect-[4/5] bg-gray-50 overflow-hidden">
-                  <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                <div className="product-img">
+                  <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
                 </div>
-                <div className="p-3 space-y-1">
-                  <div className="font-medium leading-snug line-clamp-2">{p.name}</div>
-                  <div className="text-sm opacity-70">Color: {p.color}</div>
+                <div className="card-body space-y-2">
+                  <div className="card-title leading-snug line-clamp-2">{p.name}</div>
+                  <div className="card-subtitle">Color: {p.color}</div>
                   <Price price={p.price} discountPercent={p.discountPercent} finalPrice={p.finalPrice ?? p.price} />
                 </div>
               </Link>

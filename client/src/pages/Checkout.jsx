@@ -43,7 +43,7 @@ export default function Checkout() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-10 text-center">
+      <div className="container-app section max-w-4xl text-center">
         <h1 className="text-2xl font-bold mb-2">Your cart is empty</h1>
       </div>
     )
@@ -99,32 +99,35 @@ export default function Checkout() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Checkout</h1>
+    <div className="container-app section max-w-5xl">
+      <h1 className="section-title">Checkout</h1>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-3 gap-6 mt-6">
         {/* Address */}
         <section className="md:col-span-2 space-y-3">
-          <div className="border rounded-xl p-4">
+          <div className="card">
+            <div className="card-body">
             <h2 className="font-semibold mb-2">Delivery address</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className="border rounded-lg px-3 py-2" placeholder="Line 1 *" value={addr.line1} onChange={e => setAddr(a => ({ ...a, line1: e.target.value }))} />
-              <input className="border rounded-lg px-3 py-2" placeholder="Line 2" value={addr.line2} onChange={e => setAddr(a => ({ ...a, line2: e.target.value }))} />
-              <input className="border rounded-lg px-3 py-2" placeholder="City *" value={addr.city} onChange={e => setAddr(a => ({ ...a, city: e.target.value }))} />
-              <input className="border rounded-lg px-3 py-2" placeholder="Region" value={addr.region} onChange={e => setAddr(a => ({ ...a, region: e.target.value }))} />
-              <input className="border rounded-lg px-3 py-2" placeholder="Postal Code" value={addr.postalCode} onChange={e => setAddr(a => ({ ...a, postalCode: e.target.value }))} />
-              <input className="border rounded-lg px-3 py-2" placeholder="Country *" value={addr.country} onChange={e => setAddr(a => ({ ...a, country: e.target.value }))} />
-              <input className="border rounded-lg px-3 py-2" placeholder="Phone *" value={addr.phone} onChange={e => setAddr(a => ({ ...a, phone: e.target.value }))} />
+              <input className="input" placeholder="Line 1 *" value={addr.line1} onChange={e => setAddr(a => ({ ...a, line1: e.target.value }))} />
+              <input className="input" placeholder="Line 2" value={addr.line2} onChange={e => setAddr(a => ({ ...a, line2: e.target.value }))} />
+              <input className="input" placeholder="City *" value={addr.city} onChange={e => setAddr(a => ({ ...a, city: e.target.value }))} />
+              <input className="input" placeholder="Region" value={addr.region} onChange={e => setAddr(a => ({ ...a, region: e.target.value }))} />
+              <input className="input" placeholder="Postal Code" value={addr.postalCode} onChange={e => setAddr(a => ({ ...a, postalCode: e.target.value }))} />
+              <input className="input" placeholder="Country *" value={addr.country} onChange={e => setAddr(a => ({ ...a, country: e.target.value }))} />
+              <input className="input" placeholder="Phone *" value={addr.phone} onChange={e => setAddr(a => ({ ...a, phone: e.target.value }))} />
+            </div>
             </div>
           </div>
 
-          <div className="border rounded-xl p-4">
+          <div className="card">
+            <div className="card-body">
             <h2 className="font-semibold mb-2">Payment method</h2>
             <div className="flex gap-3">
               {['COD','CARD','BANK'].map(m => (
                 <button
                   key={m}
-                  className={`px-3 py-1 rounded-lg border ${method === m ? 'bg-black text-white' : 'bg-white'}`}
+                  className={`btn ${method === m ? 'btn-primary' : 'btn-outline'} px-3 py-1`}
                   onClick={() => setMethod(m)}
                 >{m}</button>
               ))}
@@ -142,23 +145,25 @@ export default function Checkout() {
                 You’ll be redirected to the PayHere (sandbox) checkout. Be sure to set your PayHere env values for real payments.
               </p>
             )}
+            </div>
           </div>
 
           {error && <div className="text-red-600">{error}</div>}
 
-          <button className="rounded-lg border px-4 py-2" onClick={place} disabled={loading}>
+          <button className="btn btn-primary" onClick={place} disabled={loading}>
             {loading ? 'Placing…' : 'Place order'}
           </button>
         </section>
 
         {/* Summary */}
-        <aside className="border rounded-xl p-4 h-max">
+        <aside className="card h-max">
+          <div className="card-body">
           <h2 className="font-semibold mb-3">Order summary</h2>
           {/* Saved addresses selector */}
           <div className="mb-3">
             <label className="text-sm font-medium">Use saved address</label>
             <select
-              className="mt-1 w-full border rounded-lg px-3 py-2"
+              className="mt-1 w-full select"
               value={addressId}
               onChange={e => setAddressId(e.target.value)}
             >
@@ -184,6 +189,7 @@ export default function Checkout() {
           <div className="flex justify-between text-sm"><span>Subtotal</span><span><Price v={totals.subtotal} /></span></div>
           <div className="flex justify-between text-sm"><span>Shipping</span><span>Free</span></div>
           <div className="flex justify-between font-semibold mt-2"><span>Total</span><span><Price v={totals.grand} /></span></div>
+          </div>
         </aside>
       </div>
     </div>

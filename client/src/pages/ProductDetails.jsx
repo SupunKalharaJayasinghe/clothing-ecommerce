@@ -3,18 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector, useAppDispatch } from '../app/hooks' // <-- CHANGED
 import { addToCart } from '../features/cart/cartSlice'        // <-- NEW
+import { Heart, ShoppingCart, Pencil, Trash2 } from '../lib/icons'
 
 function Price({ price, discountPercent, finalPrice }) {
   if (discountPercent > 0) {
     return (
       <div className="flex items-baseline gap-3">
-        <span className="text-2xl font-semibold">Rs. {finalPrice.toLocaleString()}</span>
-        <span className="line-through opacity-70">Rs. {price.toLocaleString()}</span>
-        <span className="text-xs bg-red-100 text-red-700 rounded px-2 py-0.5">-{discountPercent}%</span>
+        <span className="text-2xl price">Rs. {finalPrice.toLocaleString()}</span>
+        <span className="price-old">Rs. {price.toLocaleString()}</span>
+        <span className="badge badge-accent">-{discountPercent}%</span>
       </div>
     )
   }
-  return <div className="text-2xl font-semibold">Rs. {price.toLocaleString()}</div>
+  return <div className="text-2xl price">Rs. {price.toLocaleString()}</div>
 }
 
 function Stars({ rating }) {
@@ -35,16 +36,16 @@ function Stars({ rating }) {
   )
 }
 
-function Badge({ children, tone = 'gray' }) {
+function Badge({ children, tone = 'neutral' }) {
   const tones = {
-    gray: 'bg-gray-100 text-gray-700',
-    green: 'bg-green-100 text-green-700',
-    red: 'bg-red-100 text-red-700',
-    blue: 'bg-blue-100 text-blue-700',
-    amber: 'bg-amber-100 text-amber-700',
-    purple: 'bg-purple-100 text-purple-700'
+    neutral: 'badge badge-neutral',
+    green: 'badge badge-success',
+    red: 'badge badge-danger',
+    blue: 'badge badge-info',
+    amber: 'badge badge-warning',
+    purple: 'badge badge-accent'
   }
-  return <span className={`text-xs rounded px-2 py-0.5 ${tones[tone]}`}>{children}</span>
+  return <span className={tones[tone] || tones.neutral}>{children}</span>
 }
 
 function StarInput({ value, onChange, size='text-2xl' }) {
@@ -160,9 +161,9 @@ export default function ProductDetails() {
     })()
   }, [slug, user])
 
-  if (loading) return <div className="p-6">Loading…</div>
-  if (error) return <div className="p-6 text-red-600">{error}</div>
-  if (!p) return <div className="p-6">Not found</div>
+  if (loading) return <div className="container-app section">Loading…</div>
+  if (error) return <div className="container-app section text-red-600">{error}</div>
+  if (!p) return <div className="container-app section">Not found</div>
 
   const currentImg = p.images?.[imgIndex] || p.images?.[0]
   const canLoadMore = reviews.length < revTotal
@@ -267,26 +268,26 @@ export default function ProductDetails() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="container-app section">
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Gallery */}
         <div className="relative">
           <button
             onClick={toggleFavorite}
-            className={`absolute right-3 top-3 z-10 rounded-full border px-3 py-1.5 text-xl bg-white/90 ${isFav ? 'text-red-600' : 'text-gray-700'}`}
+            className={`absolute right-3 top-3 z-10 rounded-full border bg-white/90 p-2 ${isFav ? 'text-red-600 border-red-200' : 'text-gray-700 border-gray-200'}`}
             title={isFav ? 'Remove from favorites' : 'Add to favorites'}
             aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
           >
-            {isFav ? '♥' : '♡'}
+            <Heart size={18} className={isFav ? 'fill-red-600' : ''} />
           </button>
-          <div className="aspect-[4/5] bg-gray-50 rounded-2xl overflow-hidden">
+          <div className="product-img rounded-2xl overflow-hidden">
             <img src={currentImg} alt={p.name} className="w-full h-full object-cover" />
           </div>
           {p.images?.length > 1 && (
             <div className="mt-3 grid grid-cols-6 md:grid-cols-8 gap-2">
               {p.images.map((img, i) => (
                 <button key={i}
-                  className={`border rounded-lg overflow-hidden aspect-square ${i===imgIndex ? 'ring-2 ring-black' : ''}`}
+                  className={`border rounded-lg overflow-hidden aspect-square ${i===imgIndex ? 'ring-2 ring-[--color-brand-600]' : ''}`}
                   onClick={() => setImgIndex(i)}>
                   <img src={img} alt={`${p.name} ${i+1}`} className="w-full h-full object-cover" />
                 </button>
@@ -299,12 +300,12 @@ export default function ProductDetails() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
             {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
-            {p.mainTags?.includes('limited') && <Badge tone="amber">Limited</Badge>}
-            {p.mainTags?.includes('bestseller') && <Badge tone="purple">Bestseller</Badge>}
+            {p.mainTags?.includes('limited') && <Badge tone="purple">Limited</Badge>}
+            {p.mainTags?.includes('bestseller') && <Badge tone="blue">Bestseller</Badge>}
             {p.discountPercent > 0 && <Badge tone="red">-{p.discountPercent}%</Badge>}
           </div>
 
-          <h1 className="text-2xl font-bold">{p.name}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">{p.name}</h1>
 
           <div className="flex items-center gap-2">
             <Stars rating={p.rating} />
@@ -317,18 +318,18 @@ export default function ProductDetails() {
 
           <div className="flex items-center gap-2">
             {p.stock > 0 ? (
-              p.lowStock ? <Badge tone="red">Low stock ({p.stock} left)</Badge> : <Badge tone="blue">In stock</Badge>
+              p.lowStock ? <Badge tone="red">Low stock ({p.stock} left)</Badge> : <Badge tone="green">In stock</Badge>
             ) : <Badge>Out of stock</Badge>}
           </div>
 
           <p className="text-sm leading-relaxed opacity-90 whitespace-pre-line">{p.description}</p>
 
           <div className="flex items-center gap-3 pt-2">
-            <button className="rounded-lg border px-4 py-2" disabled={p.stock <= 0} onClick={addItem}>
-              Add to cart
+            <button className="btn btn-primary" disabled={p.stock <= 0} onClick={addItem}>
+              <ShoppingCart size={16} /> Add to cart
             </button>
-            <button className="rounded-lg border px-4 py-2" onClick={toggleFavorite}>
-              {isFav ? 'Remove from favorites' : 'Add to favorites'}
+            <button className="btn btn-outline" onClick={toggleFavorite}>
+              <Heart size={16} className={isFav ? 'fill-red-600 text-red-600' : ''} /> {isFav ? 'Remove favorite' : 'Add favorite'}
             </button>
           </div>
         </div>
@@ -337,7 +338,8 @@ export default function ProductDetails() {
       {/* Reviews Section */}
       <section className="mt-10 grid gap-6 lg:grid-cols-3">
         {/* Write / Edit Review */}
-        <div ref={formRef} className="lg:col-span-1 rounded-2xl border p-5 h-max">
+        <div ref={formRef} className="lg:col-span-1 card h-max">
+          <div className="card-body">
           <h2 className="font-semibold mb-2">{editingId ? 'Edit your review' : 'Write a review'}</h2>
           {!user ? (
             <p className="text-sm opacity-80">
@@ -352,7 +354,7 @@ export default function ProductDetails() {
               )}
               <StarInput value={rating} onChange={setRating} />
               <textarea
-                className="mt-2 w-full border rounded-lg px-3 py-2 h-28 focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="textarea mt-2 h-28"
                 placeholder={editingId ? 'Update your review…' : 'Share your experience with this product…'}
                 value={comment}
                 onChange={e => setComment(e.target.value)}
@@ -361,14 +363,14 @@ export default function ProductDetails() {
               {sendMsg && <p className="text-green-600 text-sm mt-1">{sendMsg}</p>}
               <div className="mt-2 flex items-center gap-2">
                 <button
-                  className="rounded-lg border px-3 py-1"
+                  className="btn btn-primary"
                   onClick={submitReview}
                   disabled={rating < 1 || comment.trim().length < 3 || (reachedLimit && !editingId)}
                 >
                   {editingId ? 'Save changes' : 'Submit review'}
                 </button>
                 {editingId && (
-                  <button className="rounded-lg border px-3 py-1" onClick={cancelEdit}>
+                  <button className="btn btn-outline" onClick={cancelEdit}>
                     Cancel
                   </button>
                 )}
@@ -378,10 +380,12 @@ export default function ProductDetails() {
               </p>
             </>
           )}
+          </div>
         </div>
 
         {/* Reviews list */}
-        <div className="lg:col-span-2 rounded-2xl border p-5">
+        <div className="lg:col-span-2 card">
+          <div className="card-body">
           <h2 className="font-semibold mb-3">Customer Reviews</h2>
 
           {revLoading && reviews.length === 0 && <div>Loading reviews…</div>}
@@ -392,7 +396,7 @@ export default function ProductDetails() {
             {reviews.map((r) => {
               const isOwner = userId && String(r.user?.id) === String(userId)
               return (
-                <div key={r.id} className="border rounded-xl p-3">
+                <div key={r.id} className="card p-3">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">{r.user?.name || 'User'}</div>
                     <div className="flex items-center gap-2 text-sm">
@@ -400,18 +404,18 @@ export default function ProductDetails() {
                       {isOwner && (
                         <>
                           <button
-                            className="rounded border px-2 py-0.5"
+                            className="btn btn-outline px-2 py-1"
                             title="Edit"
                             onClick={() => startEdit(r)}
                           >
-                            ✎
+                            <Pencil size={14} />
                           </button>
                           <button
-                            className="rounded border px-2 py-0.5"
+                            className="btn btn-danger px-2 py-1"
                             title="Delete"
                             onClick={() => deleteReview(r.id)}
                           >
-                            🗑
+                            <Trash2 size={14} />
                           </button>
                         </>
                       )}
@@ -429,7 +433,7 @@ export default function ProductDetails() {
           {canLoadMore && (
             <div className="mt-4">
               <button
-                className="rounded-lg border px-4 py-2"
+                className="btn btn-outline"
                 onClick={() => setRevPage(p => p + 1)}
                 disabled={revLoading}
               >
@@ -437,6 +441,7 @@ export default function ProductDetails() {
               </button>
             </div>
           )}
+          </div>
         </div>
       </section>
     </div>

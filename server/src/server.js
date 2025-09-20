@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url'
 import { env } from './config/env.js'
 import { cspDirectives, corsOptions, apiRateLimiter, authBurstLimiter } from './config/security.js'
 import { refreshJwtIfNeeded } from './middlewares/session.js'
+import { csrfProtection } from './middlewares/csrf.js'
 
 // routes
 import healthRoutes from './api/routes/health.routes.js'
@@ -38,6 +39,8 @@ export function createServer() {
   app.use(cors(corsOptions))
   app.use(compression())
   app.use(cookieParser())
+  // CSRF double-submit protection (issues a readable cookie on safe requests)
+  app.use(csrfProtection)
   app.use(refreshJwtIfNeeded)
   app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: true }))

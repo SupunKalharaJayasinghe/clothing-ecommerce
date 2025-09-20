@@ -6,6 +6,24 @@ const api = axios.create({
   timeout: 15000
 })
 
+// Attach CSRF token for unsafe methods using double-submit cookie strategy
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return m ? decodeURIComponent(m[2]) : undefined
+}
+
+api.interceptors.request.use((cfg) => {
+  const method = (cfg.method || 'get').toLowerCase()
+  if (['post', 'put', 'patch', 'delete'].includes(method)) {
+    const token = getCookie('csrf_token')
+    if (token) {
+      cfg.headers = cfg.headers || {}
+      cfg.headers['x-csrf-token'] = token
+    }
+  }
+  return cfg
+})
+
 // throttle rehydrate attempts
 let lastRehydrate = 0
 const REHYDRATE_COOLDOWN_MS = 5000

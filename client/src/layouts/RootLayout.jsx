@@ -25,22 +25,19 @@ export default function RootLayout() {
             aria-label="Toggle menu"
           >☰</button>
           <nav className="hidden md:flex items-center gap-6">
-            <NavLink to="/" end className="hover:underline">Home</NavLink>
-            <NavLink to="/products" className="hover:underline">Shop</NavLink>
-            <NavLink to="/favorites" className="hover:underline">Favorites</NavLink>
-            <NavLink to="/cart" className="hover:underline">Cart</NavLink>
+            <NavLink to="/" end className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Home</NavLink>
+            <NavLink to="/products" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Shop</NavLink>
+            {user && <NavLink to="/favorites" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Favorites</NavLink>}
+            <NavLink to="/cart" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Cart</NavLink>
             {!user ? (
               <>
-                <NavLink to="/login" className="hover:underline">Login</NavLink>
-                <NavLink to="/register" className="hover:underline">Register</NavLink>
+                <NavLink to="/login" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Login</NavLink>
+                <NavLink to="/register" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Register</NavLink>
               </>
             ) : (
               <div className="flex items-center gap-3">
-                <NavLink to="/orders" className="hover:underline">Orders</NavLink>
-                <NavLink to="/account" className="hover:underline">Account</NavLink>
-                <span className="text-sm opacity-80">
-                  {status === 'loading' ? 'Loading…' : `Hi, ${user.firstName || user.username}`}
-                </span>
+                <NavLink to="/orders" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Orders</NavLink>
+                <NavLink to="/account" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`}>Account</NavLink>
                 <button className="rounded-lg border px-3 py-1" onClick={() => dispatch(logoutUser())}>
                   Logout
                 </button>
@@ -51,19 +48,19 @@ export default function RootLayout() {
         {open && (
           <nav className="md:hidden border-t">
             <div className="px-4 py-3 flex flex-col gap-2">
-              <NavLink to="/" end onClick={() => setOpen(false)}>Home</NavLink>
-              <NavLink to="/products" onClick={() => setOpen(false)}>Shop</NavLink>
-              <NavLink to="/favorites" onClick={() => setOpen(false)}>Favorites</NavLink>
-              <NavLink to="/cart" onClick={() => setOpen(false)}>Cart</NavLink>
+              <NavLink to="/" end className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`} onClick={() => setOpen(false)}>Home</NavLink>
+              <NavLink to="/products" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`} onClick={() => setOpen(false)}>Shop</NavLink>
+              {user && <NavLink to="/favorites" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`} onClick={() => setOpen(false)}>Favorites</NavLink>}
+              <NavLink to="/cart" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`} onClick={() => setOpen(false)}>Cart</NavLink>
               {!user ? (
                 <>
-                  <NavLink to="/login" onClick={() => setOpen(false)}>Login</NavLink>
-                  <NavLink to="/register" onClick={() => setOpen(false)}>Register</NavLink>
+                  <NavLink to="/login" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`} onClick={() => setOpen(false)}>Login</NavLink>
+                  <NavLink to="/register" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`} onClick={() => setOpen(false)}>Register</NavLink>
                 </>
               ) : (
                 <>
-                  <NavLink to="/orders" onClick={() => setOpen(false)}>Orders</NavLink>
-                  <NavLink to="/account" onClick={() => setOpen(false)}>Account</NavLink>
+                  <NavLink to="/orders" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`} onClick={() => setOpen(false)}>Orders</NavLink>
+                  <NavLink to="/account" className={({isActive}) => `nav-link ${isActive ? 'nav-link-active' : ''}`} onClick={() => setOpen(false)}>Account</NavLink>
                   <button
                     className="rounded-lg border px-3 py-1 w-max"
                     onClick={() => { setOpen(false); dispatch(logoutUser()) }}

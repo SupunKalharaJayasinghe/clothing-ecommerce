@@ -113,10 +113,10 @@ export const placeOrder = catchAsync(async (req, res) => {
         first_name: 'Customer',
         last_name: 'User',
         email: 'email@example.com',
-        phone: address.phone || '',
-        address: `${address.line1} ${address.line2 || ''}`.trim(),
-        city: address.city,
-        country: address.country
+        phone: addr.phone || '',
+        address: `${addr.line1} ${addr.line2 || ''}`.trim(),
+        city: addr.city,
+        country: addr.country
         // md5sig should be added here after hashing (left to your PayHere service)
       }
     }
