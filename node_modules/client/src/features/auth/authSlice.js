@@ -122,7 +122,7 @@ const authSlice = createSlice({
         if (a.payload?.twoFARequired) {
           s.twoFA = { required: true, tmpToken: a.payload.tmpToken }
         } else {
-          s.user = a.payload
+          s.user = a.payload.user
           saveUserToStorage(s.user)
         }
       })

@@ -34,8 +34,11 @@ export default function Checkout() {
     (async () => {
       try {
         const { data } = await api.get('/account/addresses')
-        setAddresses(data.items || [])
-        const def = (data.items || []).find(a => a.isDefault) || (data.items || [])[0]
+        const list = Array.isArray(data.items) ? data.items.slice() : []
+        // Sort with default first, then by created order
+        list.sort((a,b) => (b.isDefault === true) - (a.isDefault === true))
+        setAddresses(list)
+        const def = list.find(a => a.isDefault) || list[0]
         if (def) setAddressId(def._id)
       } catch {}
     })()

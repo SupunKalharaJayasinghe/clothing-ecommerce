@@ -58,6 +58,17 @@ export default function Account() {
   const [delErr, setDelErr] = useState('')
   const [delConfirm, setDelConfirm] = useState(false)
 
+  async function reloadAddresses() {
+    try {
+      const { data } = await api.get('/account/addresses')
+      const list = Array.isArray(data.items) ? data.items.slice() : []
+      list.sort((a,b) => (b.isDefault === true) - (a.isDefault === true))
+      setAddresses(list)
+    } catch (e) {
+      // ignore; page will show previous state
+    }
+  }
+
   // load all
   useEffect(() => {
     (async () => {
@@ -82,7 +93,9 @@ export default function Account() {
         setTwoFA(me.data.user.twoFA)
         setNoti(notif.data.notifications)
         setCards(pm.data.items || [])
-        setAddresses(adr.data.items || [])
+        const list = Array.isArray(adr.data.items) ? adr.data.items.slice() : []
+        list.sort((a,b) => (b.isDefault === true) - (a.isDefault === true))
+        setAddresses(list)
         const dr = delr.data.deletionRequest
         setDel({
           status: dr?.status || null,
@@ -135,7 +148,7 @@ export default function Account() {
     setAddrMsg(''); setAddrErr('')
     try {
       const { data } = await api.post('/account/addresses', addrForm)
-      setAddresses(prev => [...prev, data.address])
+      await reloadAddresses()
       setAddrMsg('Address added')
       setAddrForm({ label:'', line1:'', line2:'', city:'', region:'', postalCode:'', country:'', phone:'', isDefault:false })
     } catch (e) {
@@ -145,12 +158,12 @@ export default function Account() {
 
   async function updateAddress(a) {
     const { data } = await api.patch(`/account/addresses/${a._id}`, a)
-    setAddresses(prev => prev.map(x => x._id === a._id ? data.address : x))
+    await reloadAddresses()
   }
 
   async function deleteAddress(id) {
     await api.delete(`/account/addresses/${id}`)
-    setAddresses(prev => prev.filter(x => x._id !== id))
+    await reloadAddresses()
   }
 
   async function saveNoti() {

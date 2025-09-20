@@ -1,1 +1,1 @@
-export const APP_NAME = 'MERN Store'
+export const APP_NAME = 'D & G Enterprises'
