@@ -48,19 +48,19 @@ export default function OrdersPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Orders</h1>
         <div className="flex gap-2">
-          <input placeholder="Search by ID, user, product..." value={q} onChange={e=>setQ(e.target.value)} className="border px-2 py-1 rounded" />
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="border px-2 py-1 rounded">
+          <input placeholder="Search by ID, user, product..." value={q} onChange={e=>setQ(e.target.value)} className="input" />
+          <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
             <option value="">All statuses</option>
             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <button onClick={load} className="bg-black text-white px-3 py-1 rounded">Filter</button>
+          <button onClick={load} className="btn btn-primary">Filter</button>
         </div>
       </div>
 
       {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
 
       <div className="overflow-x-auto">
-        <table className="w-full border text-sm">
+        <table className="table">
           <thead className="bg-gray-50">
             <tr>
               <th className="border p-2 text-left">Order</th>
@@ -85,7 +85,7 @@ export default function OrdersPage() {
                 <td className="border p-2">{o.payment?.method}</td>
                 <td className="border p-2">{o.payment?.status}</td>
                 <td className="border p-2">
-                  <select value={o.status} onChange={e => updateStatus(o._id, e.target.value)} className="border px-2 py-1 rounded">
+                  <select value={o.status} onChange={e => updateStatus(o._id, e.target.value)} className="input">
                     {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </td>

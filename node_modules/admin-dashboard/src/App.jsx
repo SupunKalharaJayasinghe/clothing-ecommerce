@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './ui/Sidebar'
+import Topbar from './ui/Topbar'
 import LoginPage from './pages/Login'
 import DashboardPage from './pages/Dashboard'
 import AdminsPage from './pages/Admins'
@@ -30,11 +31,14 @@ export default function App() {
         path="/*"
         element={
           <Protected>
-            <div className="min-h-screen grid grid-cols-[240px_1fr]">
+            <div className="min-h-screen grid grid-cols-1 md:grid-cols-[260px_1fr]">
               <Sidebar />
-              <main className="p-6">
-                <Routes>
-                  <Route index element={<DashboardPage />} />
+              <main className="p-4 md:p-6">
+                <div className="mx-auto max-w-7xl">
+                  <Topbar />
+                  <div className="mt-4">
+                    <Routes>
+                      <Route index element={<DashboardPage />} />
                   <Route path="admins" element={
                     <Protected anyOfRoles={["user_manager","admin"]}>
                       <AdminsPage />
@@ -75,8 +79,10 @@ export default function App() {
                       <ReturnsPage />
                     </Protected>
                   } />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </div>
+                </div>
               </main>
             </div>
           </Protected>

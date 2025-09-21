@@ -90,11 +90,11 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Products</h1>
         <div className="flex gap-2">
-          <input placeholder="Search..." value={q} onChange={e=>setQ(e.target.value)} className="border px-2 py-1 rounded" />
-          <select value={category} onChange={e=>setCategory(e.target.value)} className="border px-2 py-1 rounded">
+          <input placeholder="Search..." value={q} onChange={e=>setQ(e.target.value)} className="input" />
+          <select value={category} onChange={e=>setCategory(e.target.value)} className="input">
             {categories.map(c => <option key={c} value={c}>{c || 'All categories'}</option>)}
           </select>
-          <button onClick={load} className="bg-black text-white px-3 py-1 rounded">Filter</button>
+          <button onClick={load} className="btn btn-primary">Filter</button>
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export default function ProductsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <table className="w-full border text-sm">
+          <table className="table">
             <thead className="bg-gray-50">
               <tr>
                 <th className="border p-2 text-left">Name</th>
@@ -127,7 +127,7 @@ export default function ProductsPage() {
                   <td className="border p-2">{p.stock}</td>
                   <td className="border p-2">{p.category || '-'}</td>
                   <td className="border p-2 text-center">
-                    <button onClick={() => onDelete(p.id)} className="text-red-600 hover:underline">Delete</button>
+<button onClick={() => onDelete(p.id)} className="btn btn-danger">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -136,40 +136,40 @@ export default function ProductsPage() {
         </div>
         <div>
           <h2 className="font-semibold mb-2">Create product</h2>
-          <form onSubmit={onCreate} className="border rounded p-3 text-sm">
+          <form onSubmit={onCreate} className="card p-3 text-sm">
             <label className="block text-xs mb-1">Name</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={form.name} onChange={e=>setForm(v=>({...v, name: e.target.value}))} />
+            <input className="w-full input mb-2" value={form.name} onChange={e=>setForm(v=>({...v, name: e.target.value}))} />
 
             <label className="block text-xs mb-1">Image URL</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={form.image} onChange={e=>setForm(v=>({...v, image: e.target.value}))} />
+            <input className="w-full input mb-2" value={form.image} onChange={e=>setForm(v=>({...v, image: e.target.value}))} />
 
             <label className="block text-xs mb-1">Color</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={form.color} onChange={e=>setForm(v=>({...v, color: e.target.value}))} />
+            <input className="w-full input mb-2" value={form.color} onChange={e=>setForm(v=>({...v, color: e.target.value}))} />
 
             <label className="block text-xs mb-1">Description</label>
-            <textarea className="w-full border px-2 py-1 rounded mb-2" rows={4} value={form.description} onChange={e=>setForm(v=>({...v, description: e.target.value}))} />
+            <textarea className="w-full input mb-2" rows={4} value={form.description} onChange={e=>setForm(v=>({...v, description: e.target.value}))} />
 
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs mb-1">Price</label>
-                <input type="number" step="0.01" className="w-full border px-2 py-1 rounded mb-2" value={form.price} onChange={e=>setForm(v=>({...v, price: e.target.value}))} />
+                <input type="number" step="0.01" className="w-full input mb-2" value={form.price} onChange={e=>setForm(v=>({...v, price: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-xs mb-1">Discount %</label>
-                <input type="number" className="w-full border px-2 py-1 rounded mb-2" value={form.discountPercent} onChange={e=>setForm(v=>({...v, discountPercent: e.target.value}))} />
+                <input type="number" className="w-full input mb-2" value={form.discountPercent} onChange={e=>setForm(v=>({...v, discountPercent: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-xs mb-1">Stock</label>
-                <input type="number" className="w-full border px-2 py-1 rounded mb-2" value={form.stock} onChange={e=>setForm(v=>({...v, stock: e.target.value}))} />
+                <input type="number" className="w-full input mb-2" value={form.stock} onChange={e=>setForm(v=>({...v, stock: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-xs mb-1">Low stock threshold</label>
-                <input type="number" className="w-full border px-2 py-1 rounded mb-2" value={form.lowStockThreshold} onChange={e=>setForm(v=>({...v, lowStockThreshold: e.target.value}))} />
+                <input type="number" className="w-full input mb-2" value={form.lowStockThreshold} onChange={e=>setForm(v=>({...v, lowStockThreshold: e.target.value}))} />
               </div>
             </div>
 
             <label className="block text-xs mb-1">Tags (comma separated)</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={form.tags} onChange={e=>setForm(v=>({...v, tags: e.target.value}))} />
+            <input className="w-full input mb-2" value={form.tags} onChange={e=>setForm(v=>({...v, tags: e.target.value}))} />
 
             <label className="block text-xs mb-1">Main tags</label>
             <div className="flex flex-wrap gap-2 mb-2">
@@ -181,11 +181,11 @@ export default function ProductsPage() {
             </div>
 
             <label className="block text-xs mb-1">Category</label>
-            <select className="w-full border px-2 py-1 rounded mb-3" value={form.category} onChange={e=>setForm(v=>({...v, category: e.target.value}))}>
+            <select className="w-full input mb-3" value={form.category} onChange={e=>setForm(v=>({...v, category: e.target.value}))}>
               {categories.map(c => <option key={c} value={c}>{c || '(none)'}</option>)}
             </select>
 
-            <button disabled={creating} className="w-full bg-black text-white py-1.5 rounded disabled:opacity-50">{creating ? 'Creating...' : 'Create product'}</button>
+            <button disabled={creating} className="w-full btn btn-primary disabled:opacity-50">{creating ? 'Creating...' : 'Create product'}</button>
           </form>
         </div>
       </div>

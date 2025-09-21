@@ -54,8 +54,8 @@ export default function CustomersPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Customers</h1>
         <div className="flex gap-2">
-          <input placeholder="Search..." value={q} onChange={e=>setQ(e.target.value)} className="border px-2 py-1 rounded" />
-          <button onClick={load} className="bg-black text-white px-3 py-1 rounded">Filter</button>
+          <input placeholder="Search..." value={q} onChange={e=>setQ(e.target.value)} className="input" />
+          <button onClick={load} className="btn btn-primary">Filter</button>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export default function CustomersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <table className="w-full border text-sm">
+          <table className="table">
             <thead className="bg-gray-50">
               <tr>
                 <th className="border p-2 text-left">Name</th>
@@ -83,7 +83,7 @@ export default function CustomersPage() {
                   <td className="border p-2">{u.email}</td>
                   <td className="border p-2">{u.username}</td>
                   <td className="border p-2 text-center">
-                    <button onClick={() => onDelete(u.id)} className="text-red-600 hover:underline">Delete</button>
+<button onClick={() => onDelete(u.id)} className="btn btn-danger">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -92,19 +92,19 @@ export default function CustomersPage() {
         </div>
         <div>
           <h2 className="font-semibold mb-2">Create customer</h2>
-          <form onSubmit={onCreate} className="border rounded p-3 text-sm">
+          <form onSubmit={onCreate} className="card p-3 text-sm">
             <label className="block text-xs mb-1">First name</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={form.firstName} onChange={e=>setForm(v=>({...v, firstName: e.target.value}))} />
+            <input className="w-full input mb-2" value={form.firstName} onChange={e=>setForm(v=>({...v, firstName: e.target.value}))} />
             <label className="block text-xs mb-1">Last name</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={form.lastName} onChange={e=>setForm(v=>({...v, lastName: e.target.value}))} />
+            <input className="w-full input mb-2" value={form.lastName} onChange={e=>setForm(v=>({...v, lastName: e.target.value}))} />
             <label className="block text-xs mb-1">Email</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={form.email} onChange={e=>setForm(v=>({...v, email: e.target.value}))} />
+            <input className="w-full input mb-2" value={form.email} onChange={e=>setForm(v=>({...v, email: e.target.value}))} />
             <label className="block text-xs mb-1">Username</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={form.username} onChange={e=>setForm(v=>({...v, username: e.target.value}))} />
+            <input className="w-full input mb-2" value={form.username} onChange={e=>setForm(v=>({...v, username: e.target.value}))} />
             <label className="block text-xs mb-1">Password</label>
-            <input type="password" className="w-full border px-2 py-1 rounded mb-3" value={form.password} onChange={e=>setForm(v=>({...v, password: e.target.value}))} />
+            <input type="password" className="w-full input mb-3" value={form.password} onChange={e=>setForm(v=>({...v, password: e.target.value}))} />
 
-            <button disabled={creating} className="w-full bg-black text-white py-1.5 rounded disabled:opacity-50">{creating ? 'Creating...' : 'Create customer'}</button>
+            <button disabled={creating} className="w-full btn btn-primary disabled:opacity-50">{creating ? 'Creating...' : 'Create customer'}</button>
           </form>
         </div>
       </div>

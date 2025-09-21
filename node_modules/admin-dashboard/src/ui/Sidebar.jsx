@@ -11,7 +11,7 @@ function Item({ to, icon: Icon, label, roles }) {
   return (
     <NavLink
       to={to}
-      className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-800 ${isActive ? 'bg-gray-800' : ''}`}
+      className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/5 ${isActive ? 'bg-white/10 border-l-4 border-[color:var(--primary)]' : ''}`}
     >
       <Icon size={18} />
       <span>{label}</span>
@@ -22,10 +22,10 @@ function Item({ to, icon: Icon, label, roles }) {
 export default function Sidebar() {
   const { user, logout } = useAuth()
   return (
-    <aside className="bg-gray-900 text-white p-4 min-h-screen">
+    <aside className="bg-[color:var(--nav-bg)] text-white p-4 min-h-screen">
       <div className="mb-6">
-        <div className="font-semibold">Admin Dashboard</div>
-        <div className="text-xs text-gray-400">{user?.email}</div>
+        <div className="font-semibold" style={{color:'var(--nav-fg)'}}>Admin Dashboard</div>
+        <div className="text-xs" style={{color:'var(--nav-fg-muted)'}}>{user?.email}</div>
       </div>
       <nav className="flex flex-col gap-1">
         <Item to="/" icon={Home} label="Overview" />
@@ -38,7 +38,6 @@ export default function Sidebar() {
         <Item to="/returns" icon={RefreshCw} label="Returns" roles={["return_manager"]} />
         <Item to="/reviews" icon={Star} label="Reviews" roles={["review_manager"]} />
       </nav>
-      <button onClick={logout} className="mt-6 text-sm text-gray-300 hover:text-white">Logout</button>
     </aside>
   )
 }

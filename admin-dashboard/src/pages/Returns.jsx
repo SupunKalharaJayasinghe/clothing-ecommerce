@@ -60,11 +60,11 @@ export default function ReturnsPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Returns</h1>
         <div className="flex gap-2">
-          <input placeholder="Search by order ID" value={q} onChange={e=>setQ(e.target.value)} className="border px-2 py-1 rounded" />
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="border px-2 py-1 rounded">
+          <input placeholder="Search by order ID" value={q} onChange={e=>setQ(e.target.value)} className="input" />
+          <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
             {statuses.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
-          <button onClick={load} className="bg-black text-white px-3 py-1 rounded">Filter</button>
+          <button onClick={load} className="btn btn-primary">Filter</button>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export default function ReturnsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <table className="w-full border text-sm">
+          <table className="table">
             <thead className="bg-gray-50">
               <tr>
                 <th className="border p-2 text-left">Order</th>
@@ -94,7 +94,7 @@ export default function ReturnsPage() {
                     <div className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()}</div>
                   </td>
                   <td className="border p-2">
-                    <select value={o.returnRequest?.status || ''} onChange={e=>updateStatus(o._id, e.target.value)} className="border px-2 py-1 rounded">
+                    <select value={o.returnRequest?.status || ''} onChange={e=>updateStatus(o._id, e.target.value)} className="input">
                       {statuses.slice(1).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
@@ -108,12 +108,12 @@ export default function ReturnsPage() {
         </div>
         <div>
           <h2 className="font-semibold mb-2">Init a return</h2>
-          <form onSubmit={initReturn} className="border rounded p-3 text-sm">
+          <form onSubmit={initReturn} className="card p-3 text-sm">
             <label className="block text-xs mb-1">Order ID</label>
-            <input className="w-full border px-2 py-1 rounded mb-2" value={newOrderId} onChange={e=>setNewOrderId(e.target.value)} />
+            <input className="w-full input mb-2" value={newOrderId} onChange={e=>setNewOrderId(e.target.value)} />
             <label className="block text-xs mb-1">Reason</label>
-            <textarea className="w-full border px-2 py-1 rounded mb-3" rows={3} value={reason} onChange={e=>setReason(e.target.value)} />
-            <button disabled={creating} className="w-full bg-black text-white py-1.5 rounded disabled:opacity-50">{creating ? 'Creating...' : 'Init return'}</button>
+            <textarea className="w-full input mb-3" rows={3} value={reason} onChange={e=>setReason(e.target.value)} />
+            <button disabled={creating} className="w-full btn btn-primary disabled:opacity-50">{creating ? 'Creating...' : 'Init return'}</button>
           </form>
         </div>
       </div>

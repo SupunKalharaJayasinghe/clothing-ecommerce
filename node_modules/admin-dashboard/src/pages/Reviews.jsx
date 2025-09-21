@@ -38,15 +38,15 @@ export default function ReviewsPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Reviews</h1>
         <div className="flex gap-2">
-          <input placeholder="Search comment..." value={q} onChange={e=>setQ(e.target.value)} className="border px-2 py-1 rounded" />
-          <input placeholder="Filter by product slug" value={slug} onChange={e=>setSlug(e.target.value)} className="border px-2 py-1 rounded" />
-          <button onClick={load} className="bg-black text-white px-3 py-1 rounded">Filter</button>
+          <input placeholder="Search comment..." value={q} onChange={e=>setQ(e.target.value)} className="input" />
+          <input placeholder="Filter by product slug" value={slug} onChange={e=>setSlug(e.target.value)} className="input" />
+          <button onClick={load} className="btn btn-primary">Filter</button>
         </div>
       </div>
 
       {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
 
-      <table className="w-full border text-sm">
+      <table className="table">
         <thead className="bg-gray-50">
           <tr>
             <th className="border p-2 text-left">Product</th>
@@ -63,12 +63,12 @@ export default function ReviewsPage() {
             <tr><td colSpan="5" className="p-4 text-center">No reviews</td></tr>
           ) : items.map(r => (
             <tr key={r.id}>
-              <td className="border p-2">{r.product?.name} <div className="text-xs text-gray-500">{r.product?.slug}</div></td>
+              <td className="border p-2">{r.product?.name} <div className="text-xs text-[color:var(--ink-muted)]">{r.product?.slug}</div></td>
               <td className="border p-2">{r.user?.name}</td>
               <td className="border p-2">{r.rating}</td>
               <td className="border p-2 max-w-[400px] truncate" title={r.comment}>{r.comment}</td>
               <td className="border p-2 text-center">
-                <button onClick={() => onDelete(r.id)} className="text-red-600 hover:underline">Delete</button>
+<button onClick={() => onDelete(r.id)} className="btn btn-danger">Delete</button>
               </td>
             </tr>
           ))}

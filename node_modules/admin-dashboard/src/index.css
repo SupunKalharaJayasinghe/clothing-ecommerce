@@ -2,12 +2,54 @@
 
 :root {
   color-scheme: light dark;
+  --primary: #1335F2;
+  --primary-600: #1D64F2;
+  --primary-400: #3876F2;
+  --primary-100: #C9DFF2;
+  --nav-bg: #010D26;
+  --nav-fg: #FFFFFF;
+  --nav-fg-muted: #D6E2FF; /* light desaturated blue for high contrast on nav */
+  --page-bg: #f8fafc;
+  --surface: #ffffff;
+  --ink: #0b1220;
+  --ink-strong: #0b1220;
+  --ink-muted: #475569; /* slate-600 for better contrast on white */
+  --on-primary: #010D26; /* dark text on bright primary to exceed 5.41:1 */
 }
 
-html, body, #root {
-  height: 100%;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg: #0b0f1a;
+    --surface: #0f1629;
+    --ink: #e5e7eb;
+    --ink-strong: #ffffff;
+    --ink-muted: #9aa4b2;
+  }
 }
 
-body {
-  margin: 0;
-}
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--page-bg); color: var(--ink); }
+
+.btn { @apply inline-flex items-center justify-center gap-1 rounded-md px-3 py-2 text-sm transition-colors; }
+.btn-primary { background: var(--primary); color: var(--on-primary); }
+.btn-primary:hover { background: var(--primary-600); }
+.btn-light { @apply border; border-color: color-mix(in srgb, var(--ink) 20%, transparent); color: var(--ink); background: var(--surface); }
+.btn-light:hover { background: color-mix(in srgb, var(--primary-100) 40%, white); }
+
+.input { @apply border rounded-md px-3 py-2 text-sm; border-color: color-mix(in srgb, var(--ink) 15%, transparent); background: var(--surface); }
+.input:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent); border-color: var(--primary-400); }
+
+.card { @apply rounded-xl border shadow-sm; border-color: color-mix(in srgb, var(--ink) 14%, transparent); background: var(--surface); }
+.card-header { @apply px-4 py-3 border-b rounded-t-xl; border-color: color-mix(in srgb, var(--ink) 10%, transparent); }
+.card-body { @apply p-4; }
+
+.table { @apply w-full text-sm; }
+.table th { @apply text-left; background: #EEF4FF; color: var(--ink-strong); }
+.table th, .table td { @apply border px-2 py-2; border-color: color-mix(in srgb, var(--ink) 16%, transparent); }
+
+/* placeholder contrast */
+.input::placeholder { color: color-mix(in srgb, var(--ink) 70%, transparent); }
+
+/* Danger button for destructive actions with accessible contrast */
+.btn-danger { background: #B91C1C; color: #FFFFFF; }
+.btn-danger:hover { background: #991B1B; }
