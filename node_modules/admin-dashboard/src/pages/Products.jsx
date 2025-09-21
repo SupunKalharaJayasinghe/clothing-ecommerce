@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
+import { useAuth } from '../state/auth'
 
 const mainTagOptions = ['discount','new','limited','bestseller','featured']
 const categories = ['', 'men', 'women', 'kids']
 
 export default function ProductsPage() {
+  const { user } = useAuth()
+  const canManage = Boolean(user?.isPrimaryAdmin || (user?.roles || []).includes('product_manager'))
+
   const [items, setItems] = useState([])
   const [q, setQ] = useState('')
   const [category, setCategory] = useState('')
@@ -24,7 +28,8 @@ export default function ProductsPage() {
     mainTags: [],
     category: ''
   })
-  const [creating, setCreating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -41,9 +46,10 @@ export default function ProductsPage() {
 
   useEffect(() => { load() }, [])
 
-  const onCreate = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
-    setCreating(true)
+    if (!canManage) { alert('Only the primary admin or product manager can save products.'); return }
+    setSaving(true)
     try {
       const payload = {
         name: form.name,
@@ -58,17 +64,23 @@ export default function ProductsPage() {
         mainTags: form.mainTags,
         category: form.category || undefined
       }
-      await api.post('/admin/products', payload)
+      if (editingId) {
+        await api.patch(`/admin/products/${editingId}`, payload)
+      } else {
+        await api.post('/admin/products', payload)
+      }
       setForm({ name: '', image: '', color: '', description: '', price: 0, discountPercent: 0, stock: 0, lowStockThreshold: 5, tags: '', mainTags: [], category: '' })
+      setEditingId('')
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
     } finally {
-      setCreating(false)
+      setSaving(false)
     }
   }
 
   const onDelete = async (id) => {
+    if (!canManage) { alert('Only the primary admin or product manager can delete products.'); return }
     if (!confirm('Delete this product?')) return
     try {
       await api.delete(`/admin/products/${id}`)
@@ -82,6 +94,24 @@ export default function ProductsPage() {
     setForm(f => {
       const exists = f.mainTags.includes(tag)
       return { ...f, mainTags: exists ? f.mainTags.filter(t => t !== tag) : [...f.mainTags, tag] }
+    })
+  }
+
+  const onEdit = (p) => {
+    if (!canManage) return
+    setEditingId(p.id)
+    setForm({
+      name: p.name || '',
+      image: Array.isArray(p.images) && p.images.length ? p.images[0] : '',
+      color: p.color || '',
+      description: p.description || '',
+      price: p.price || 0,
+      discountPercent: p.discountPercent || 0,
+      stock: p.stock || 0,
+      lowStockThreshold: p.lowStockThreshold || 5,
+      tags: (p.tags || []).join(', '),
+      mainTags: p.mainTags || [],
+      category: p.category || ''
     })
   }
 
@@ -100,43 +130,53 @@ export default function ProductsPage() {
 
       {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
 
+      {!canManage ? (
+        <div className="card p-4 text-sm">
+          <div className="text-[13px] text-gray-400">Access restricted. Only the primary admin or product manager can view and manage products.</div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <table className="table">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="border p-2 text-left">Name</th>
-                <th className="border p-2 text-left">Price</th>
-                <th className="border p-2 text-left">Stock</th>
-                <th className="border p-2 text-left">Category</th>
-                <th className="border p-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan="5" className="p-4 text-center">Loading...</td></tr>
-              ) : items.length === 0 ? (
-                <tr><td colSpan="5" className="p-4 text-center">No products</td></tr>
-              ) : items.map(p => (
-                <tr key={p.id}>
-                  <td className="border p-2">
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-gray-500">{p.slug}</div>
-                  </td>
-                  <td className="border p-2">${'{'}p.price{'}'} {p.discountPercent ? <span className="text-xs text-green-700">(-{p.discountPercent}%)</span> : null}</td>
-                  <td className="border p-2">{p.stock}</td>
-                  <td className="border p-2">{p.category || '-'}</td>
-                  <td className="border p-2 text-center">
-<button onClick={() => onDelete(p.id)} className="btn btn-danger">Delete</button>
-                  </td>
+          <div className="card overflow-hidden">
+            <table className="table modern-table">
+              <thead>
+                <tr>
+                  <th className="border p-2 text-left">Name</th>
+                  <th className="border p-2 text-left">Price</th>
+                  <th className="border p-2 text-left">Stock</th>
+                  <th className="border p-2 text-left">Category</th>
+                  <th className="border p-2 text-center">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan="5" className="p-4 text-center">Loading...</td></tr>
+                ) : items.length === 0 ? (
+                  <tr><td colSpan="5" className="p-4 text-center">No products</td></tr>
+                ) : items.map(p => (
+                  <tr key={p.id}>
+                    <td className="border p-2">
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-xs text-gray-500">{p.slug}</div>
+                    </td>
+                    <td className="border p-2">${'{'}p.price{'}'} {p.discountPercent ? <span className="text-xs text-green-700">(-{p.discountPercent}%)</span> : null}</td>
+                    <td className="border p-2">{p.stock}</td>
+                    <td className="border p-2">{p.category || '-'}</td>
+                    <td className="border p-2 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => onEdit(p)} className="btn btn-light btn-sm">Edit</button>
+                        <button onClick={() => onDelete(p.id)} className="btn btn-danger btn-sm">Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
         <div>
-          <h2 className="font-semibold mb-2">Create product</h2>
-          <form onSubmit={onCreate} className="card p-3 text-sm">
+          <h2 className="font-semibold mb-2">{editingId ? 'Edit product' : 'Create product'}</h2>
+          <form onSubmit={onSubmit} className="card p-3 text-sm">
             <label className="block text-xs mb-1">Name</label>
             <input className="w-full input mb-2" value={form.name} onChange={e=>setForm(v=>({...v, name: e.target.value}))} />
 
@@ -185,10 +225,16 @@ export default function ProductsPage() {
               {categories.map(c => <option key={c} value={c}>{c || '(none)'}</option>)}
             </select>
 
-            <button disabled={creating} className="w-full btn btn-primary disabled:opacity-50">{creating ? 'Creating...' : 'Create product'}</button>
+            <div className="flex items-center gap-2 mt-2">
+              {editingId && (
+                <button type="button" className="btn btn-light flex-1" onClick={() => { setEditingId(''); setForm({ name: '', image: '', color: '', description: '', price: 0, discountPercent: 0, stock: 0, lowStockThreshold: 5, tags: '', mainTags: [], category: '' }) }}>Cancel</button>
+              )}
+              <button disabled={saving} className="w-full btn btn-primary disabled:opacity-50 flex-1">{saving ? 'Saving...' : (editingId ? 'Save changes' : 'Create product')}</button>
+            </div>
           </form>
         </div>
       </div>
+      )}
     </div>
   )
 }

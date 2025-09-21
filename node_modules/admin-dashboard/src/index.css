@@ -14,7 +14,7 @@
   --ink: #0b1220;
   --ink-strong: #0b1220;
   --ink-muted: #475569; /* slate-600 for better contrast on white */
-  --on-primary: #010D26; /* dark text on bright primary to exceed 5.41:1 */
+  --on-primary: #FFFFFF; /* white text on primary buttons and chips */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -31,10 +31,10 @@ html, body, #root { height: 100%; }
 body { margin: 0; background: var(--page-bg); color: var(--ink); }
 
 .btn { @apply inline-flex items-center justify-center gap-1 rounded-md px-3 py-2 text-sm transition-colors; }
-.btn-primary { background: var(--primary); color: var(--on-primary); }
-.btn-primary:hover { background: var(--primary-600); }
-.btn-light { @apply border; border-color: color-mix(in srgb, var(--ink) 20%, transparent); color: var(--ink); background: var(--surface); }
-.btn-light:hover { background: color-mix(in srgb, var(--primary-100) 40%, white); }
+.btn-primary { background: var(--primary); color: #FFFFFF; }
+.btn-primary:hover { background: var(--primary-600); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent); filter: brightness(1.02); }
+.btn-light { @apply border; border-color: color-mix(in srgb, var(--ink) 20%, transparent); color: var(--ink-strong); background: var(--surface); }
+.btn-light:hover { background: color-mix(in srgb, var(--primary-100) 35%, var(--surface)); border-color: var(--primary-400); filter: brightness(1.03); }
 
 .input { @apply border rounded-md px-3 py-2 text-sm; border-color: color-mix(in srgb, var(--ink) 15%, transparent); background: var(--surface); }
 .input:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent); border-color: var(--primary-400); }
@@ -52,7 +52,7 @@ body { margin: 0; background: var(--page-bg); color: var(--ink); }
 
 /* Danger button for destructive actions with accessible contrast */
 .btn-danger { background: #B91C1C; color: #FFFFFF; }
-.btn-danger:hover { background: #991B1B; }
+.btn-danger:hover { background: #991B1B; box-shadow: 0 0 0 3px rgba(185,28,28,0.15); }
 
 /* Dashboard KPIs */
 .dashboard-grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 12px; }

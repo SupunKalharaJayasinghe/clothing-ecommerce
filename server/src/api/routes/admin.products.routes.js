@@ -2,13 +2,13 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
-import { requireAnyRole, ROLES } from '../../middlewares/roles.js'
+import { requirePrimaryAdminOrAnyRole, ROLES } from '../../middlewares/roles.js'
 import { listProducts, getProduct, createProduct, updateProduct, deleteProduct } from '../controllers/admin.products.controller.js'
 
 const router = Router()
 router.use(requireAdminAuth)
 
-const canManageProducts = requireAnyRole(ROLES.ADMIN, ROLES.PRODUCT_MANAGER)
+const canManageProducts = requirePrimaryAdminOrAnyRole(ROLES.PRODUCT_MANAGER)
 
 const listSchema = z.object({
   query: z.object({

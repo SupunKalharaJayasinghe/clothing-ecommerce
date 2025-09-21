@@ -21,7 +21,8 @@ export default function AdminsPage() {
   const [error, setError] = useState('')
 
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', username: '', password: '', roles: ['user_manager'] })
-  const [creating, setCreating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -38,17 +39,24 @@ export default function AdminsPage() {
 
   useEffect(() => { load() }, [])
 
-  const onCreate = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
-    setCreating(true)
+    setSaving(true)
     try {
-      await api.post('/admin/admins', form)
+      if (editingId) {
+        const payload = { ...form }
+        if (!payload.password) delete payload.password
+        await api.patch(`/admin/admins/${editingId}`, payload)
+      } else {
+        await api.post('/admin/admins', form)
+      }
       setForm({ firstName: '', lastName: '', email: '', username: '', password: '', roles: ['user_manager'] })
+      setEditingId('')
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
     } finally {
-      setCreating(false)
+      setSaving(false)
     }
   }
 
@@ -60,6 +68,18 @@ export default function AdminsPage() {
     } catch (e) {
       alert(e.response?.data?.message || e.message)
     }
+  }
+
+  const onEdit = (u) => {
+    setEditingId(u.id)
+    setForm({
+      firstName: u.firstName || '',
+      lastName: u.lastName || '',
+      email: u.email || '',
+      username: u.username || '',
+      password: '',
+      roles: Array.from(new Set(u.roles || []))
+    })
   }
 
   const allRoles = useMemo(() => Object.keys(roleLabels), [])
@@ -123,7 +143,10 @@ export default function AdminsPage() {
                   </td>
                   <td className="border p-2 text-center">
                     {!u.isPrimaryAdmin && (
-                      <button onClick={() => onDelete(u.id)} className="btn btn-danger btn-sm inline-flex items-center gap-1"><Trash2 size={14}/> Delete</button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => onEdit(u)} className="btn btn-light btn-sm">Edit</button>
+                        <button onClick={() => onDelete(u.id)} className="btn btn-danger btn-sm inline-flex items-center gap-1"><Trash2 size={14}/> Delete</button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -133,8 +156,8 @@ export default function AdminsPage() {
           </div>
         </div>
         <div>
-          <h2 className="font-semibold mb-2">Create admin</h2>
-          <form onSubmit={onCreate} className="card p-3 text-sm">
+          <h2 className="font-semibold mb-2">{editingId ? 'Edit admin' : 'Create admin'}</h2>
+          <form onSubmit={onSubmit} className="card p-3 text-sm">
             <div className="form-grid form-grid-sm-2 gap-3">
               <div>
                 <label className="block text-xs mb-1">First name</label>
@@ -169,7 +192,10 @@ export default function AdminsPage() {
               </div>
             </div>
 
-            <button disabled={creating} className="w-full btn btn-primary mt-3 disabled:opacity-50">{creating ? 'Creating...' : 'Create admin'}</button>
+            <div className="flex items-center gap-2 mt-3">
+              {editingId && <button type="button" className="btn btn-light flex-1" onClick={() => { setEditingId(''); setForm({ firstName: '', lastName: '', email: '', username: '', password: '', roles: ['user_manager'] }) }}>Cancel</button>}
+              <button disabled={saving} className="w-full btn btn-primary disabled:opacity-50 flex-1">{saving ? 'Saving...' : (editingId ? 'Save changes' : 'Create admin')}</button>
+            </div>
           </form>
         </div>
       </div>

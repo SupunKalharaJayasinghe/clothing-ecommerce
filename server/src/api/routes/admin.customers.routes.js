@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
-import { requireAnyRole, ROLES } from '../../middlewares/roles.js'
+import { requireAnyRole, requirePrimaryAdmin, ROLES } from '../../middlewares/roles.js'
 import { z } from 'zod'
 import { listCustomers, getCustomer, createCustomer, updateCustomer, deleteCustomer } from '../controllers/admin.customers.controller.js'
 
@@ -17,8 +17,8 @@ const updateSchema = z.object({ params: z.object({ id: z.string() }), body: z.ob
 
 router.get('/', canManageCustomers, validate(listSchema), listCustomers)
 router.get('/:id', canManageCustomers, validate(idParam), getCustomer)
-router.post('/', canManageCustomers, validate(createSchema), createCustomer)
-router.patch('/:id', canManageCustomers, validate(updateSchema), updateCustomer)
-router.delete('/:id', canManageCustomers, validate(idParam), deleteCustomer)
+router.post('/', requirePrimaryAdmin, validate(createSchema), createCustomer)
+router.patch('/:id', requirePrimaryAdmin, validate(updateSchema), updateCustomer)
+router.delete('/:id', requirePrimaryAdmin, validate(idParam), deleteCustomer)
 
 export default router

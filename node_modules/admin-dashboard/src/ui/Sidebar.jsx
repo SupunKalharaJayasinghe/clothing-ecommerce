@@ -6,7 +6,7 @@ import { useAuth } from '../state/auth'
 function Item({ to, icon: Icon, label, roles }) {
   const { user } = useAuth()
   const userRoles = user?.roles || []
-  const canSee = roles ? (userRoles.includes('admin') || userRoles.some(r => roles.includes(r))) : true
+  const canSee = roles ? (Boolean(user?.isPrimaryAdmin) || userRoles.some(r => roles.includes(r))) : true
   if (!canSee) return null
   return (
     <NavLink
