@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
+import { Trash2, Search } from 'lucide-react'
 
 const roleLabels = {
   admin: 'Main Admin',
@@ -75,8 +76,11 @@ export default function AdminsPage() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Admins</h1>
-        <div className="flex gap-2">
-          <input placeholder="Search..." value={q} onChange={e=>setQ(e.target.value)} className="input" />
+        <div className="toolbar">
+          <div className="input-with-icon">
+            <Search size={16} />
+            <input placeholder="Search admins..." value={q} onChange={e=>setQ(e.target.value)} />
+          </div>
           <select value={role} onChange={e=>setRole(e.target.value)} className="input">
             <option value="">All roles</option>
             {allRoles.map(r => <option key={r} value={r}>{roleLabels[r]}</option>)}
@@ -89,8 +93,9 @@ export default function AdminsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <table className="table">
-            <thead className="bg-gray-50">
+          <div className="card overflow-hidden">
+            <table className="table modern-table">
+              <thead>
               <tr>
                 <th className="border p-2 text-left">Name</th>
                 <th className="border p-2 text-left">Email</th>
@@ -112,46 +117,59 @@ export default function AdminsPage() {
                   <td className="border p-2">
                     <div className="flex flex-wrap gap-1">
                       {u.roles.map(r => (
-                        <span key={r} className="text-xs bg-gray-200 rounded px-2 py-0.5">{roleLabels[r] || r}</span>
+                        <span key={r} className="badge">{roleLabels[r] || r}</span>
                       ))}
                     </div>
                   </td>
                   <td className="border p-2 text-center">
                     {!u.isPrimaryAdmin && (
-<button onClick={() => onDelete(u.id)} className="btn btn-danger">Delete</button>
+                      <button onClick={() => onDelete(u.id)} className="btn btn-danger btn-sm inline-flex items-center gap-1"><Trash2 size={14}/> Delete</button>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
         <div>
           <h2 className="font-semibold mb-2">Create admin</h2>
           <form onSubmit={onCreate} className="card p-3 text-sm">
-            <label className="block text-xs mb-1">First name</label>
-            <input className="w-full input mb-2" value={form.firstName} onChange={e=>setForm(v=>({...v, firstName: e.target.value}))} />
-            <label className="block text-xs mb-1">Last name</label>
-            <input className="w-full input mb-2" value={form.lastName} onChange={e=>setForm(v=>({...v, lastName: e.target.value}))} />
-            <label className="block text-xs mb-1">Email</label>
-            <input className="w-full input mb-2" value={form.email} onChange={e=>setForm(v=>({...v, email: e.target.value}))} />
-            <label className="block text-xs mb-1">Username</label>
-            <input className="w-full input mb-2" value={form.username} onChange={e=>setForm(v=>({...v, username: e.target.value}))} />
-            <label className="block text-xs mb-1">Password</label>
-            <input type="password" className="w-full input mb-3" value={form.password} onChange={e=>setForm(v=>({...v, password: e.target.value}))} />
+            <div className="form-grid form-grid-sm-2 gap-3">
+              <div>
+                <label className="block text-xs mb-1">First name</label>
+                <input className="w-full input" value={form.firstName} onChange={e=>setForm(v=>({...v, firstName: e.target.value}))} />
+              </div>
+              <div>
+                <label className="block text-xs mb-1">Last name</label>
+                <input className="w-full input" value={form.lastName} onChange={e=>setForm(v=>({...v, lastName: e.target.value}))} />
+              </div>
+              <div className="form-grid-sm-2 col-span-full">
+                <label className="block text-xs mb-1">Email</label>
+                <input className="w-full input" value={form.email} onChange={e=>setForm(v=>({...v, email: e.target.value}))} />
+              </div>
+              <div>
+                <label className="block text-xs mb-1">Username</label>
+                <input className="w-full input" value={form.username} onChange={e=>setForm(v=>({...v, username: e.target.value}))} />
+              </div>
+              <div>
+                <label className="block text-xs mb-1">Password</label>
+                <input type="password" className="w-full input" value={form.password} onChange={e=>setForm(v=>({...v, password: e.target.value}))} />
+              </div>
+            </div>
 
-            <div className="mb-3">
+            <div className="mt-3">
               <div className="font-medium text-xs mb-1">Roles</div>
-              <div className="flex flex-wrap gap-2">
+              <div className="chip-list">
                 {allRoles.map(r => (
-                  <label key={r} className="flex items-center gap-1 text-xs">
-                    <input type="checkbox" checked={form.roles.includes(r)} onChange={()=>toggleRoleInForm(r)} /> {roleLabels[r]}
-                  </label>
+                  <button type="button" key={r} className={`chip-toggle ${form.roles.includes(r) ? 'on' : ''}`} onClick={()=>toggleRoleInForm(r)}>
+                    {roleLabels[r]}
+                  </button>
                 ))}
               </div>
             </div>
 
-            <button disabled={creating} className="w-full btn btn-primary disabled:opacity-50">{creating ? 'Creating...' : 'Create admin'}</button>
+            <button disabled={creating} className="w-full btn btn-primary mt-3 disabled:opacity-50">{creating ? 'Creating...' : 'Create admin'}</button>
           </form>
         </div>
       </div>

@@ -71,9 +71,24 @@ body { margin: 0; background: var(--page-bg); color: var(--ink); }
 /* Utility list rows */
 .list-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px dashed color-mix(in srgb, var(--ink) 14%, transparent); }
 .list-row:last-child { border-bottom: 0; }
-.badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; font-size: 12px; padding: 2px 8px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; font-size: 12px; padding: 2px 8px; background: color-mix(in srgb, var(--primary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent); }
 .badge-warn { background: #FEF3C7; color: #92400E; }
 .badge-danger { background: #FEE2E2; color: #991B1B; }
+
+/* Toolbar */
+.toolbar { display:inline-flex; gap:8px; align-items:center; }
+.input-with-icon { display:inline-flex; align-items:center; gap:6px; padding: 0 10px; height: 36px; border-radius: 10px; background: var(--surface); border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); }
+.input-with-icon input { border:0; outline:none; background:transparent; height:100%; }
+
+/* Modern table */
+.modern-table thead th { background: #0E1B33; color: #cbd5e1; border-color: color-mix(in srgb, var(--ink) 16%, transparent); }
+.modern-table td, .modern-table th { padding: 10px; }
+.modern-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+
+/* Chip toggles */
+.chip-list { display:flex; flex-wrap:wrap; gap:8px; }
+.chip-toggle { border:1px solid color-mix(in srgb, var(--ink) 18%, transparent); background: var(--surface); color: var(--ink); border-radius: 9999px; padding: 6px 10px; font-weight: 600; cursor: pointer; }
+.chip-toggle.on { background: linear-gradient(135deg, var(--primary), var(--primary-600)); color: var(--on-primary); border-color: transparent; box-shadow: 0 4px 12px rgba(19,53,242,0.35); }
 
 /* Modern Sidebar */
 .sidebar {
