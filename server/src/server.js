@@ -22,6 +22,9 @@ import paymentRoutes from './api/routes/payment.routes.js'
 import adminAuthRoutes from './api/routes/admin.auth.routes.js'
 import adminAdminsRoutes from './api/routes/admin.admins.routes.js'
 import adminCustomersRoutes from './api/routes/admin.customers.routes.js'
+import adminProductsRoutes from './api/routes/admin.products.routes.js'
+import adminOrdersRoutes from './api/routes/admin.orders.routes.js'
+import adminReviewsRoutes from './api/routes/admin.reviews.routes.js'
 
 // error handlers
 import { notFound, errorHandler } from './middlewares/error.js'
@@ -74,11 +77,11 @@ export function createServer() {
   app.use('/api/admin/admins', adminAdminsRoutes)
   app.use('/api/admin/customers', adminCustomersRoutes)
   // Catalog/products management
-  ;(await import('./api/routes/admin.products.routes.js')).default && app.use('/api/admin/products', (await import('./api/routes/admin.products.routes.js')).default)
+  app.use('/api/admin/products', adminProductsRoutes)
   // Orders management
-  ;(await import('./api/routes/admin.orders.routes.js')).default && app.use('/api/admin/orders', (await import('./api/routes/admin.orders.routes.js')).default)
+  app.use('/api/admin/orders', adminOrdersRoutes)
   // Reviews moderation
-  ;(await import('./api/routes/admin.reviews.routes.js')).default && app.use('/api/admin/reviews', (await import('./api/routes/admin.reviews.routes.js')).default)
+  app.use('/api/admin/reviews', adminReviewsRoutes)
 
   app.use(notFound)
   app.use(errorHandler)
