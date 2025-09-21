@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { useAuth } from '../state/auth'
+import { useNavigate } from 'react-router-dom'
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -14,6 +16,7 @@ export default function LoginPage() {
     setError('')
     try {
       await login(identifier, password)
+      navigate('/')
     } catch (e) {
       setError(e.response?.data?.message || e.message || 'Login failed')
     } finally {

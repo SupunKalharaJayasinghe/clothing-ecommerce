@@ -24,7 +24,7 @@ const idParam = z.object({ params: z.object({ id: z.string().min(8) }) })
 const createSchema = z.object({
   body: z.object({
     name: z.string().min(2).max(200),
-    images: z.array(z.string().url().or(z.string().min(1))).min(1).max(10),
+    images: z.array(z.string().min(1)).min(1).max(10),
     color: z.string().min(1),
     description: z.string().min(10),
     price: z.coerce.number().min(0),
@@ -43,7 +43,7 @@ const updateSchema = z.object({
   params: z.object({ id: z.string().min(8) }),
   body: z.object({
     name: z.string().min(2).max(200).optional(),
-    images: z.array(z.string().url().or(z.string().min(1))).min(1).max(10).optional(),
+    images: z.array(z.string().min(1)).min(1).max(10).optional(),
     color: z.string().min(1).optional(),
     description: z.string().min(10).optional(),
     price: z.coerce.number().min(0).optional(),

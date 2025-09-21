@@ -38,6 +38,14 @@ const paymentSchema = new mongoose.Schema({
   }
 }, { _id: false })
 
+const returnRequestSchema = new mongoose.Schema({
+  status: { type: String, enum: ['requested','approved','rejected','received','closed'] },
+  reason: { type: String, trim: true },
+  requestedAt: { type: Date },
+  updatedAt: { type: Date },
+  closedAt: { type: Date }
+}, { _id: false })
+
 const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
 
@@ -74,7 +82,13 @@ const orderSchema = new mongoose.Schema({
     at: { type: Date, default: Date.now }
   }],
 
-  payment: paymentSchema
+  payment: paymentSchema,
+
+  // Optional return workflow tracked separately from order.status
+  returnRequest: returnRequestSchema
 }, { timestamps: true })
+
+// indexes to help lists
+orderSchema.index({ 'returnRequest.status': 1 })
 
 export default mongoose.model('Order', orderSchema)

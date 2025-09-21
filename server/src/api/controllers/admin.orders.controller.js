@@ -72,16 +72,3 @@ export const updateStatus = catchAsync(async (req, res) => {
   res.json({ ok: true, order: o })
 })
 
-export const verifyBankSlip = catchAsync(async (req, res) => {
-  const { id } = req.params
-  const o = await Order.findById(id)
-  if (!o) throw new ApiError(404, 'Order not found')
-  if (o.payment?.method !== 'BANK') throw new ApiError(400, 'Not a bank transfer order')
-
-  o.payment.bank = o.payment.bank || {}
-  o.payment.bank.verifiedAt = o.payment.bank.verifiedAt || new Date()
-  o.payment.status = 'paid'
-  await o.save()
-
-  res.json({ ok: true, order: o })
-})

@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
 
-const statuses = ['pending_payment','placed','packing','handed_over','out_for_delivery','payment_confirm','delivery_confirm','delivery_confirm_bank','completed']
+const methods = ['', 'BANK', 'CARD', 'COD']
+const statuses = ['', 'pending', 'initiated', 'paid', 'failed', 'refunded']
 
-export default function OrdersPage() {
+export default function PaymentsPage() {
   const [items, setItems] = useState([])
   const [q, setQ] = useState('')
+  const [method, setMethod] = useState('')
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -14,7 +16,7 @@ export default function OrdersPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get('/admin/orders', { params: { q, status: status || undefined } })
+      const res = await api.get('/admin/payments', { params: { q, method: method || undefined, status: status || undefined } })
       setItems(res.data.items)
     } catch (e) {
       setError(e.response?.data?.message || e.message)
@@ -25,18 +27,19 @@ export default function OrdersPage() {
 
   useEffect(() => { load() }, [])
 
-  const updateStatus = async (id, next) => {
+  const verifyBank = async (id) => {
+    if (!confirm('Verify this bank slip?')) return
     try {
-      await api.patch(`/admin/orders/${id}/status`, { status: next })
+      await api.post(`/admin/payments/bank/${id}/verify`)
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
     }
   }
 
-  const verifyBank = async (id) => {
+  const setPaymentStatus = async (id, s) => {
     try {
-      await api.post(`/admin/orders/${id}/payments/bank/verify`)
+      await api.patch(`/admin/payments/${id}/status`, { status: s })
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
@@ -46,12 +49,14 @@ export default function OrdersPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Orders</h1>
+        <h1 className="text-xl font-semibold">Payments</h1>
         <div className="flex gap-2">
-          <input placeholder="Search by ID, user, product..." value={q} onChange={e=>setQ(e.target.value)} className="border px-2 py-1 rounded" />
+          <input placeholder="Search by order ID or product" value={q} onChange={e=>setQ(e.target.value)} className="border px-2 py-1 rounded" />
+          <select value={method} onChange={e=>setMethod(e.target.value)} className="border px-2 py-1 rounded">
+            {methods.map(m => <option key={m} value={m}>{m || 'All methods'}</option>)}
+          </select>
           <select value={status} onChange={e=>setStatus(e.target.value)} className="border px-2 py-1 rounded">
-            <option value="">All statuses</option>
-            {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+            {statuses.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="bg-black text-white px-3 py-1 rounded">Filter</button>
         </div>
@@ -65,17 +70,15 @@ export default function OrdersPage() {
             <tr>
               <th className="border p-2 text-left">Order</th>
               <th className="border p-2 text-left">Method</th>
-              <th className="border p-2 text-left">Payment</th>
-              <th className="border p-2 text-left">Status</th>
-              <th className="border p-2 text-left">Total</th>
-              <th className="border p-2">Actions</th>
+              <th className="border p-2 text-left">Payment status</th>
+              <th className="border p-2 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" className="p-4 text-center">Loading...</td></tr>
+              <tr><td colSpan="4" className="p-4 text-center">Loading...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan="6" className="p-4 text-center">No orders</td></tr>
+              <tr><td colSpan="4" className="p-4 text-center">No payments</td></tr>
             ) : items.map(o => (
               <tr key={o._id}>
                 <td className="border p-2">
@@ -83,14 +86,16 @@ export default function OrdersPage() {
                   <div className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString()}</div>
                 </td>
                 <td className="border p-2">{o.payment?.method}</td>
-                <td className="border p-2">{o.payment?.status}</td>
                 <td className="border p-2">
-                  <select value={o.status} onChange={e => updateStatus(o._id, e.target.value)} className="border px-2 py-1 rounded">
-                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                  <select value={o.payment?.status || ''} onChange={e => setPaymentStatus(o._id, e.target.value)} className="border px-2 py-1 rounded">
+                    {statuses.slice(1).map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </td>
-                <td className="border p-2">{o.totals?.grandTotal?.toFixed?.(2) ?? o.totals?.grandTotal}</td>
-                <td className="border p-2 text-center">—</td>
+                <td className="border p-2">
+                  {o.payment?.method === 'BANK' && (!o.payment?.bank?.verifiedAt) && (
+                    <button onClick={() => verifyBank(o._id)} className="text-blue-600 hover:underline">Verify bank slip</button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

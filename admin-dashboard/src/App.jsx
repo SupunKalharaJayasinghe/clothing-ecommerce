@@ -8,6 +8,9 @@ import CustomersPage from './pages/Customers'
 import ProductsPage from './pages/Products'
 import OrdersPage from './pages/Orders'
 import ReviewsPage from './pages/Reviews'
+import PaymentsPage from './pages/Payments'
+import RefundsPage from './pages/Refunds'
+import ReturnsPage from './pages/Returns'
 import { useAuth } from './state/auth'
 
 function Protected({ children, anyOfRoles }) {
@@ -55,6 +58,21 @@ export default function App() {
                   <Route path="reviews" element={
                     <Protected anyOfRoles={["review_manager","admin"]}>
                       <ReviewsPage />
+                    </Protected>
+                  } />
+                  <Route path="payments" element={
+                    <Protected anyOfRoles={["payment_manager","admin"]}>
+                      <PaymentsPage />
+                    </Protected>
+                  } />
+                  <Route path="refunds" element={
+                    <Protected anyOfRoles={["refund_manager","admin"]}>
+                      <RefundsPage />
+                    </Protected>
+                  } />
+                  <Route path="returns" element={
+                    <Protected anyOfRoles={["return_manager","admin"]}>
+                      <ReturnsPage />
                     </Protected>
                   } />
                   <Route path="*" element={<Navigate to="/" replace />} />

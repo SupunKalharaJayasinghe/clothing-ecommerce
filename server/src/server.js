@@ -25,6 +25,9 @@ import adminCustomersRoutes from './api/routes/admin.customers.routes.js'
 import adminProductsRoutes from './api/routes/admin.products.routes.js'
 import adminOrdersRoutes from './api/routes/admin.orders.routes.js'
 import adminReviewsRoutes from './api/routes/admin.reviews.routes.js'
+import adminPaymentsRoutes from './api/routes/admin.payments.routes.js'
+import adminReturnsRoutes from './api/routes/admin.returns.routes.js'
+import adminRefundsRoutes from './api/routes/admin.refunds.routes.js'
 
 // error handlers
 import { notFound, errorHandler } from './middlewares/error.js'
@@ -82,6 +85,12 @@ export function createServer() {
   app.use('/api/admin/orders', adminOrdersRoutes)
   // Reviews moderation
   app.use('/api/admin/reviews', adminReviewsRoutes)
+  // Payments management
+  app.use('/api/admin/payments', adminPaymentsRoutes)
+  // Returns management
+  app.use('/api/admin/returns', adminReturnsRoutes)
+  // Refunds overview
+  app.use('/api/admin/refunds', adminRefundsRoutes)
 
   app.use(notFound)
   app.use(errorHandler)
