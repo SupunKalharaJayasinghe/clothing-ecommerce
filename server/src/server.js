@@ -73,6 +73,12 @@ export function createServer() {
   app.use('/api/admin/auth', adminAuthRoutes)
   app.use('/api/admin/admins', adminAdminsRoutes)
   app.use('/api/admin/customers', adminCustomersRoutes)
+  // Catalog/products management
+  ;(await import('./api/routes/admin.products.routes.js')).default && app.use('/api/admin/products', (await import('./api/routes/admin.products.routes.js')).default)
+  // Orders management
+  ;(await import('./api/routes/admin.orders.routes.js')).default && app.use('/api/admin/orders', (await import('./api/routes/admin.orders.routes.js')).default)
+  // Reviews moderation
+  ;(await import('./api/routes/admin.reviews.routes.js')).default && app.use('/api/admin/reviews', (await import('./api/routes/admin.reviews.routes.js')).default)
 
   app.use(notFound)
   app.use(errorHandler)
