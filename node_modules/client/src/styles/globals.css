@@ -141,6 +141,25 @@ a { @apply text-[--color-brand-600] hover:text-[--color-brand-700] transition-co
   transform: translateY(-1px);
 }
 
+/* Form layout helpers (keeps existing box/card style) */
+.form-grid { @apply grid grid-cols-1 gap-3; }
+@media (min-width: 640px) { .form-grid-sm-2 { @apply grid-cols-2; } }
+
+.field { @apply w-full; }
+.field-label { @apply block text-sm mb-1 font-medium text-[--color-ink]; }
+.field-input { @apply relative; }
+.field-input.with-icon .input { @apply pl-10; }
+.field-input.with-icon-right .input { @apply pr-10; }
+.field-input .icon-left { @apply absolute inset-y-0 left-3 flex items-center text-[--color-muted]; }
+.field-input .icon-right { @apply absolute inset-y-0 right-3 flex items-center text-[--color-muted]; }
+.field-error { @apply text-sm text-red-600 mt-1; }
+.field-input.is-invalid .input { @apply border-red-400 ring-red-100; }
+
+/* Password strength meter */
+.strength-meter { @apply mt-2 grid grid-cols-6 gap-1; }
+.strength-bar { @apply h-1 rounded-full bg-[--color-border]; }
+.strength-bar.on { @apply bg-[--color-brand-500]; }
+
 /* Dynamic Cards */
 .card { 
   @apply rounded-[--radius-lg] bg-white border-0 overflow-hidden;
@@ -182,6 +201,33 @@ a { @apply text-[--color-brand-600] hover:text-[--color-brand-700] transition-co
 .product-img:hover { transform: scale(1.03); }
 .price { @apply text-xl font-bold text-[--color-ink]; }
 .price-old { @apply text-sm text-[--color-muted] line-through font-medium; }
+
+/* Chips */
+.chips { @apply flex flex-wrap gap-2; }
+.chip { @apply inline-flex items-center rounded-full px-3 py-1 text-sm border border-[--color-border] bg-white hover:bg-[--color-bg-soft] transition; }
+.chip-active { @apply bg-[--color-brand-50] text-[--color-brand-700] border-[--color-brand-200] font-medium; }
+
+/* Category cards */
+.category-card { @apply overflow-hidden rounded-[--radius-xl] border bg-white; box-shadow: var(--shadow-md); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.category-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-xl); }
+
+/* Overlay variant */
+.category-card.is-overlay { position: relative; background: transparent; border: none; }
+.category-card.is-overlay .img-wrap { position: relative; height: 12rem; }
+@media (min-width: 640px) { .category-card.is-overlay .img-wrap { height: 14rem; } }
+.category-card.is-overlay img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s ease; border-radius: var(--radius-xl); }
+.category-card.is-overlay:hover img { transform: scale(1.06); }
+.category-card.is-overlay .overlay { position: absolute; inset: 0; border-radius: var(--radius-xl); background: linear-gradient(to top, rgba(15,23,42,0.55), rgba(15,23,42,0.15) 40%, rgba(15,23,42,0.0) 70%); }
+.category-card.is-overlay .caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 1rem 1rem 1.1rem 1rem; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+.category-card.is-overlay .caption .cta { opacity: 0.9; font-size: 0.875rem; }
+.category-card.is-overlay:hover .caption .cta { opacity: 1; text-decoration: underline; }
+
+/* Skeletons for cards */
+.skel-grid { @apply grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4; }
+.skeleton-card { @apply rounded-[--radius-lg] border bg-white overflow-hidden; }
+.skeleton-card .img { @apply h-48; }
+.skeleton-card .text { @apply p-4; }
+.skeleton-card .line { @apply h-3 rounded bg-[--color-border] mb-2; }
 
 /* Creative Navigation */
 .nav-link { 
