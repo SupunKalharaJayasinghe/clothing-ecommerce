@@ -11,33 +11,54 @@ function Item({ to, icon: Icon, label, roles }) {
   return (
     <NavLink
       to={to}
-      className={({ isActive }) => `flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/5 ${isActive ? 'bg-white/10 border-l-4 border-[color:var(--primary)]' : ''}`}
+      className={({ isActive }) => `nav-tile${isActive ? ' active' : ''}`}
     >
-      <Icon size={18} />
-      <span>{label}</span>
+      <span className="tile-icon"><Icon size={18} /></span>
+      <span className="tile-label">{label}</span>
     </NavLink>
   )
 }
 
+function getInitial(user) {
+  const name = user?.name || user?.email || 'A'
+  return name.trim().charAt(0).toUpperCase()
+}
+
 export default function Sidebar() {
   const { user, logout } = useAuth()
+  const initial = getInitial(user)
+  const isAdmin = (user?.roles || []).includes('admin')
   return (
-    <aside className="bg-[color:var(--nav-bg)] text-white p-4 min-h-screen">
-      <div className="mb-6">
-        <div className="font-semibold" style={{color:'var(--nav-fg)'}}>Admin Dashboard</div>
-        <div className="text-xs" style={{color:'var(--nav-fg-muted)'}}>{user?.email}</div>
+    <aside className="sidebar">
+      <div className="profile-card">
+        <div className="avatar" aria-hidden="true">{initial}</div>
+        <div className="profile-text">
+          <div className="name">{user?.name || 'Admin Dashboard'}</div>
+          <div className="row">
+            {isAdmin && <span className="badge-role">Admin</span>}
+            <span className="status"><span className="dot" /> Online</span>
+          </div>
+        </div>
       </div>
-      <nav className="flex flex-col gap-1">
-        <Item to="/" icon={Home} label="Overview" />
-        <Item to="/admins" icon={Users} label="Admins" roles={["user_manager"]} />
-        <Item to="/customers" icon={Users} label="Customers" roles={["user_manager"]} />
-        <Item to="/products" icon={Package} label="Products" roles={["product_manager"]} />
-        <Item to="/orders" icon={ShoppingCart} label="Orders" roles={["order_manager"]} />
-        <Item to="/payments" icon={CreditCard} label="Payments" roles={["payment_manager"]} />
-        <Item to="/refunds" icon={RotateCcw} label="Refunds" roles={["refund_manager"]} />
-        <Item to="/returns" icon={RefreshCw} label="Returns" roles={["return_manager"]} />
-        <Item to="/reviews" icon={Star} label="Reviews" roles={["review_manager"]} />
-      </nav>
+
+      <div className="nav-scroll">
+        <nav className="nav-tiles">
+          <Item to="/" icon={Home} label="Overview" />
+          <Item to="/admins" icon={Users} label="Admins" roles={["user_manager"]} />
+          <Item to="/customers" icon={Users} label="Customers" roles={["user_manager"]} />
+          <Item to="/products" icon={Package} label="Products" roles={["product_manager"]} />
+          <Item to="/orders" icon={ShoppingCart} label="Orders" roles={["order_manager"]} />
+          <Item to="/payments" icon={CreditCard} label="Payments" roles={["payment_manager"]} />
+          <Item to="/refunds" icon={RotateCcw} label="Refunds" roles={["refund_manager"]} />
+          <Item to="/returns" icon={RefreshCw} label="Returns" roles={["return_manager"]} />
+          <Item to="/reviews" icon={Star} label="Reviews" roles={["review_manager"]} />
+        </nav>
+      </div>
+
+      <footer className="sidebar-bottom">
+        <div className="copyright">© 2025 D&G</div>
+        <button className="btn-logout" onClick={logout}>Logout</button>
+      </footer>
     </aside>
   )
 }

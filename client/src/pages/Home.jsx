@@ -218,7 +218,7 @@ export default function Home() {
             <div className="hidden lg:block animate-float">
               <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-glow bg-mesh hover-lift">
                 <img
-                  src="https://images.unsplash.com/photo-1520975922203-bc4e16f6f3a0?q=80&w=1600&auto=format&fit=crop"
+                  src="/image/hero%20image.png"
                   alt="Hero"
                   className="w-full h-full object-cover"
                   loading="eager"
@@ -247,9 +247,9 @@ export default function Home() {
         {/* Featured categories */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
           {[
-            { label: 'Men', key: 'men', img: 'https://images.unsplash.com/photo-1617137968427-85924c800a3f?q=60&w=1200&auto=format&fit=crop' },
-            { label: 'Women', key: 'women', img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=60&w=1200&auto=format&fit=crop' },
-            { label: 'Kids', key: 'kids', img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=60&w=1200&auto=format&fit=crop' },
+            { label: 'Men', key: 'men', img: '/image/men.png' },
+            { label: 'Women', key: 'women', img: '/image/women.png' },
+            { label: 'Kids', key: 'kids', img: '/image/kids.png' },
           ].map(cat => (
             <Link key={cat.key} to={`/products?category=${cat.key}`} className="category-card is-overlay">
               <div className="img-wrap">

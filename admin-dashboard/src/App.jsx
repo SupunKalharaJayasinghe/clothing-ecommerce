@@ -1,7 +1,6 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './ui/Sidebar'
-import Topbar from './ui/Topbar'
 import LoginPage from './pages/Login'
 import DashboardPage from './pages/Dashboard'
 import AdminsPage from './pages/Admins'
@@ -35,8 +34,7 @@ export default function App() {
               <Sidebar />
               <main className="p-4 md:p-6">
                 <div className="mx-auto max-w-7xl">
-                  <Topbar />
-                  <div className="mt-4">
+                  <div>
                     <Routes>
                       <Route index element={<DashboardPage />} />
                   <Route path="admins" element={
