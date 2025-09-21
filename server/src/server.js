@@ -19,6 +19,9 @@ import accountRoutes from './api/routes/account.routes.js'
 import favoriteRoutes from './api/routes/favorite.routes.js'
 import orderRoutes from './api/routes/order.routes.js'
 import paymentRoutes from './api/routes/payment.routes.js'
+import adminAuthRoutes from './api/routes/admin.auth.routes.js'
+import adminAdminsRoutes from './api/routes/admin.admins.routes.js'
+import adminCustomersRoutes from './api/routes/admin.customers.routes.js'
 
 // error handlers
 import { notFound, errorHandler } from './middlewares/error.js'
@@ -66,6 +69,10 @@ export function createServer() {
   app.use('/api/favorites', favoriteRoutes)
   app.use('/api/orders', orderRoutes)
   app.use('/api/payments', paymentRoutes)
+  // Admin dashboard APIs
+  app.use('/api/admin/auth', adminAuthRoutes)
+  app.use('/api/admin/admins', adminAdminsRoutes)
+  app.use('/api/admin/customers', adminCustomersRoutes)
 
   app.use(notFound)
   app.use(errorHandler)

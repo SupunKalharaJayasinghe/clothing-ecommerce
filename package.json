@@ -1,12 +1,14 @@
 {
   "name": "clothing-ecommerce",
   "private": true,
-  "workspaces": ["client", "server"],
+  "workspaces": ["client", "server", "admin-dashboard"],
   "scripts": {
     "dev": "concurrently -n client,server -c auto \"npm --workspace client run dev\" \"npm --workspace server run dev\"",
     "dev:client": "npm --workspace client run dev",
     "dev:server": "npm --workspace server run dev",
-    "build": "npm --workspace client run build && npm --workspace server run build",
+    "dev:admin": "npm --workspace admin-dashboard run dev",
+    "dev:all": "concurrently -n client,server,admin -c auto \"npm --workspace client run dev\" \"npm --workspace server run dev\" \"npm --workspace admin-dashboard run dev\"",
+    "build": "npm --workspace client run build && npm --workspace server run build && npm --workspace admin-dashboard run build",
     "start": "npm --workspace server run start"
   },
   "devDependencies": {
