@@ -1,11 +1,23 @@
 import rateLimit from 'express-rate-limit'
 import { env } from './env.js'
 
+const isProd = env.NODE_ENV === 'production'
+
 // Allow multiple origins configured as comma-separated string in env.CORS_ORIGIN
-const allowedOrigins = String(env.CORS_ORIGIN || '')
+const envOrigins = String(env.CORS_ORIGIN || '')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean)
+
+// In development, also allow common Vite dev/preview ports for admin, client, and delivery UIs
+const devOrigins = [
+  'http://localhost:5173', 'http://127.0.0.1:5173',
+  'http://localhost:5174', 'http://127.0.0.1:5174',
+  'http://localhost:5175', 'http://127.0.0.1:5175',
+  'http://localhost:5176', 'http://127.0.0.1:5176',
+]
+
+const allowedOrigins = Array.from(new Set([ ...envOrigins, ...(isProd ? [] : devOrigins) ]))
 
 export const corsOptions = {
   origin: function (origin, callback) {
@@ -29,8 +41,6 @@ export const cspDirectives = {
   "style-src": ["'self'", "'unsafe-inline'", "https:"],
   "connect-src": ["'self'", ...allowedOrigins]
 }
-
-const isProd = env.NODE_ENV === 'production'
 
 // General API limiter (relaxed in dev; skip common background endpoints)
 export const apiRateLimiter = rateLimit({

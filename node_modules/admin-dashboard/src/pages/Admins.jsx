@@ -11,6 +11,7 @@ const roleLabels = {
   refund_manager: 'Refund manager',
   return_manager: 'Return manager',
   review_manager: 'Review manager',
+  delivery_agent: 'Delivery agent',
 }
 
 export default function AdminsPage() {

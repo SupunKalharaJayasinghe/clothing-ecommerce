@@ -42,10 +42,33 @@ export default function Orders() {
     }
   }
 
-  function statusTone(s) {
-    if (s === 'placed') return 'blue'
-    if (s === 'completed') return 'green'
-    if (s?.includes('delivery')) return 'amber'
+  function toneForOrderState(s) {
+    const v = (s || '').toString().toUpperCase()
+    // Legacy strings
+    if (v === 'PLACED' || v === 'CREATED' || v === 'CONFIRMED') return 'blue'
+    if (v === 'PACKING' || v === 'PACKED') return 'indigo'
+    if (v === 'HANDED_OVER' || v === 'HANDOVER' || v === 'SHIPPED') return 'purple'
+    if (v === 'PENDING_PAYMENT') return 'amber'
+    if (v === 'DELIVERED' || v === 'COMPLETED') return 'green'
+    if (v === 'CANCELLED' || v === 'CANCELED') return 'red'
+    return 'gray'
+  }
+  function toneForDeliveryState(s) {
+    const v = (s || '').toString().toUpperCase()
+    if (!v || v === 'NOT_STARTED' || v === 'NOT_DISPATCHED') return 'gray'
+    if (v === 'OUT_FOR_DELIVERY') return 'amber'
+    if (v === 'DELIVERY_CONFIRMED' || v === 'DELIVERY_CONFIRM' || v === 'IN_TRANSIT' || v === 'SHIPPED') return 'blue'
+    if (v === 'DELIVERED') return 'green'
+    if (v === 'DELIVERY_FAILED' || v === 'FAILED') return 'red'
+    if (v === 'RTO_INITIATED' || v === 'RETURNED_TO_WAREHOUSE') return 'purple'
+    return 'gray'
+  }
+  function toneForPaymentStatus(s) {
+    const v = (s || '').toString().toUpperCase()
+    if (v === 'PAID' || v === 'REFUNDED') return 'green'
+    if (v === 'PENDING' || v === 'REFUND_PENDING' || v === 'AUTHORIZED') return 'amber'
+    if (v === 'FAILED') return 'red'
+    if (v === 'UNPAID') return 'gray'
     return 'gray'
   }
 
@@ -71,10 +94,13 @@ export default function Orders() {
                 <div className="text-xs opacity-70 mt-0.5">{new Date(o.createdAt).toLocaleString()}</div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge tone={statusTone(o.status)}>{o.status}</Badge>
+                <Badge tone={toneForOrderState(o.status || o.orderState)}>{(o.status || o.orderState) || '—'}</Badge>
+                <Badge tone={toneForDeliveryState(o.deliveryState)}>
+                  Delivery: {(((o.deliveryState || '').toString().toUpperCase()) === 'NOT_DISPATCHED') ? '—' : (o.deliveryState || '—')}
+                </Badge>
                 <Badge>{o.payment?.method}</Badge>
                 {o.payment?.status && (
-                  <Badge tone={o.payment.status === 'paid' ? 'green' : (o.payment.status === 'failed' ? 'red' : 'gray')}>
+                  <Badge tone={toneForPaymentStatus(o.payment?.status)}>
                     {o.payment.status}
                   </Badge>
                 )}

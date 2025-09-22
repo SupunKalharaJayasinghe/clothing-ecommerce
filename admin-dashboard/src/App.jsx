@@ -11,6 +11,7 @@ import ReviewsPage from './pages/Reviews'
 import PaymentsPage from './pages/Payments'
 import RefundsPage from './pages/Refunds'
 import ReturnsPage from './pages/Returns'
+import DeliveryPage from './pages/Delivery'
 import { useAuth } from './state/auth'
 
 function Protected({ children, anyOfRoles }) {
@@ -30,7 +31,7 @@ export default function App() {
         path="/*"
         element={
           <Protected>
-            <div className="min-h-screen grid grid-cols-1 md:grid-cols-[260px_1fr]">
+            <div className="min-h-screen md:pl-[260px]">
               <Sidebar />
               <main className="p-4 md:p-6">
                 <div className="mx-auto max-w-7xl">
@@ -75,6 +76,11 @@ export default function App() {
                   <Route path="returns" element={
                     <Protected anyOfRoles={["return_manager","admin"]}>
                       <ReturnsPage />
+                    </Protected>
+                  } />
+                  <Route path="delivery" element={
+                    <Protected anyOfRoles={["order_manager","admin"]}>
+                      <DeliveryPage />
                     </Protected>
                   } />
                       <Route path="*" element={<Navigate to="/" replace />} />

@@ -11,7 +11,11 @@ const __dirname = path.dirname(__filename)
 const receiptsDir = path.resolve(__dirname, '..', 'files', 'receipts')
 fs.mkdirSync(receiptsDir, { recursive: true })
 
-const storage = multer.diskStorage({
+// Separate directory for delivery-related uploads (profile photos, licenses)
+const deliveryDir = path.resolve(__dirname, '..', 'files', 'delivery')
+fs.mkdirSync(deliveryDir, { recursive: true })
+
+const storageReceipts = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, receiptsDir),
   filename: (_req, file, cb) => {
     const original = file.originalname || 'receipt'
@@ -26,6 +30,17 @@ const storage = multer.diskStorage({
   }
 })
 
+const storageDelivery = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, deliveryDir),
+  filename: (_req, file, cb) => {
+    const original = file.originalname || 'upload'
+    const ext = (path.extname(original) || '').toLowerCase()
+    const safeBase = path.basename(original, ext).replace(/[^a-z0-9_-]/gi, '').slice(0, 40) || 'file'
+    const rand = Math.random().toString(36).slice(2, 8)
+    cb(null, `${Date.now()}-${rand}-${safeBase}${ext || '.jpg'}`)
+  }
+})
+
 function fileFilter(_req, file, cb) {
   const ok =
     /^(image\/(png|jpe?g|webp|gif)|application\/pdf)$/i.test(file.mimetype)
@@ -33,10 +48,16 @@ function fileFilter(_req, file, cb) {
 }
 
 export const uploadReceipt = multer({
-  storage,
+  storage: storageReceipts,
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 })
 
+export const uploadDelivery = multer({
+  storage: storageDelivery,
+  fileFilter,
+  limits: { fileSize: 8 * 1024 * 1024 } // 8MB
+})
+
 // (optional) export path if you need it elsewhere
-export { receiptsDir }
+export { receiptsDir, deliveryDir }

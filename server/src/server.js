@@ -28,6 +28,11 @@ import adminReviewsRoutes from './api/routes/admin.reviews.routes.js'
 import adminPaymentsRoutes from './api/routes/admin.payments.routes.js'
 import adminReturnsRoutes from './api/routes/admin.returns.routes.js'
 import adminRefundsRoutes from './api/routes/admin.refunds.routes.js'
+import adminDeliveryRoutes from './api/routes/admin.delivery.routes.js'
+import adminDeliveryUploadRoutes from './api/routes/admin.delivery.upload.routes.js'
+import deliveryCodRoutes from './api/routes/delivery.cod.routes.js'
+import deliveryOrdersRoutes from './api/routes/delivery.orders.routes.js'
+import deliveryAuthRoutes from './api/routes/delivery.auth.routes.js'
 
 // error handlers
 import { notFound, errorHandler } from './middlewares/error.js'
@@ -66,6 +71,8 @@ export function createServer() {
 
   // serve uploaded bank slips (read-only)
   app.use('/files/receipts', express.static(path.resolve(__dirname, 'files', 'receipts')))
+  // serve delivery uploads (profile photos, licenses)
+  app.use('/files/delivery', express.static(path.resolve(__dirname, 'files', 'delivery')))
 
   // routes
   app.use('/api/health', healthRoutes)
@@ -79,7 +86,12 @@ export function createServer() {
   app.use('/api/admin/auth', adminAuthRoutes)
   app.use('/api/admin/admins', adminAdminsRoutes)
   app.use('/api/admin/customers', adminCustomersRoutes)
-  // Catalog/products management
+  // Delivery users management for admins
+  app.use('/api/admin/delivery', adminDeliveryRoutes)
+  app.use('/api/admin/delivery', adminDeliveryUploadRoutes)
+
+  // Delivery staff auth & APIs (separate cookie/JWT)
+  app.use('/api/delivery/auth', deliveryAuthRoutes)
   app.use('/api/admin/products', adminProductsRoutes)
   // Orders management
   app.use('/api/admin/orders', adminOrdersRoutes)
@@ -91,6 +103,10 @@ export function createServer() {
   app.use('/api/admin/returns', adminReturnsRoutes)
   // Refunds overview
   app.use('/api/admin/refunds', adminRefundsRoutes)
+  // Delivery staff limited COD management
+  app.use('/api/delivery/cod', deliveryCodRoutes)
+  // Delivery staff general orders listing and status updates
+  app.use('/api/delivery/orders', deliveryOrdersRoutes)
 
   app.use(notFound)
   app.use(errorHandler)

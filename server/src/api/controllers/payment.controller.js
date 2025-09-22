@@ -5,6 +5,7 @@ import catchAsync from '../../utils/catchAsync.js'
 import mongoose from 'mongoose'
 import crypto from 'crypto'
 import { env } from '../../config/env.js'
+import { PAYMENT_STATES, updateOrderStates, applyStateChanges, ORDER_STATES } from '../../utils/stateManager.js'
 
 // BANK: POST /api/payments/bank/:orderId/slip
 export const uploadBankSlip = catchAsync(async (req, res) => {
@@ -15,14 +16,21 @@ export const uploadBankSlip = catchAsync(async (req, res) => {
   if (!order) throw new ApiError(404, 'Order not found')
   if (order.payment.method !== 'BANK') throw new ApiError(400, 'This order is not bank-transfer')
 
+  const uploadedAt = new Date()
+  const verifyBy = new Date(uploadedAt.getTime() + 72 * 60 * 60 * 1000) // 72h deadline
   order.payment.bank = {
     slipUrl: `/files/receipts/${req.file.filename}`,
-    uploadedAt: new Date(),
-    verifiedAt: order.payment.bank?.verifiedAt || undefined
+    uploadedAt,
+    verifiedAt: order.payment.bank?.verifiedAt || undefined,
+    verifyBy
+  }
+  // Keep payment in PENDING status after upload
+  if (order.payment.status !== PAYMENT_STATES.PAID) {
+    order.payment.status = PAYMENT_STATES.PENDING
   }
   await order.save()
 
-  res.json({ ok: true, orderId: order._id, slipUrl: order.payment.bank.slipUrl })
+  res.json({ ok: true, orderId: order._id, slipUrl: order.payment.bank.slipUrl, verifyBy })
 })
 
 // CARD: POST /api/payments/payhere/webhook
@@ -70,7 +78,8 @@ export const payhereWebhook = catchAsync(async (req, res) => {
   const success = String(status_code) === '2' || String(status).toUpperCase() === 'SUCCESS'
 
   if (!success) {
-    order.payment.status = 'failed'
+    const changes = updateOrderStates(order, { paymentStatus: PAYMENT_STATES.FAILED })
+    applyStateChanges(order, changes)
     order.payment.gatewayRef = payment_id || order.payment.gatewayRef
     await order.save()
     return res.json({ ok: true, paid: false })
@@ -91,9 +100,12 @@ export const payhereWebhook = catchAsync(async (req, res) => {
       throw new ApiError(400, 'One or more items are out of stock at payment time')
     }
 
-    order.status = 'placed'
-    order.statusHistory = (order.statusHistory || []).concat([{ status: 'placed', at: new Date() }])
-    order.payment.status = 'paid'
+    // On successful card capture, mark PAID and move order to PACKING
+    const changes = updateOrderStates(order, {
+      orderState: ORDER_STATES.PACKING,
+      paymentStatus: PAYMENT_STATES.PAID
+    })
+    applyStateChanges(order, changes)
     order.payment.gatewayRef = payment_id || order.payment.gatewayRef
     await order.save({ session })
   })

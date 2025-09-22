@@ -76,13 +76,21 @@ export const changePassword = catchAsync(async (req, res) => {
 // --- ADDRESSES ---
 export const listAddresses = catchAsync(async (req, res) => {
   const user = await User.findById(req.user.sub, 'addresses')
-  res.json({ ok: true, items: user.addresses })
+  // return default first (stable for UI dropdowns)
+  const items = [...(user.addresses || [])].sort((a, b) => (b.isDefault === true) - (a.isDefault === true))
+  res.json({ ok: true, items })
 })
 
 export const createAddress = catchAsync(async (req, res) => {
   const user = await User.findById(req.user.sub)
   const addr = user.addresses.create(req.body)
   if (req.body.isDefault) {
+    user.addresses.forEach(a => a.isDefault = false)
+    addr.isDefault = true
+  }
+  // If this is the first address or no existing default, set as default
+  const hasDefault = user.addresses.some(a => a.isDefault)
+  if (user.addresses.length === 0 || !hasDefault) {
     user.addresses.forEach(a => a.isDefault = false)
     addr.isDefault = true
   }
@@ -110,7 +118,12 @@ export const deleteAddress = catchAsync(async (req, res) => {
   const user = await User.findById(req.user.sub)
   const addr = user.addresses.id(id)
   if (!addr) throw new ApiError(404, 'Address not found')
+  const wasDefault = !!addr.isDefault
   addr.deleteOne()
+  // If we deleted the default, promote the first remaining address as default
+  if (wasDefault && user.addresses.length > 0) {
+    user.addresses.forEach((a, idx) => { a.isDefault = idx === 0 })
+  }
   await user.save()
   res.json({ ok: true })
 })

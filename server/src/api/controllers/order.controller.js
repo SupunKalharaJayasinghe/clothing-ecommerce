@@ -4,6 +4,7 @@ import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import mongoose from 'mongoose'
 import User from '../models/User.js'
+import { getInitialStates, PAYMENT_METHODS, updateOrderStates, applyStateChanges } from '../../utils/stateManager.js'
 
 function calcTotals(items) {
   const subtotal = items.reduce((s, it) => s + (it.price * it.quantity), 0)
@@ -68,14 +69,14 @@ export const placeOrder = catchAsync(async (req, res) => {
     })
   }
 
-  // derive initial status & payment
-  let status = method === 'CARD' ? 'pending_payment' : 'placed'
-  let payment = { method, status: method === 'CARD' ? 'initiated' : 'pending' }
+  // derive initial states & payment using state manager
+  const initialStates = getInitialStates(method)
+  const { orderState, deliveryState, paymentStatus, legacyStatus } = initialStates
+  let payment = { method, status: paymentStatus }
 
   if (method === 'CARD') {
     payment.gateway = 'PAYHERE'
   }
-  // BANK stays 'pending' until verify; COD stays 'pending' until delivery cash confirm
 
   let order
   if (method === 'CARD') {
@@ -85,8 +86,10 @@ export const placeOrder = catchAsync(async (req, res) => {
       items: orderItems,
       address: addr,
       totals,
-      status, // 'pending_payment'
-      statusHistory: [{ status }],
+      status: legacyStatus, // proper legacy status
+      orderState,
+      deliveryState,
+      statusHistory: [{ status: legacyStatus }],
       payment
     })
   } else {
@@ -109,8 +112,10 @@ export const placeOrder = catchAsync(async (req, res) => {
         items: orderItems,
         address: addr,
         totals,
-        status,
-        statusHistory: [{ status }],
+        status: legacyStatus, // proper legacy status
+        orderState,
+        deliveryState,
+        statusHistory: [{ status: legacyStatus }],
         payment
       }], { session })
       order = created[0]
@@ -163,4 +168,29 @@ export const getOrder = catchAsync(async (req, res) => {
   const o = await Order.findOne({ _id: id, user: req.user.sub }).lean()
   if (!o) throw new ApiError(404, 'Order not found')
   res.json({ ok: true, order: o })
+})
+
+// PATCH /api/orders/:id/cancel
+export const cancelMyOrder = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const { reason } = req.body || {}
+  const o = await Order.findOne({ _id: id, user: req.user.sub })
+  if (!o) throw new ApiError(404, 'Order not found')
+
+  // Allow cancellation only before dispatch
+  if (String(o.deliveryState) !== 'NOT_DISPATCHED') {
+    throw new ApiError(400, 'Cannot cancel after dispatch; request return process')
+  }
+
+  // Use state manager for consistent state updates
+  const changes = updateOrderStates(o, {
+    orderState: 'CANCELLED'
+  })
+  applyStateChanges(o, changes)
+  o.deliveryMeta = o.deliveryMeta || {}
+  o.deliveryMeta.reasons = o.deliveryMeta.reasons || {}
+  if (reason) o.deliveryMeta.reasons.cancelled = { code: undefined, detail: String(reason) }
+  await o.save()
+
+  res.json({ ok: true, orderId: o._id, orderState: o.orderState })
 })

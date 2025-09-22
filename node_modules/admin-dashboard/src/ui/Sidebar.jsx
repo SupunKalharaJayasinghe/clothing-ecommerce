@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { Users, Home, Package, ShoppingCart, CreditCard, RotateCcw, RefreshCw, Star } from 'lucide-react'
+import { Users, Home, Package, ShoppingCart, CreditCard, RotateCcw, RefreshCw, Star, Truck } from 'lucide-react'
 import { useAuth } from '../state/auth'
 
 function Item({ to, icon: Icon, label, roles }) {
@@ -52,6 +52,7 @@ export default function Sidebar() {
           <Item to="/refunds" icon={RotateCcw} label="Refunds" roles={["refund_manager"]} />
           <Item to="/returns" icon={RefreshCw} label="Returns" roles={["return_manager"]} />
           <Item to="/reviews" icon={Star} label="Reviews" roles={["review_manager"]} />
+          <Item to="/delivery" icon={Truck} label="Delivery" roles={["order_manager"]} />
         </nav>
       </div>
 

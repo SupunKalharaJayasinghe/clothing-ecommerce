@@ -59,6 +59,7 @@ const userSchema = new mongoose.Schema(
     country: { type: String, trim: true },
 
     roles: { type: [String], default: ['user'] },
+
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
     addresses: [addressSchema],
     paymentMethods: [paymentMethodSchema],

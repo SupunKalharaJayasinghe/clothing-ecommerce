@@ -30,11 +30,14 @@
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--page-bg); color: var(--ink); }
 
-.btn { @apply inline-flex items-center justify-center gap-1 rounded-md px-3 py-2 text-sm transition-colors; }
-.btn-primary { background: var(--primary); color: #FFFFFF; }
-.btn-primary:hover { background: var(--primary-600); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent); filter: brightness(1.02); }
-.btn-light { @apply border; border-color: color-mix(in srgb, var(--ink) 20%, transparent); color: var(--ink-strong); background: var(--surface); }
-.btn-light:hover { background: color-mix(in srgb, var(--primary-100) 35%, var(--surface)); border-color: var(--primary-400); filter: brightness(1.03); }
+ .btn { @apply inline-flex items-center justify-center gap-1 rounded-md px-3 py-2 text-sm transition-colors; }
+ .btn-sm { @apply text-xs px-2 py-1; }
+ .btn-primary { background: var(--primary); color: #FFFFFF; }
+ .btn-primary:hover { background: var(--primary-600); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent); filter: brightness(1.02); }
+ .btn-light { @apply border; border-color: color-mix(in srgb, var(--ink) 20%, transparent); color: var(--ink-strong); background: var(--surface); }
+ .btn-light:hover { background: color-mix(in srgb, var(--primary-100) 35%, var(--surface)); border-color: var(--primary-400); filter: brightness(1.03); }
+ .btn-ghost { background: transparent; color: var(--ink); border: 1px solid transparent; }
+ .btn-ghost:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--ink-strong); border-color: color-mix(in srgb, var(--primary) 35%, transparent); }
 
 .input { @apply border rounded-md px-3 py-2 text-sm; border-color: color-mix(in srgb, var(--ink) 15%, transparent); background: var(--surface); }
 .input:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent); border-color: var(--primary-400); }
@@ -101,6 +104,15 @@ body { margin: 0; background: var(--page-bg); color: var(--ink); }
   border-right: 1px solid color-mix(in srgb, white 6%, transparent);
   display: flex; flex-direction: column;
 }
+/* Fix sidebar to viewport on desktop */
+@media (min-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 260px;
+    z-index: 30;
+  }
+}
 
 /* Profile card */
 .profile-card {
@@ -117,7 +129,8 @@ body { margin: 0; background: var(--page-bg); color: var(--ink); }
 .status .dot { width: 8px; height: 8px; border-radius: 9999px; background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.2); display: inline-block; }
 
 /* Scrollable nav area between profile and footer */
-.nav-scroll { flex: 1; min-height: 0; overflow: auto; padding-right: 4px; margin-right: -4px; }
+.nav-scroll { flex: 1; min-height: 0; overflow: auto; padding-right: 4px; margin-right: -4px; -ms-overflow-style: none; scrollbar-width: none; }
+.nav-scroll::-webkit-scrollbar { width: 0; height: 0; }
 .nav-tiles { display: grid; gap: 10px; }
 
 /* Card-like tiles */

@@ -27,6 +27,8 @@ const productSchema = new mongoose.Schema(
     },
 
     color: { type: String, required: true, trim: true },
+    // normalized lower-case color for fast filtering
+    colorLower: { type: String },
     description: { type: String, required: true, trim: true },
 
     price: { type: Number, required: true, min: 0 },
@@ -59,6 +61,9 @@ productSchema.pre('save', function (next) {
   if (!this.slug || this.isModified('name')) {
     this.slug = toSlug(this.name)
   }
+  if (this.isModified('color') || !this.colorLower) {
+    this.colorLower = String(this.color || '').toLowerCase().trim()
+  }
   next()
 })
 
@@ -67,6 +72,7 @@ productSchema.pre('insertMany', function (next, docs) {
   if (Array.isArray(docs)) {
     for (const d of docs) {
       if (!d.slug && d.name) d.slug = toSlug(d.name)
+      if (d && d.color && !d.colorLower) d.colorLower = String(d.color).toLowerCase().trim()
     }
   }
   next()
@@ -99,6 +105,7 @@ productSchema.index({ mainTags: 1 })
 productSchema.index({ createdAt: -1 })
 productSchema.index({ price: 1 })
 productSchema.index({ rating: -1 })
+productSchema.index({ colorLower: 1 })
 // category has its own index via the field definition above
 
 export default mongoose.model('Product', productSchema)

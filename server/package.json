@@ -10,7 +10,12 @@
     "build": "echo \"(no build step)\"",
     "seed": "node src/scripts/seed.js",
     "seed:admin": "node src/scripts/seed_admin.js",
-    "backfill:color": "node src/scripts/backfill_color_lower.js"
+    "backfill:color": "node src/scripts/backfill_color_lower.js",
+    "bank:expire": "node src/scripts/expire_bank_slips.js",
+    "migrate:delivery": "node src/scripts/migrate_delivery_from_admins.js",
+    "migrate:fix-orders": "node src/scripts/fix_existing_orders.js",
+    "test:states": "node src/scripts/test_state_management.js",
+    "inspect:orders": "node src/scripts/inspect_orders.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

@@ -32,3 +32,8 @@ export const getOrderSchema = z.object({
     id: z.string().min(8)
   })
 })
+
+export const cancelOrderSchema = z.object({
+  params: z.object({ id: z.string().min(8) }),
+  body: z.object({ reason: z.string().min(1).optional() }).passthrough()
+})
