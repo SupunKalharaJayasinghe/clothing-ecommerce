@@ -109,13 +109,11 @@ export const updateDeliveryOrderStatus = catchAsync(async (req, res) => {
   const o = await Order.findById(id)
   if (!o) throw new ApiError(404, 'Order not found')
 
-  // Only allow delivery staff to act once the order has been dispatched / handed over
   const handed = String(o.deliveryState) !== 'NOT_DISPATCHED' || ['SHIPPED','OUT_FOR_DELIVERY'].includes(String(o.orderState))
   if (!handed) {
     throw new ApiError(403, 'Order not yet handed over to delivery')
   }
 
-  // Optional reason metadata (not required for now)
   if ([DELIVERY_STATES.DELIVERY_FAILED, DELIVERY_STATES.RTO_INITIATED].includes(target)) {
     const r = req.body?.reason || {}
     if (r.code || r.detail) {
@@ -125,7 +123,6 @@ export const updateDeliveryOrderStatus = catchAsync(async (req, res) => {
     }
   }
 
-  // Optional POD evidence for delivered (not required)
   if (target === DELIVERY_STATES.DELIVERED) {
     const ev = req.body?.evidence || {}
     if (ev.podPhotoUrl || ev.signatureUrl || ev.otp) {
@@ -135,7 +132,6 @@ export const updateDeliveryOrderStatus = catchAsync(async (req, res) => {
     }
   }
 
-  // Plan transition: allow single-click to progress through required intermediate states
   const sequence = []
   if (target === DELIVERY_STATES.DELIVERED) {
     if (!canTransitionDeliveryState(o.deliveryState, DELIVERY_STATES.DELIVERED)) {
@@ -155,13 +151,11 @@ export const updateDeliveryOrderStatus = catchAsync(async (req, res) => {
     sequence.push(target)
   }
 
-  // Apply all transitions in order
   for (const st of sequence) {
     const changes = updateOrderStates(o, { deliveryState: st })
     applyStateChanges(o, changes)
   }
 
   await o.save()
-
   res.json({ ok: true, orderId: o._id, deliveryState: o.deliveryState })
 })

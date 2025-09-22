@@ -17,6 +17,16 @@ function showError(err) {
   alert(err?.message || 'Something went wrong')
 }
 
+// View-only verification: always block changes
+function verifyBlocked() {
+  try {
+    const msg = 'Verification required. The Delivery Panel is now view-only. No changes will be made.'
+    // Prompt the user so they explicitly acknowledge
+    alert(msg)
+  } catch {}
+  return false
+}
+
 function renderLogin() {
   root.innerHTML = ''
   const form = el('form', { class: 'card login', id: 'loginForm' },
@@ -52,14 +62,25 @@ function orderRow(o, refresh) {
   const mapQuery = encodeURIComponent(`${o.address?.line1 || ''} ${o.address?.city || ''} ${o.address?.country || ''}`.trim())
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`
 
-  // Actions per your 3-step flow
+  // Actions
   actionButtons.push(
     el('button', { class: 'btn btn-outline', onclick: () => { try { window.open(mapUrl, '_blank', 'noopener'); } catch (e) { showError(e) } } }, 'See location'),
     el('button', { class: 'btn btn-outline', onclick: async () => {
       try {
-        const pod = prompt('Enter POD (OTP code or photo/signature URL). Leave empty to cancel:') || ''
-        if (!pod) return
-        const payload = /^\d{4,6}$/.test(pod) ? { evidence: { otp: pod } } : { evidence: { podPhotoUrl: pod } }
+        if (!confirm('Mark this order as Delivered?')) return
+        const pod = prompt('Enter OTP code or photo/signature URL (optional). Leave blank to continue without evidence:') || ''
+        let payload = undefined
+        const trimmed = pod.trim()
+        if (trimmed) {
+          if (/^\d{4,6}$/.test(trimmed)) {
+            payload = { evidence: { otp: trimmed } }
+          } else if (/^https?:\/\//i.test(trimmed)) {
+            payload = { evidence: { podPhotoUrl: trimmed } }
+          } else {
+            // unrecognized input: proceed without attaching evidence
+            payload = undefined
+          }
+        }
         await api.setOrderStatus(o.id, 'DELIVERED', payload)
         await refresh()
       } catch (e) { showError(e) }
@@ -70,13 +91,13 @@ function orderRow(o, refresh) {
   const inDelivery = ['OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED','RTO_INITIATED','RETURNED_TO_WAREHOUSE','SHIPPED'].includes(String(o.deliveryState)) || String(o.orderState) === 'SHIPPED'
   if (o.payment?.method === 'COD' && (inDelivery) && o.payment?.status === 'UNPAID') {
     actionButtons.push(
-      el('button', { class: 'btn btn-success', onclick: async () => { if (!confirm('Confirm COD as PAID?')) return; try { await api.setCodPayment(o.id, 'paid'); await refresh(); } catch (e) { showError(e) } } }, 'Confirm paid')
+      el('button', { class: 'btn btn-success', onclick: async () => { verifyBlocked() } }, 'Confirm paid')
     )
   }
 
   // Return (RTO)
   actionButtons.push(
-    el('button', { class: 'btn btn-danger', onclick: async () => { const reason = prompt('Reason for return (RTO):') || ''; try { await api.setOrderStatus(o.id, 'RTO_INITIATED', reason ? { reason: { detail: reason } } : undefined); await refresh() } catch (e) { showError(e) } } }, 'Return')
+    el('button', { class: 'btn btn-danger', onclick: async () => { verifyBlocked() } }, 'Return')
   )
   
   // Title: first item name (+N more)
@@ -86,7 +107,7 @@ function orderRow(o, refresh) {
 
   return el('div', { class: 'order' },
     el('div', {},
-      el('div', {}, el('strong', {}, title)),
+      el('div', { class: 'title' }, title),
       el('div', { class: 'meta' }, (o.customer?.name ? `${o.customer.name}` : '-') + (o.address?.phone ? ` · ${o.address.phone}` : '')),
       el('div', { class: 'meta' }, (o.address?.city || '-') + ' · ' + (o.address?.line1 || '-'))
     ),

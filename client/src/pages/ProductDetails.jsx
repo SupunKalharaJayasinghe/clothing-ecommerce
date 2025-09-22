@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector, useAppDispatch } from '../app/hooks' // <-- CHANGED
 import { addToCart } from '../features/cart/cartSlice'        // <-- NEW
@@ -8,6 +8,7 @@ import Price from '../components/ui/Price'
 import Stars from '../components/ui/Stars'
 import Badge from '../components/ui/Badge'
 import { getColorValue } from '../lib/colors'
+import Loader from '../components/ui/Loader'
 
  
 
@@ -124,9 +125,16 @@ export default function ProductDetails() {
     })()
   }, [slug, user])
 
-  if (loading) return <div className="container-app section">Loading…</div>
+  if (loading) return <Loader />
   if (error) return <div className="container-app section text-red-600">{error}</div>
-  if (!p) return <div className="container-app section">Not found</div>
+  if (!p) return (
+    <div className="container-app section">
+      <div className="card card-body max-w-md mx-auto text-center space-y-2">
+        <div>Product not found.</div>
+        <Link to="/products" className="btn btn-primary w-max mx-auto">Browse products</Link>
+      </div>
+    </div>
+  )
 
   const currentImg = p.images?.[imgIndex] || p.images?.[0]
   const canLoadMore = reviews.length < revTotal
@@ -232,6 +240,21 @@ export default function ProductDetails() {
 
   return (
     <div className="container-app section">
+      {/* Breadcrumbs */}
+      <nav aria-label="Breadcrumb" className="text-sm mb-3">
+        <ol className="flex items-center gap-2 opacity-80">
+          <li><Link className="hover:underline" to="/">Home</Link></li>
+          <li>/</li>
+          <li><Link className="hover:underline" to="/products">Shop</Link></li>
+          <li>/</li>
+          <li aria-current="page" className="truncate max-w-[50ch]">{p.name}</li>
+        </ol>
+      </nav>
+
+      {/* Back link for quick navigation */}
+      <div className="mb-2">
+        <Link to="/products" className="text-sm underline">← Back to products</Link>
+      </div>
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Gallery */}
         <div className="relative">
@@ -270,6 +293,7 @@ export default function ProductDetails() {
           <div className="flex items-center gap-2">
             <Stars rating={p.rating} />
             <div className="text-sm opacity-70">({p.reviewsCount} reviews)</div>
+            <a href="#reviews" className="text-sm underline">See reviews</a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -308,7 +332,7 @@ export default function ProductDetails() {
       </div>
 
       {/* Reviews Section */}
-      <section className="mt-10 grid gap-6 lg:grid-cols-3">
+      <section id="reviews" className="mt-10 grid gap-6 lg:grid-cols-3">
         {/* Write / Edit Review */}
         <div ref={formRef} className="lg:col-span-1 card h-max">
           <div className="card-body">

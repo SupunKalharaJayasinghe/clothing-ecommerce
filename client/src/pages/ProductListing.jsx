@@ -213,14 +213,18 @@ export default function ProductListing() {
     setParams(keep)
   }
 
-  if (loading) return <div className="container-app section">Loading products…</div>
-  if (error) return <div className="container-app section text-red-600">{error}</div>
-
   const colorsFacet = (facets.colors || []).filter(Boolean)
   const tagsFacet = (facets.tags || []).filter(t => t && !RESERVED.has(String(t).toLowerCase()))
 
   return (
     <div className="container-app section">
+      {/* Mobile toolbar */}
+      <div className="md:hidden flex items-center justify-between mb-3">
+        <button className="btn btn-outline" onClick={() => setShowFiltersMobile(v => !v)}>
+          {showFiltersMobile ? 'Hide filters' : 'Show filters'}
+        </button>
+        <div className="text-sm text-[--color-muted]">{total ? `${total.toLocaleString()} items` : ''}</div>
+      </div>
       {/* Tabs */}
       <div className="mb-8 flex gap-2">
         {['all','men','women','kids'].map(t => (
@@ -236,8 +240,8 @@ export default function ProductListing() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Filters */}
-        <aside className="md:col-span-1 card h-max md:sticky md:top-24">
-          <div className="card-body" style={{ display: showFiltersMobile ? 'block' : undefined }}>
+        <aside className={`${showFiltersMobile ? '' : 'hidden'} md:block md:col-span-1 card h-max md:sticky md:top-24`}>
+          <div className="card-body">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Filters</h2>
             <button className="text-sm underline" onClick={clearFilters}>Clear</button>
@@ -368,18 +372,13 @@ export default function ProductListing() {
           <div className="mb-2">
             <label className="text-sm block mb-1">Main tag</label>
             <div className="flex gap-2 flex-wrap">
-              <button
-                className={`btn ${mainTag === 'any' ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
-                onClick={() => setParam('mainTag', 'any')}
-              >Any</button>
-              <button
-                className={`btn ${mainTag === 'new' ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
-                onClick={() => setParam('mainTag', 'new')}
-              >New</button>
-              <button
-                className={`btn ${mainTag === 'old' ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
-                onClick={() => setParam('mainTag', 'old')}
-              >Old</button>
+              {['any','new','discount','limited','bestseller','featured'].map(tag => (
+                <button
+                  key={tag}
+                  className={`btn ${mainTag === tag ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
+                  onClick={() => setParam('mainTag', tag)}
+                >{tag[0].toUpperCase() + tag.slice(1)}</button>
+              ))}
             </div>
           </div>
           </div>
@@ -387,6 +386,9 @@ export default function ProductListing() {
 
         {/* Results */}
         <section className="md:col-span-3">
+          {error && (
+            <div className="card card-body text-sm text-red-600 mb-4">{error}</div>
+          )}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <h1 className="text-2xl md:text-3xl font-bold">
               {(category === 'all' ? 'All' : category[0].toUpperCase() + category.slice(1))} — Products

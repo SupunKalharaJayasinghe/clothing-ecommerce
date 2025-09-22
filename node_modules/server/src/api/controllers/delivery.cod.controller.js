@@ -31,65 +31,14 @@ export const listCodOrders = catchAsync(async (req, res) => {
 export const updateCodPayment = catchAsync(async (req, res) => {
   const { id } = req.params
   const { action } = req.body || {}
-  const o = await Order.findById(id)
-  if (!o) throw new ApiError(404, 'Order not found')
-  if (o.payment?.method !== 'COD') throw new ApiError(400, 'Not a COD order')
-
-  // Delivery can record COD payment only after handover and while payment is UNPAID
-  const ok = String(o.deliveryState) !== 'NOT_DISPATCHED' || ['SHIPPED','OUT_FOR_DELIVERY','DELIVERED'].includes(String(o.orderState))
-  if (!ok) {
-    throw new ApiError(403, 'Order not yet in delivery flow')
-  }
-  if (o.payment?.status !== PAYMENT_STATES.UNPAID) {
-    throw new ApiError(400, 'COD payment is not UNPAID')
-  }
-
-  let newPaymentStatus
-  if (action === 'paid') {
-    newPaymentStatus = PAYMENT_STATES.PAID
-  } else if (action === 'failed') {
-    newPaymentStatus = PAYMENT_STATES.FAILED
-  } else {
-    throw new ApiError(400, 'Invalid action')
-  }
-  
-  // Use state manager for consistent payment status update
-  const changes = updateOrderStates(o, { paymentStatus: newPaymentStatus })
-  applyStateChanges(o, changes)
-  await o.save()
-  res.json({ ok: true, orderId: o._id, payment: o.payment })
+  // View-only mode: Delivery Panel is not allowed to mutate payment
+  throw new ApiError(403, 'Delivery panel is view-only. Payment updates are disabled.')
 })
 
 // PATCH /api/delivery/cod/:id/status { status }
 export const updateCodStatus = catchAsync(async (req, res) => {
   const { id } = req.params
   const { status } = req.body || {}
-
-  // Map legacy/lowercase statuses from older COD UI
-  const map = (s) => {
-    const v = String(s || '').toLowerCase()
-    switch (v) {
-      case 'out_for_delivery':
-        return 'OUT_FOR_DELIVERY'
-      case 'delivery_confirm':
-      case 'completed':
-      case 'delivered':
-        return 'DELIVERED'
-      default:
-        return String(s || '').toUpperCase()
-    }
-  }
-  const target = map(status)
-  const ALLOWED = new Set(['OUT_FOR_DELIVERY','DELIVERED'])
-  if (!ALLOWED.has(String(target))) throw new ApiError(400, 'Invalid status')
-
-  const o = await Order.findById(id)
-  if (!o) throw new ApiError(404, 'Order not found')
-  if (o.payment?.method !== 'COD') throw new ApiError(400, 'Not a COD order')
-
-  // Use state manager for consistent delivery state update
-  const changes = updateOrderStates(o, { deliveryState: target })
-  applyStateChanges(o, changes)
-  await o.save()
-  res.json({ ok: true, orderId: o._id, deliveryState: o.deliveryState })
+  // View-only mode: Delivery Panel is not allowed to mutate delivery status
+  throw new ApiError(403, 'Delivery panel is view-only. Status changes are disabled.')
 })

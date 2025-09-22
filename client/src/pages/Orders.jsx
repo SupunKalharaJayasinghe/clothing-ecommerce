@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAppSelector } from '../app/hooks'
 import api from '../lib/axios'
 import Price from '../components/ui/Price'
 import Badge from '../components/ui/Badge'
+import Loader from '../components/ui/Loader'
+import { ChevronDown, ChevronUp, Copy } from '../lib/icons'
 
 export default function Orders() {
   const { user } = useAppSelector(s => s.auth)
@@ -10,6 +13,7 @@ export default function Orders() {
   const [error, setError] = useState('')
   const [orders, setOrders] = useState([])
   const [uploading, setUploading] = useState('') // orderId currently uploading slip
+  const [expanded, setExpanded] = useState({}) // map of orderId => bool (mobile only)
 
   // route-level protection handles redirects; no page-level redirects needed
 
@@ -24,6 +28,11 @@ export default function Orders() {
         setLoading(false)
       }
     })()
+  }, [])
+
+  // Handy formatter for date/time
+  const formatDate = useMemo(() => (iso) => {
+    try { return new Date(iso).toLocaleString() } catch { return '' }
   }, [])
 
   async function uploadSlip(orderId, file) {
@@ -72,28 +81,44 @@ export default function Orders() {
     return 'gray'
   }
 
-  if (loading) return <div className="container-app section">Loading orders…</div>
+  if (loading) return <Loader />
   if (error) return <div className="container-app section text-red-600">{error}</div>
 
   return (
     <div className="container-app section">
       <h1 className="section-title">Your Orders</h1>
+      {orders.length > 0 && (
+        <p className="text-sm text-[--color-muted] mt-1">Status guide: <span className="font-medium">Confirmed</span> → <span className="font-medium">Packing</span> → <span className="font-medium">Shipped</span> → <span className="font-medium">Out for delivery</span> → <span className="font-medium">Delivered</span>. Payment badges show the latest payment state.</p>
+      )}
       {orders.length === 0 && (
-        <div className="mt-3 card card-body max-w-md">
-          <div className="text-sm opacity-80">You have no orders yet.</div>
+        <div className="mt-4 max-w-md">
+          <div className="card card-body space-y-2 text-center">
+            <div className="text-sm opacity-80">You have no orders yet.</div>
+            <Link to="/products" className="btn btn-primary w-max mx-auto">Start shopping</Link>
+          </div>
         </div>
       )}
 
-      <div className="mt-8 space-y-5">
+      <div className="mt-6 space-y-5">
         {orders.map(o => (
           <div key={o._id} className="card">
-            <div className="p-4 border-b flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <div className="text-xs opacity-60">Order</div>
-                <div className="font-medium text-sm">#{o._id}</div>
-                <div className="text-xs opacity-70 mt-0.5">{new Date(o.createdAt).toLocaleString()}</div>
+            {/* Header */}
+            <div className="p-4 border-b flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="text-xs opacity-60">Order</div>
+                  <button
+                    className="text-[11px] underline opacity-80 hover:opacity-100"
+                    onClick={() => navigator.clipboard?.writeText(o._id).catch(() => {})}
+                    title="Copy order ID"
+                  >
+                    <span className="font-mono">#{o._id}</span>
+                    <span className="inline-flex ml-1 align-middle"><Copy size={12} /></span>
+                  </button>
+                </div>
+                <div className="text-xs opacity-70 mt-0.5">{formatDate(o.createdAt)}</div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge tone={toneForOrderState(o.status || o.orderState)}>{(o.status || o.orderState) || '—'}</Badge>
                 <Badge tone={toneForDeliveryState(o.deliveryState)}>
                   Delivery: {(((o.deliveryState || '').toString().toUpperCase()) === 'NOT_DISPATCHED') ? '—' : (o.deliveryState || '—')}
@@ -105,11 +130,22 @@ export default function Orders() {
                   </Badge>
                 )}
                 <div className="ml-2 font-semibold whitespace-nowrap">Total: <Price price={o.totals?.grandTotal} /></div>
+
+                {/* Mobile toggle */}
+                <button
+                  className="md:hidden ml-2 px-2 py-1 rounded border text-sm"
+                  onClick={() => setExpanded(prev => ({ ...prev, [o._id]: !prev[o._id] }))}
+                  aria-expanded={!!expanded[o._id]}
+                  aria-controls={`order-details-${o._id}`}
+                >
+                  {expanded[o._id] ? (<span className="inline-flex items-center gap-1">Hide <ChevronUp /></span>) : (<span className="inline-flex items-center gap-1">Details <ChevronDown /></span>)}
+                </button>
               </div>
             </div>
 
-            <div className="p-4 grid md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
+            {/* Details: always visible on md+, toggle on mobile */}
+            <div id={`order-details-${o._id}`} className="p-4 grid md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 hidden md:block">
                 <h3 className="font-semibold mb-2">Items</h3>
                 <div className="divide-y">
                   {o.items.map(it => (
@@ -126,6 +162,27 @@ export default function Orders() {
                   ))}
                 </div>
               </div>
+
+              {/* Mobile collapsible Items */}
+              {expanded[o._id] && (
+                <div className="md:col-span-2 md:hidden">
+                  <h3 className="font-semibold mb-2">Items</h3>
+                  <div className="divide-y">
+                    {o.items.map(it => (
+                      <div key={it.slug} className="py-2 flex items-center justify-between text-sm gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {it.image && <img src={it.image} alt={it.name} className="w-12 h-12 object-cover rounded border" />}
+                          <div className="min-w-0">
+                            <div className="font-medium leading-tight truncate">{it.name}</div>
+                            <div className="opacity-70">{it.color} × {it.quantity}</div>
+                          </div>
+                        </div>
+                        <div className="font-medium whitespace-nowrap"><Price price={it.price * it.quantity} /></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <aside className="space-y-3">
                 <div>
@@ -147,9 +204,9 @@ export default function Orders() {
                   </div>
                 </div>
 
-                {o.payment?.method === 'BANK' && o.payment?.status !== 'paid' && (
+                {o.payment?.method === 'BANK' && (String(o.payment?.status || '').toUpperCase() !== 'PAID') && (
                   <div>
-                    <label className="text-sm">Upload bank slip</label>
+                    <label className="text-sm font-medium">Upload bank slip</label>
                     <input
                       type="file"
                       accept="image/*,application/pdf"

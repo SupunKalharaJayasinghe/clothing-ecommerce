@@ -8,6 +8,7 @@ import { Menu } from '../lib/icons'
 export default function RootLayout() {
   const [open, setOpen] = useState(false)
   const { user, status, hydrated } = useAppSelector(s => s.auth)
+  const { items: cartItems = [] } = useAppSelector(s => s.cart || { items: [] })
   const dispatch = useAppDispatch()
 
   // hydrate session from cookie (guard against StrictMode double-effect)
@@ -18,12 +19,15 @@ export default function RootLayout() {
     dispatch(fetchMe())
   }, [dispatch])
 
+  const cartCount = (cartItems || []).reduce((sum, it) => sum + (Number(it.quantity) || 0), 0)
+
+
   return (
     <div className="min-h-dvh flex flex-col">
       <header className="sticky top-0 z-40">
         <div className="container-app py-3">
-          <div className="h-14 px-4 rounded-2xl border bg-white/80 backdrop-blur shadow-soft flex items-center justify-between">
-            <Link to="/" className="font-black text-lg tracking-tight">
+          <div className="h-14 px-4 rounded-2xl border bg-white/80 backdrop-blur shadow-soft flex items-center justify-between gap-3">
+            <Link to="/" className="font-black text-lg tracking-tight whitespace-nowrap">
               {APP_NAME}
             </Link>
             <button
@@ -34,7 +38,7 @@ export default function RootLayout() {
               <Menu size={18} />
             </button>
             {!hydrated ? (
-              <div className="hidden md:flex items-center gap-2 w-[36rem] h-9 rounded-full bg-[--color-bg-soft] animate-pulse" />
+              <div className="hidden md:flex items-center gap-2" />
             ) : (
               <nav className="hidden md:flex items-center gap-2">
                 <NavLink
@@ -55,7 +59,13 @@ export default function RootLayout() {
                 <NavLink
                   to="/cart"
                   className={({isActive}) => `px-4 py-2 rounded-full transition ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`}
-                >Cart</NavLink>
+                >
+                  Cart{cartCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded-full bg-[--color-brand-600] text-white align-top">
+                      {cartCount}
+                    </span>
+                  )}
+                </NavLink>
                 {!user ? (
                   <>
                     <NavLink to="/login" className={({isActive}) => `px-4 py-2 rounded-full transition ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`}>Login</NavLink>
@@ -83,7 +93,13 @@ export default function RootLayout() {
                     <NavLink to="/" end className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>Home</NavLink>
                     <NavLink to="/products" className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>Shop</NavLink>
                     {user && <NavLink to="/favorites" className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>Favorites</NavLink>}
-                    <NavLink to="/cart" className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>Cart</NavLink>
+                    <NavLink to="/cart" className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>
+                      Cart{cartCount > 0 && (
+                        <span className="ml-1 inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded-full bg-[--color-brand-600] text-white align-top">
+                          {cartCount}
+                        </span>
+                      )}
+                    </NavLink>
                     {!user ? (
                       <>
                         <NavLink to="/login" className={({isActive}) => `px-4 py-2 rounded-xl ${isActive ? 'bg-[--color-brand-50] text-[--color-brand-700] font-semibold' : 'text-[--color-muted] hover:bg-[--color-bg-soft]'}`} onClick={() => setOpen(false)}>Login</NavLink>
