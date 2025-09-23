@@ -31,8 +31,21 @@ export const listCodOrders = catchAsync(async (req, res) => {
 export const updateCodPayment = catchAsync(async (req, res) => {
   const { id } = req.params
   const { action } = req.body || {}
-  // View-only mode: Delivery Panel is not allowed to mutate payment
-  throw new ApiError(403, 'Delivery panel is view-only. Payment updates are disabled.')
+  const o = await Order.findById(id)
+  if (!o) throw new ApiError(404, 'Order not found')
+  if (o.payment?.method !== 'COD') throw new ApiError(400, 'Not a COD order')
+  
+  // Map action to payment status
+  const target = String(action) === 'failed' ? PAYMENT_STATES.FAILED : PAYMENT_STATES.PAID
+  if (o.payment?.status === target) {
+    return res.json({ ok: true, orderId: o._id, paymentStatus: o.payment?.status })
+  }
+  
+  // Compute and apply state changes consistently
+  const changes = updateOrderStates(o, { paymentStatus: target })
+  applyStateChanges(o, changes)
+  await o.save()
+  res.json({ ok: true, orderId: o._id, paymentStatus: o.payment?.status })
 })
 
 // PATCH /api/delivery/cod/:id/status { status }

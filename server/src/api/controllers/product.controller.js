@@ -122,11 +122,14 @@ export const listProducts = catchAsync(async (req, res) => {
     match.tags = { $in: tagRegexes }
   }
 
-  // mainTag: 'new' | 'old' | 'any'
+  // mainTag filters: support curated flags and legacy 'old'
   if (mainTag && mainTag !== 'any') {
-    if (mainTag === 'new') {
-      match.mainTags = { $in: ['new'] }
-    } else if (mainTag === 'old') {
+    const mt = String(mainTag).toLowerCase()
+    const curated = ['new', 'discount', 'limited', 'bestseller', 'featured']
+    if (curated.includes(mt)) {
+      match.mainTags = { $in: [mt] }
+    } else if (mt === 'old') {
+      // 'old' = anything not explicitly tagged as 'new'
       match.$and = (match.$and || []).concat([{ mainTags: { $nin: ['new'] } }])
     }
   }
@@ -197,19 +200,52 @@ export const getHighlights = catchAsync(async (req, res) => {
 
   if (category && ['men', 'women', 'kids'].includes(String(category).toLowerCase())) {
     const cat = String(category).toLowerCase()
-    const catClause = { $or: [{ category: cat }, { tags: cat }] }
-    const hasAny = await Product.countDocuments(catClause)
-    if (hasAny > 0) {
-      filter.$and = (filter.$and || []).concat([catClause])
-    }
+    // Use case-insensitive exact-match, consistent with listProducts
+    const catRx = new RegExp(`^${escapeRegExp(cat)}$`, 'i')
+    const catClause = { $or: [{ category: catRx }, { tags: catRx }] }
+    filter.$and = (filter.$and || []).concat([catClause])
   }
 
   const pick = 'name slug images price discountPercent rating reviewsCount stock mainTags color createdAt'
 
-  const [latest, topRated, popular] = await Promise.all([
+  const [latest, topRatedAgg, popular] = await Promise.all([
     Product.find(filter).sort({ createdAt: -1 }).limit(limitNum).select(pick).lean(),
-    Product.find(filter).sort({ rating: -1, reviewsCount: -1, createdAt: -1 }).limit(limitNum).select(pick).lean(),
-    Product.find(filter).sort({ purchases: -1, reviewsCount: -1, rating: -1, createdAt: -1 }).limit(limitNum).select(pick).lean()
+    // Top Rated via aggregation to avoid stale product.rating values.
+    Product.aggregate([
+      { $match: filter },
+      {
+        $lookup: {
+          from: 'reviews',
+          let: { pid: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$product', '$$pid'] } } },
+            { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } }
+          ],
+          as: 'reviewStats'
+        }
+      },
+      {
+        $addFields: {
+          rating: { $round: [{ $ifNull: [{ $arrayElemAt: ['$reviewStats.avg', 0] }, 0] }, 1] },
+          reviewsCount: { $ifNull: [{ $arrayElemAt: ['$reviewStats.count', 0] }, 0] }
+        }
+      },
+      { $match: { rating: { $gt: 0 }, reviewsCount: { $gt: 0 } } },
+      { $sort: { rating: -1, reviewsCount: -1, createdAt: -1 } },
+      { $limit: limitNum },
+      {
+        $project: {
+          name: 1, slug: 1, images: 1, price: 1, discountPercent: 1, rating: 1, reviewsCount: 1,
+          stock: 1, lowStockThreshold: 1, mainTags: 1, color: 1, createdAt: 1
+        }
+      }
+    ]),
+    // Trending: require at least one review to avoid zero-review items surfacing
+    Product.find({ ...filter, reviewsCount: { $gt: 0 } })
+      .sort({ reviewsCount: -1, rating: -1, createdAt: -1 })
+      .limit(limitNum)
+      .select(pick)
+      .lean()
   ])
 
   const mapLite = (arr) =>
@@ -223,7 +259,7 @@ export const getHighlights = catchAsync(async (req, res) => {
     }))
 
   res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
-  res.json({ ok: true, latest: mapLite(latest), topRated: mapLite(topRated), popular: mapLite(popular) })
+  res.json({ ok: true, latest: mapLite(latest), topRated: mapLite(topRatedAgg), popular: mapLite(popular) })
 })
 
 // GET /api/products/suggest?q=...

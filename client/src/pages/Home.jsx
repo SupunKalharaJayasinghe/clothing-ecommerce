@@ -7,6 +7,7 @@ import Price from '../components/ui/Price'
 import Stars from '../components/ui/Stars'
 import Badge from '../components/ui/Badge'
 import { getColorValue } from '../lib/colors'
+import { getProductRating, getProductReviewsCount } from '../lib/product'
 
 function Card({ p }) {
   return (
@@ -45,8 +46,8 @@ function Card({ p }) {
         
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1 text-xs">
-            <Stars rating={p.rating} />
-            <span className="opacity-70">({p.reviewsCount || 0})</span>
+            <Stars rating={getProductRating(p)} />
+            <span className="opacity-70">({getProductReviewsCount(p)})</span>
           </div>
           <div className="text-right">
             {p.lowStock ? <Badge tone="red">Low stock</Badge> : p.stock > 0 ? <Badge tone="green">In stock</Badge> : <Badge>Out of stock</Badge>}
@@ -73,25 +74,55 @@ export default function Home() {
   const [latest, setLatest] = useState([])
   const [topRated, setTopRated] = useState([])
   const [popular, setPopular] = useState([])
+  const [topRatedAll, setTopRatedAll] = useState([]) // new: across all categories
   const [loadingHL, setLoadingHL] = useState(true)
   const [errHL, setErrHL] = useState('')
 
   // Fetch highlights when category changes
   useEffect(() => {
-    (async () => {
+    const ctrl = new AbortController()
+    let cancelled = false
+    ;(async () => {
       setLoadingHL(true); setErrHL('')
       try {
-        const { data } = await api.get('/products/highlights', { params: { category, limit: 8 } })
+        const { data } = await api.get('/products/highlights', { params: { category, limit: 8 }, signal: ctrl.signal })
+        if (cancelled) return
         setLatest(data.latest || [])
         setTopRated(data.topRated || [])
         setPopular(data.popular || [])
       } catch (e) {
-        setErrHL(e.response?.data?.message || e.message)
+        if (!cancelled && e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
+          setErrHL(e.response?.data?.message || e.message)
+        }
       } finally {
-        setLoadingHL(false)
+        if (!cancelled) setLoadingHL(false)
       }
     })()
+    return () => { cancelled = true; ctrl.abort() }
   }, [category])
+
+  // Fetch Top Rated across ALL categories (independent of selected tab)
+  useEffect(() => {
+    const ctrl = new AbortController()
+    let cancelled = false
+    ;(async () => {
+      try {
+        // Ask API for top rated across all categories
+        const { data } = await api.get('/products', { params: { sort: 'rating', category: 'all', page: 1, limit: 100 }, signal: ctrl.signal })
+        // Strict client-side enforcement: rated only, highest → lowest by numeric rating
+        let items = Array.isArray(data.items) ? data.items : []
+        items = items.filter(it => {
+          const r = getProductRating(it)
+          return Number.isFinite(r) && r > 0
+        })
+        items.sort((a, b) => getProductRating(b) - getProductRating(a))
+        if (!cancelled) setTopRatedAll(items.slice(0, 8))
+      } catch (_) {
+        if (!cancelled) setTopRatedAll([])
+      }
+    })()
+    return () => { cancelled = true; ctrl.abort() }
+  }, [])
 
   // Fetch suggestions as user types
   useEffect(() => {
@@ -119,9 +150,17 @@ export default function Home() {
   }, [])
 
   const hasAny = useMemo(
-    () => (latest?.length || 0) + (topRated?.length || 0) + (popular?.length || 0) > 0,
-    [latest, topRated, popular]
+    () => (latest?.length || 0) + (topRated?.length || 0) + (popular?.length || 0) + (topRatedAll?.length || 0) > 0,
+    [latest, topRated, popular, topRatedAll]
   )
+
+  // Strict derived list for Top Rated All Products
+  const topRatedAllSorted = useMemo(() => {
+    return (topRatedAll || [])
+      .filter(p => Number.isFinite(getProductRating(p)) && getProductRating(p) > 0)
+      .slice() // copy
+      .sort((a, b) => getProductRating(b) - getProductRating(a))
+  }, [topRatedAll])
 
   function onSubmitSearch(e) {
     e.preventDefault()
@@ -319,6 +358,19 @@ export default function Home() {
                 </div>
                 <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                   {topRated.map(p => <Card key={p.id || p._id} p={p} />)}
+                </div>
+              </div>
+            )}
+
+            {/* Top Rated All Products */}
+            {topRatedAll?.length > 0 && (
+              <div className="mt-12">
+                <div className="flex items-baseline justify-between">
+                  <h2 className="section-title text-2xl">Top Rated All Products</h2>
+                  <Link to={`/products?category=all&sort=rating`} className="btn btn-ghost">View all</Link>
+                </div>
+                <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {topRatedAllSorted.map(p => <Card key={p.id || p._id} p={p} />)}
                 </div>
               </div>
             )}

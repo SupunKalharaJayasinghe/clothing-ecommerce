@@ -91,7 +91,13 @@ function orderRow(o, refresh) {
   const inDelivery = ['OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED','RTO_INITIATED','RETURNED_TO_WAREHOUSE','SHIPPED'].includes(String(o.deliveryState)) || String(o.orderState) === 'SHIPPED'
   if (o.payment?.method === 'COD' && (inDelivery) && o.payment?.status === 'UNPAID') {
     actionButtons.push(
-      el('button', { class: 'btn btn-success', onclick: async () => { verifyBlocked() } }, 'Confirm paid')
+      el('button', { class: 'btn btn-success', onclick: async () => {
+        try {
+          if (!confirm('Confirm cash has been collected? This will mark payment as PAID.')) return
+          await api.setCodPayment(o.id, 'paid')
+          await refresh()
+        } catch (e) { showError(e) }
+      } }, 'Confirm paid')
     )
   }
 
