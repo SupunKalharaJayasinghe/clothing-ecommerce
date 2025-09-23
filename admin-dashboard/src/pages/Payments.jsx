@@ -16,6 +16,19 @@ export default function PaymentsPage() {
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [txMap, setTxMap] = useState({})
+
+  const prefetchTx = async (list = []) => {
+    const sample = (list || []).slice(0, 3)
+    for (const o of sample) {
+      try {
+        const res = await api.get(`/admin/payments/${o._id}/transactions`, { params: { page: 1, limit: 10 } })
+        setTxMap(prev => ({ ...prev, [o._id]: res.data.items || [] }))
+      } catch (_e) {
+        // ignore background errors
+      }
+    }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -23,6 +36,8 @@ export default function PaymentsPage() {
     try {
       const res = await api.get('/admin/payments', { params: { q, method: method || undefined, status: status || undefined } })
       setItems(res.data.items)
+      // Background: prefetch payment transactions for first few items (no UI change)
+      prefetchTx(res.data.items)
     } catch (e) {
       setError(e.response?.data?.message || e.message)
     } finally {

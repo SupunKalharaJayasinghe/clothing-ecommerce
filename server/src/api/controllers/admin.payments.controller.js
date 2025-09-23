@@ -2,6 +2,8 @@ import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import Order from '../models/Order.js'
 import { PAYMENT_STATES, updateOrderStates, applyStateChanges } from '../../utils/stateManager.js'
+import PaymentTransaction from '../models/PaymentTransaction.js'
+import Refund from '../models/Refund.js'
 
 const PAYMENT_STATUSES = ['UNPAID','PENDING','AUTHORIZED','PAID','FAILED','REFUND_PENDING','REFUNDED']
 
@@ -49,7 +51,33 @@ export const verifyBankSlip = catchAsync(async (req, res) => {
   applyStateChanges(o, changes)
   await o.save()
 
+  // Log transaction
+  await PaymentTransaction.create({
+    order: o._id,
+    method: 'BANK',
+    action: 'BANK_VERIFIED',
+    status: PAYMENT_STATES.PAID,
+    notes: 'Bank slip verified by admin',
+    createdBy: 'admin'
+  })
+
   res.json({ ok: true, order: o })
+})
+
+export const listTransactions = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const { page = 1, limit = 50 } = req.query || {}
+
+  const pageNum = Math.max(parseInt(page, 10) || 1, 1)
+  const perPage = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200)
+  const skip = (pageNum - 1) * perPage
+
+  const [items, total] = await Promise.all([
+    PaymentTransaction.find({ order: id }).sort({ createdAt: -1 }).skip(skip).limit(perPage).lean(),
+    PaymentTransaction.countDocuments({ order: id })
+  ])
+
+  res.json({ ok: true, items, page: pageNum, limit: perPage, total, hasMore: skip + items.length < total })
 })
 
 export const updatePaymentStatus = catchAsync(async (req, res) => {
@@ -65,5 +93,49 @@ export const updatePaymentStatus = catchAsync(async (req, res) => {
   const changes = updateOrderStates(o, { paymentStatus: status })
   applyStateChanges(o, changes)
   await o.save()
+  // Log admin status change
+  await PaymentTransaction.create({
+    order: o._id,
+    method: o.payment?.method,
+    action: 'STATUS_UPDATED',
+    status,
+    notes: 'Payment status updated by admin',
+    createdBy: 'admin'
+  })
+
+  // Persist refund state into Refund collection for refund-related statuses
+  const isRefundPending = status === PAYMENT_STATES.REFUND_PENDING
+  const isRefunded = status === PAYMENT_STATES.REFUNDED
+  const isFailed = status === PAYMENT_STATES.FAILED
+  if (isRefundPending || isRefunded || isFailed) {
+    const base = {
+      order: o._id,
+      method: o.payment?.method,
+      amount: o.totals?.grandTotal,
+      currency: 'LKR'
+    }
+    if (isRefundPending) {
+      await Refund.findOneAndUpdate(
+        { order: o._id },
+        { ...base, status: 'REQUESTED', requestedAt: new Date(), notes: 'Refund pending (payment.status)' },
+        { upsert: true }
+      )
+    }
+    if (isRefunded) {
+      await Refund.findOneAndUpdate(
+        { order: o._id },
+        { ...base, status: 'PROCESSED', processedAt: new Date(), notes: 'Refund processed (payment.status=REFUNDED)' },
+        { upsert: true }
+      )
+    }
+    if (isFailed) {
+      // Only mark refund failed if a refund process exists and not already processed
+      await Refund.findOneAndUpdate(
+        { order: o._id, status: { $ne: 'PROCESSED' } },
+        { ...base, status: 'FAILED', failedAt: new Date(), notes: 'Refund failed (payment.status=FAILED)' },
+        { upsert: true }
+      )
+    }
+  }
   res.json({ ok: true, order: o })
 })
