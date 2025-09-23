@@ -1,5 +1,5 @@
 import React from 'react'
-import { Heart as LucideHeart, Trash2 as LucideTrash2, Search as LucideSearch, ArrowRight as LucideArrowRight, ShoppingCart as LucideShoppingCart, Pencil as LucidePencil, Menu as LucideMenu, Minus as LucideMinus, Plus as LucidePlus, User as LucideUser, MapPin as LucideMapPin, CreditCard as LucideCreditCard, Package as LucidePackage, Star as LucideStar, Shield as LucideShield, ChevronDown as LucideChevronDown, ChevronUp as LucideChevronUp, Copy as LucideCopy } from 'lucide-react'
+import { Heart as LucideHeart, Trash2 as LucideTrash2, Search as LucideSearch, ArrowRight as LucideArrowRight, ShoppingCart as LucideShoppingCart, Pencil as LucidePencil, Menu as LucideMenu, Minus as LucideMinus, Plus as LucidePlus, User as LucideUser, MapPin as LucideMapPin, CreditCard as LucideCreditCard, Package as LucidePackage, Star as LucideStar, Shield as LucideShield, ChevronDown as LucideChevronDown, ChevronUp as LucideChevronUp, Copy as LucideCopy, X as LucideX } from 'lucide-react'
 
 export function Heart({ size = 18, className = '' }) {
   return <LucideHeart size={size} className={className} aria-hidden="true" />
@@ -66,4 +66,8 @@ export function ChevronUp({ size = 16, className = '' }) {
 
 export function Copy({ size = 14, className = '' }) {
   return <LucideCopy size={size} className={className} aria-hidden="true" />
+}
+
+export function X({ size = 18, className = '' }) {
+  return <LucideX size={size} className={className} aria-hidden="true" />
 }

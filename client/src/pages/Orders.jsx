@@ -103,22 +103,28 @@ export default function Orders() {
         {orders.map(o => (
           <div key={o._id} className="card">
             {/* Header */}
-            <div className="p-4 border-b flex items-start justify-between gap-3 flex-wrap">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <div className="text-xs opacity-60">Order</div>
-                  <button
-                    className="text-[11px] underline opacity-80 hover:opacity-100"
-                    onClick={() => navigator.clipboard?.writeText(o._id).catch(() => {})}
-                    title="Copy order ID"
-                  >
-                    <span className="font-mono">#{o._id}</span>
-                    <span className="inline-flex ml-1 align-middle"><Copy size={12} /></span>
-                  </button>
+            <div className="p-4 border-b space-y-2">
+              {/* Top row: Order ID + date and desktop total */}
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs opacity-60">Order</div>
+                    <button
+                      className="text-[11px] underline opacity-80 hover:opacity-100"
+                      onClick={() => navigator.clipboard?.writeText(o._id).catch(() => {})}
+                      title="Copy order ID"
+                    >
+                      <span className="font-mono">#{o._id}</span>
+                      <span className="inline-flex ml-1 align-middle"><Copy size={12} /></span>
+                    </button>
+                  </div>
+                  <div className="text-xs opacity-70 mt-0.5">{formatDate(o.createdAt)}</div>
                 </div>
-                <div className="text-xs opacity-70 mt-0.5">{formatDate(o.createdAt)}</div>
+                <div className="hidden md:block font-semibold whitespace-nowrap">Total: <span className="whitespace-nowrap"><Price price={o.totals?.grandTotal} /></span></div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
+
+              {/* Badges row */}
+              <div className="flex items-center gap-2 flex-wrap md:flex-nowrap overflow-x-auto py-1">
                 <Badge tone={toneForOrderState(o.status || o.orderState)}>{(o.status || o.orderState) || '—'}</Badge>
                 <Badge tone={toneForDeliveryState(o.deliveryState)}>
                   Delivery: {(((o.deliveryState || '').toString().toUpperCase()) === 'NOT_DISPATCHED') ? '—' : (o.deliveryState || '—')}
@@ -129,16 +135,20 @@ export default function Orders() {
                     {o.payment.status}
                   </Badge>
                 )}
-                <div className="ml-2 font-semibold whitespace-nowrap">Total: <Price price={o.totals?.grandTotal} /></div>
+              </div>
 
-                {/* Mobile toggle */}
+              {/* Mobile total + toggle */}
+              <div className="flex items-center justify-between gap-3 md:hidden mt-2">
+                <div className="font-semibold whitespace-nowrap flex items-baseline gap-1">Total: <span className="whitespace-nowrap"><Price price={o.totals?.grandTotal} /></span></div>
                 <button
-                  className="md:hidden ml-2 px-2 py-1 rounded border text-sm"
+                  className="btn btn-ghost btn-sm shadow-none hover:shadow-none focus:outline-none"
                   onClick={() => setExpanded(prev => ({ ...prev, [o._id]: !prev[o._id] }))}
                   aria-expanded={!!expanded[o._id]}
                   aria-controls={`order-details-${o._id}`}
                 >
-                  {expanded[o._id] ? (<span className="inline-flex items-center gap-1">Hide <ChevronUp /></span>) : (<span className="inline-flex items-center gap-1">Details <ChevronDown /></span>)}
+                  {expanded[o._id]
+                    ? (<span className="inline-flex items-center gap-1">Hide details <ChevronUp /></span>)
+                    : (<span className="inline-flex items-center gap-1">View details ({o.items?.length || 0}) <ChevronDown /></span>)}
                 </button>
               </div>
             </div>
@@ -169,22 +179,22 @@ export default function Orders() {
                   <h3 className="font-semibold mb-2">Items</h3>
                   <div className="divide-y">
                     {o.items.map(it => (
-                      <div key={it.slug} className="py-2 flex items-center justify-between text-sm gap-2">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <div key={it.slug} className="py-3 text-sm gap-2">
+                        <div className="grid grid-cols-[auto,1fr] items-center gap-3 min-w-0">
                           {it.image && <img src={it.image} alt={it.name} className="w-12 h-12 object-cover rounded border" />}
                           <div className="min-w-0">
                             <div className="font-medium leading-tight truncate">{it.name}</div>
                             <div className="opacity-70">{it.color} × {it.quantity}</div>
                           </div>
                         </div>
-                        <div className="font-medium whitespace-nowrap"><Price price={it.price * it.quantity} /></div>
+                        <div className="font-medium text-right mt-1 whitespace-nowrap"><Price price={it.price * it.quantity} /></div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              <aside className="space-y-3">
+              <aside className="space-y-3 hidden md:block">
                 <div>
                   <h3 className="font-semibold mb-1">Delivery</h3>
                   <div className="text-sm">
@@ -198,9 +208,9 @@ export default function Orders() {
                 <div>
                   <h3 className="font-semibold mb-1">Totals</h3>
                   <div className="text-sm">
-                    <div className="flex justify-between"><span>Subtotal</span><span><Price price={o.totals?.subtotal} /></span></div>
-                    <div className="flex justify-between"><span>Shipping</span><span><Price price={o.totals?.shipping} /></span></div>
-                    <div className="flex justify-between font-semibold"><span>Total</span><span><Price price={o.totals?.grandTotal} /></span></div>
+                    <div className="flex justify-between"><span>Subtotal</span><span className="whitespace-nowrap"><Price price={o.totals?.subtotal} /></span></div>
+                    <div className="flex justify-between"><span>Shipping</span><span className="whitespace-nowrap"><Price price={o.totals?.shipping} /></span></div>
+                    <div className="flex justify-between font-semibold"><span>Total</span><span className="whitespace-nowrap"><Price price={o.totals?.grandTotal} /></span></div>
                   </div>
                 </div>
 
@@ -222,6 +232,45 @@ export default function Orders() {
                 )}
               </aside>
             </div>
+
+            {/* Mobile-only details: Delivery + Totals (collapsible) */}
+            {expanded[o._id] && (
+              <div className="p-4 md:hidden space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-1">Delivery</h3>
+                  <div className="text-sm">
+                    <div>{o.address?.line1}{o.address?.line2 ? `, ${o.address.line2}` : ''}</div>
+                    <div>{o.address?.city}{o.address?.region ? `, ${o.address.region}` : ''}</div>
+                    <div>{o.address?.country}{o.address?.postalCode ? `, ${o.address.postalCode}` : ''}</div>
+                    <div className="opacity-70 mt-1">Phone: {o.address?.phone}</div>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-1">Totals</h3>
+                  <div className="text-sm">
+                    <div className="flex justify-between"><span>Subtotal</span><span className="whitespace-nowrap"><Price price={o.totals?.subtotal} /></span></div>
+                    <div className="flex justify-between"><span>Shipping</span><span className="whitespace-nowrap"><Price price={o.totals?.shipping} /></span></div>
+                    <div className="flex justify-between font-semibold"><span>Total</span><span className="whitespace-nowrap"><Price price={o.totals?.grandTotal} /></span></div>
+                  </div>
+                </div>
+                {o.payment?.method === 'BANK' && (String(o.payment?.status || '').toUpperCase() !== 'PAID') && (
+                  <div>
+                    <label className="text-sm font-medium">Upload bank slip</label>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="block mt-1"
+                      onChange={e => uploadSlip(o._id, e.target.files?.[0] || null)}
+                      disabled={uploading === o._id}
+                    />
+                    {uploading === o._id && <div className="text-xs opacity-70 mt-1">Uploading…</div>}
+                    {o.payment?.bank?.slipUrl && (
+                      <a href={o.payment.bank.slipUrl} target="_blank" rel="noreferrer" className="text-xs underline mt-1 inline-block">View uploaded slip</a>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
