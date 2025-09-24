@@ -2,6 +2,7 @@ import { api } from './api.js'
 
 const root = document.getElementById('app-root')
 
+// Enhanced element creation with animations
 function el(tag, attrs = {}, ...children) {
   const n = document.createElement(tag)
   Object.entries(attrs).forEach(([k, v]) => {
@@ -13,8 +14,110 @@ function el(tag, attrs = {}, ...children) {
   return n
 }
 
+// Modern notification system
+function showNotification(message, type = 'info', title = '') {
+  const notification = el('div', { class: `notification ${type}` },
+    title ? el('div', { class: 'title' }, title) : '',
+    el('div', { class: 'message' }, message)
+  )
+  
+  document.body.appendChild(notification)
+  
+  // Trigger animation
+  setTimeout(() => notification.classList.add('show'), 100)
+  
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    notification.classList.remove('show')
+    setTimeout(() => notification.remove(), 300)
+  }, 5000)
+  
+  return notification
+}
+
 function showError(err) {
-  alert(err?.message || 'Something went wrong')
+  const message = err?.message || 'Something went wrong'
+  showNotification(message, 'error', 'Error')
+}
+
+function showSuccess(message, title = 'Success') {
+  showNotification(message, 'success', title)
+}
+
+// Loading state management
+function setLoading(element, isLoading) {
+  if (isLoading) {
+    element.classList.add('loading')
+    element.disabled = true
+  } else {
+    element.classList.remove('loading')
+    element.disabled = false
+  }
+}
+
+// Helper function to create Lucide icons
+function createIcon(iconName, size = 16) {
+  const iconElement = document.createElement('i')
+  iconElement.setAttribute('data-lucide', iconName)
+  iconElement.style.width = `${size}px`
+  iconElement.style.height = `${size}px`
+  iconElement.style.display = 'inline-block'
+  
+  // Initialize the icon if Lucide is available
+  if (window.lucide && window.lucide.createIcons) {
+    setTimeout(() => window.lucide.createIcons(), 0)
+  }
+  
+  return iconElement
+}
+
+// Modern icon system using Lucide Icons
+const icons = {
+  location: () => createIcon('map-pin'),
+  delivered: () => createIcon('check-circle'),
+  paid: () => createIcon('dollar-sign'),
+  return: () => createIcon('arrow-left'),
+  refresh: () => createIcon('refresh-cw'),
+  logout: () => createIcon('log-out'),
+  login: () => createIcon('log-in'),
+  map: () => createIcon('map'),
+  phone: () => createIcon('phone'),
+  package: () => createIcon('package'),
+  truck: () => createIcon('truck'),
+  warning: () => createIcon('alert-triangle'),
+  success: () => createIcon('check-circle'),
+  pending: () => createIcon('clock'),
+  failed: () => createIcon('x-circle'),
+  user: () => createIcon('user'),
+  card: () => createIcon('credit-card'),
+  bank: () => createIcon('building')
+}
+
+// Enhanced animations
+function animateIn(element) {
+  element.classList.add('slide-in')
+  return element
+}
+
+// Status indicator helper
+function getStatusIndicator(status) {
+  const statusMap = {
+    'SHIPPED': { class: 'status-shipped', icon: icons.truck },
+    'OUT_FOR_DELIVERY': { class: 'status-shipped', icon: icons.truck },
+    'DELIVERED': { class: 'status-delivered', icon: icons.delivered },
+    'DELIVERY_FAILED': { class: 'status-failed', icon: icons.failed },
+    'RTO_INITIATED': { class: 'status-failed', icon: icons.return },
+    'RETURNED_TO_WAREHOUSE': { class: 'status-failed', icon: icons.return }
+  }
+  
+  const statusInfo = statusMap[status] || { class: 'status-pending', icon: icons.pending }
+  const indicator = el('span', { 
+    class: `status-indicator ${statusInfo.class}`, 
+    title: status,
+    style: 'display: inline-flex; align-items: center; margin-right: 8px;'
+  })
+  indicator.appendChild(statusInfo.icon())
+  return indicator
 }
 
 // View-only verification: always block changes
@@ -29,157 +132,444 @@ function verifyBlocked() {
 
 function renderLogin() {
   root.innerHTML = ''
-  const form = el('form', { class: 'card login', id: 'loginForm' },
-    el('div', { class: 'title' }, 'Delivery Panel · COD'),
-    el('div', { class: 'hint' }, 'Sign in with your delivery account (role: Delivery agent).'),
-    el('div', { class: 'row' },
-      el('input', { class: 'input', type: 'text', placeholder: 'Email or username', name: 'identifier', required: true, style: 'flex:1' })
-    ),
-    el('div', { class: 'row', style: 'margin-top:8px' },
-      el('input', { class: 'input', type: 'password', placeholder: 'Password', name: 'password', required: true, style: 'flex:1' })
-    ),
-    el('div', { class: 'row', style: 'margin-top:12px; justify-content: flex-end' },
-      el('button', { type: 'submit', class: 'btn btn-primary' }, 'Sign in')
-    )
+  
+  // Create title with icon
+  const titleContainer = el('div', { class: 'title', style: 'display: flex; align-items: center; justify-content: center; gap: 12px;' })
+  titleContainer.appendChild(icons.package())
+  titleContainer.appendChild(document.createTextNode('Delivery Panel'))
+  
+  // Create login button with icon
+  const loginButton = el('button', { 
+    type: 'submit', 
+    class: 'btn btn-primary',
+    style: 'min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px;'
+  })
+  loginButton.appendChild(icons.login())
+  loginButton.appendChild(document.createTextNode('Sign in'))
+  
+  const form = el('form', { class: 'login', id: 'loginForm' },
+    animateIn(el('div', { class: 'card' },
+      titleContainer,
+      el('div', { class: 'hint' }, 'Sign in with your delivery account to manage orders and deliveries.'),
+      el('div', { class: 'row' },
+        el('input', { 
+          class: 'input', 
+          type: 'text', 
+          placeholder: 'Email or username', 
+          name: 'identifier', 
+          required: true, 
+          style: 'flex:1',
+          autocomplete: 'username'
+        })
+      ),
+      el('div', { class: 'row', style: 'margin-top:16px' },
+        el('input', { 
+          class: 'input', 
+          type: 'password', 
+          placeholder: 'Password', 
+          name: 'password', 
+          required: true, 
+          style: 'flex:1',
+          autocomplete: 'current-password'
+        })
+      ),
+      el('div', { class: 'row', style: 'margin-top:24px; justify-content: center' },
+        loginButton
+      )
+    ))
   )
+  
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
+    const submitBtn = form.querySelector('button[type="submit"]')
+    setLoading(submitBtn, true)
+    
     const fd = new FormData(form)
     try {
       await api.login(fd.get('identifier'), fd.get('password'))
-      await renderApp()
+      showSuccess('Login successful! Loading your dashboard...')
+      setTimeout(() => renderApp(), 1000)
     } catch (err) {
       showError(err)
+    } finally {
+      setLoading(submitBtn, false)
     }
   })
+  
   root.append(form)
 }
 
 function orderRow(o, refresh) {
-  const paymentBadge = el('span', { class: 'badge ' + ((o.payment?.status === 'PAID') ? 'badge-info' : 'badge-warn') }, `${o.payment?.method || '-'} · ${o.payment?.status || '-'}`)
+  // Enhanced payment badge with better styling
+  const paymentStatus = o.payment?.status === 'PAID' ? 'success' : 'warn'
+  const paymentBadge = el('span', { 
+    class: `badge badge-${paymentStatus}`,
+    style: 'display: flex; align-items: center; gap: 6px;'
+  })
+  paymentBadge.appendChild(icons.paid())
+  paymentBadge.appendChild(document.createTextNode(`${o.payment?.method || 'Unknown'} · ${o.payment?.status || 'Pending'}`))
+  
   const actionButtons = []
+  
   // Build map URL from address
   const mapQuery = encodeURIComponent(`${o.address?.line1 || ''} ${o.address?.city || ''} ${o.address?.country || ''}`.trim())
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`
 
-  // Actions
-  actionButtons.push(
-    el('button', { class: 'btn btn-outline', onclick: () => { try { window.open(mapUrl, '_blank', 'noopener'); } catch (e) { showError(e) } } }, 'See location'),
-    el('button', { class: 'btn btn-outline', onclick: async () => {
+  // Enhanced actions with loading states
+  const locationBtn = el('button', { 
+    class: 'btn btn-outline',
+    style: 'display: flex; align-items: center; gap: 6px;',
+    onclick: () => { 
+      try { 
+        window.open(mapUrl, '_blank', 'noopener')
+        showSuccess('Opening location in maps...', 'Navigation')
+      } catch (e) { 
+        showError(e) 
+      } 
+    } 
+  })
+  locationBtn.appendChild(icons.map())
+  locationBtn.appendChild(document.createTextNode('Location'))
+  
+  const deliveredBtn = el('button', { 
+    class: 'btn btn-outline',
+    style: 'display: flex; align-items: center; gap: 6px;',
+    onclick: async (e) => {
+      const btn = e.target
       try {
         if (!confirm('Mark this order as Delivered?')) return
+        
+        setLoading(btn, true)
         const pod = prompt('Enter OTP code or photo/signature URL (optional). Leave blank to continue without evidence:') || ''
         let payload = undefined
         const trimmed = pod.trim()
+        
         if (trimmed) {
           if (/^\d{4,6}$/.test(trimmed)) {
             payload = { evidence: { otp: trimmed } }
           } else if (/^https?:\/\//i.test(trimmed)) {
             payload = { evidence: { podPhotoUrl: trimmed } }
-          } else {
-            // unrecognized input: proceed without attaching evidence
-            payload = undefined
           }
         }
+        
         await api.setOrderStatus(o.id, 'DELIVERED', payload)
+        showSuccess('Order marked as delivered successfully!', 'Delivery Complete')
         await refresh()
-      } catch (e) { showError(e) }
-    } }, 'Delivered')
-  )
+      } catch (e) { 
+        showError(e) 
+      } finally {
+        setLoading(btn, false)
+      }
+    } 
+  })
+  deliveredBtn.appendChild(icons.delivered())
+  deliveredBtn.appendChild(document.createTextNode('Delivered'))
+  
+  actionButtons.push(locationBtn, deliveredBtn)
 
   // COD: Confirm paid button when still UNPAID
   const inDelivery = ['OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED','RTO_INITIATED','RETURNED_TO_WAREHOUSE','SHIPPED'].includes(String(o.deliveryState)) || String(o.orderState) === 'SHIPPED'
   if (o.payment?.method === 'COD' && (inDelivery) && o.payment?.status === 'UNPAID') {
-    actionButtons.push(
-      el('button', { class: 'btn btn-success', onclick: async () => {
+    const confirmPaymentBtn = el('button', { 
+      class: 'btn btn-success',
+      style: 'display: flex; align-items: center; gap: 6px;',
+      onclick: async (e) => {
+        const btn = e.target
         try {
           if (!confirm('Confirm cash has been collected? This will mark payment as PAID.')) return
+          
+          setLoading(btn, true)
           await api.setCodPayment(o.id, 'paid')
+          showSuccess('Payment confirmed successfully!', 'Payment Received')
           await refresh()
-        } catch (e) { showError(e) }
-      } }, 'Confirm paid')
-    )
+        } catch (e) { 
+          showError(e) 
+        } finally {
+          setLoading(btn, false)
+        }
+      } 
+    })
+    confirmPaymentBtn.appendChild(icons.paid())
+    confirmPaymentBtn.appendChild(document.createTextNode('Confirm Payment'))
+    actionButtons.push(confirmPaymentBtn)
   }
 
-  // Return (RTO)
-  actionButtons.push(
-    el('button', { class: 'btn btn-danger', onclick: async () => { verifyBlocked() } }, 'Return')
-  )
+  // Return (RTO) - with verification
+  const returnBtn = el('button', { 
+    class: 'btn btn-danger',
+    style: 'display: flex; align-items: center; gap: 6px;',
+    onclick: () => { 
+      showNotification('Return to Origin feature is currently disabled for verification.', 'warning', 'Feature Disabled')
+      verifyBlocked() 
+    } 
+  })
+  returnBtn.appendChild(icons.return())
+  returnBtn.appendChild(document.createTextNode('Return'))
+  actionButtons.push(returnBtn)
   
-  // Title: first item name (+N more)
+  // Enhanced title with status indicator
   const firstItem = (o.items && o.items[0]) ? o.items[0] : null
   const moreCount = (o.items?.length || 0) - 1
-  const title = firstItem ? `${firstItem.name}${moreCount > 0 ? ` (+${moreCount} more)` : ''}` : `Order ${o.id}`
+  const title = firstItem ? `${firstItem.name}${moreCount > 0 ? ` (+${moreCount} more)` : ''}` : `Order #${o.id}`
 
-  return el('div', { class: 'order' },
+  // Get delivery status for visual indicator
+  const deliveryStatus = o.deliveryState || o.orderState || 'PENDING'
+  const statusIndicator = getStatusIndicator(deliveryStatus)
+
+  // Create meta elements with icons
+  const customerMeta = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px;' })
+  customerMeta.appendChild(icons.user())
+  customerMeta.appendChild(document.createTextNode(`${o.customer?.name || 'Unknown Customer'}${o.address?.phone ? ` · ${o.address.phone}` : ''}`))
+
+  const locationMeta = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px;' })
+  locationMeta.appendChild(icons.location())
+  locationMeta.appendChild(document.createTextNode(`${o.address?.city || 'Unknown City'} · ${o.address?.line1 || 'Address not provided'}`))
+
+  const refreshBtn = el('button', { 
+    class: 'btn btn-ghost',
+    style: 'display: flex; align-items: center; gap: 6px;',
+    onclick: async (e) => {
+      const btn = e.target
+      setLoading(btn, true)
+      try {
+        await refresh()
+        showSuccess('Order data refreshed', 'Updated')
+      } finally {
+        setLoading(btn, false)
+      }
+    } 
+  })
+  refreshBtn.appendChild(icons.refresh())
+  refreshBtn.appendChild(document.createTextNode('Refresh'))
+
+  return animateIn(el('div', { class: 'order' },
     el('div', {},
-      el('div', { class: 'title' }, title),
-      el('div', { class: 'meta' }, (o.customer?.name ? `${o.customer.name}` : '-') + (o.address?.phone ? ` · ${o.address.phone}` : '')),
-      el('div', { class: 'meta' }, (o.address?.city || '-') + ' · ' + (o.address?.line1 || '-'))
+      el('div', { class: 'title', style: 'display: flex; align-items: center;' }, 
+        statusIndicator,
+        title
+      ),
+      customerMeta,
+      locationMeta,
+      el('div', { class: 'meta', style: 'margin-top: 8px; font-weight: 500; color: var(--ink-secondary)' }, 
+        `Status: ${deliveryStatus.replace(/_/g, ' ')}`
+      )
     ),
     el('div', { class: 'actions' },
-      el('button', { class: 'btn btn-outline', onclick: () => refresh() }, 'Refresh'),
+      refreshBtn,
       ...actionButtons,
       paymentBadge,
     )
-  )
+  ))
 }
 
 async function renderApp() {
-  // Check session
-  try { await api.me() } catch { renderLogin(); return }
+  // Check session with loading state
+  try { 
+    await api.me() 
+  } catch { 
+    renderLogin()
+    return 
+  }
 
   root.innerHTML = ''
   let currentStatus = ''
+  let orderCount = 0
+
+  // Enhanced header with modern styling and stats
+  const headerTitle = el('div', { class: 'h1', style: 'display: flex; align-items: center; gap: 12px;' })
+  headerTitle.appendChild(icons.truck())
+  headerTitle.appendChild(document.createTextNode('Delivery Dashboard'))
+
+  const refreshButton = el('button', { 
+    class: 'btn btn-primary', 
+    id: 'refreshBtn',
+    style: 'display: flex; align-items: center; gap: 6px;',
+    onclick: async (e) => {
+      const btn = e.target
+      setLoading(btn, true)
+      try {
+        await load()
+        showSuccess('Orders refreshed successfully', 'Updated')
+      } finally {
+        setLoading(btn, false)
+      }
+    }
+  })
+  refreshButton.appendChild(icons.refresh())
+  refreshButton.appendChild(document.createTextNode('Refresh'))
+
+  const logoutButton = el('button', { 
+    class: 'btn btn-outline',
+    style: 'display: flex; align-items: center; gap: 6px;',
+    onclick: async (e) => { 
+      const btn = e.target
+      try { 
+        setLoading(btn, true)
+        await api.logout()
+        showSuccess('Logged out successfully', 'Goodbye')
+        setTimeout(() => renderLogin(), 1000)
+      } catch (e) { 
+        showError(e) 
+      } finally {
+        setLoading(btn, false)
+      }
+    } 
+  })
+  logoutButton.appendChild(icons.logout())
+  logoutButton.appendChild(document.createTextNode('Logout'))
+
+  // Create enhanced dropdown options with icons
+  function createSelectWithIcons(id, title, options) {
+    const select = el('select', { 
+      class: 'select', 
+      id: id,
+      title: title
+    })
+    
+    options.forEach(option => {
+      const optionEl = el('option', { value: option.value }, option.text)
+      select.appendChild(optionEl)
+    })
+    
+    return select
+  }
+
+  const statusOptions = [
+    { value: '', text: 'All Statuses' },
+    { value: 'SHIPPED', text: 'Dispatched' },
+    { value: 'OUT_FOR_DELIVERY', text: 'Out for Delivery' },
+    { value: 'DELIVERED', text: 'Delivered' },
+    { value: 'DELIVERY_FAILED', text: 'Failed/Attempted' },
+    { value: 'RTO_INITIATED', text: 'Return to Sender' },
+    { value: 'RETURNED_TO_WAREHOUSE', text: 'Returned' }
+  ]
+
+  const methodOptions = [
+    { value: '', text: 'All Methods' },
+    { value: 'COD', text: 'Cash on Delivery' },
+    { value: 'CARD', text: 'Card Payment' },
+    { value: 'BANK', text: 'Bank Transfer' }
+  ]
+
+  // Create custom dropdown containers with icons
+  const statusDropdown = el('div', { class: 'select-container' })
+  const statusIcon = icons.package()
+  const statusSelect = createSelectWithIcons('statusSelect', 'Filter by delivery status', statusOptions)
+  statusDropdown.appendChild(statusIcon)
+  statusDropdown.appendChild(statusSelect)
+
+  const methodDropdown = el('div', { class: 'select-container' })
+  const methodIcon = icons.paid()
+  const methodSelect = createSelectWithIcons('methodSelect', 'Filter by payment method', methodOptions)
+  methodDropdown.appendChild(methodIcon)
+  methodDropdown.appendChild(methodSelect)
 
   const header = el('div', { class: 'header' },
-    el('div', { class: 'h1' }, 'Delivery Panel'),
+    el('div', {},
+      headerTitle,
+      el('div', { class: 'meta', id: 'orderStats', style: 'margin-top: 8px; font-size: 14px; color: var(--muted)' }, 
+        'Loading orders...'
+      )
+    ),
     el('div', { class: 'row' },
-      el('select', { class: 'select', id: 'statusSelect' },
-        el('option', { value: '' }, 'All statuses'),
-        el('option', { value: 'SHIPPED' }, 'Dispatched'),
-        el('option', { value: 'OUT_FOR_DELIVERY' }, 'Out for delivery'),
-        el('option', { value: 'DELIVERED' }, 'Delivered'),
-        el('option', { value: 'DELIVERY_FAILED' }, 'Failed/Attempted'),
-        el('option', { value: 'RTO_INITIATED' }, 'Return to sender'),
-        el('option', { value: 'RETURNED_TO_WAREHOUSE' }, 'Returned'),
-      ),
-      el('select', { class: 'select', id: 'methodSelect', style: 'margin-left:8px' },
-        el('option', { value: '' }, 'All methods'),
-        el('option', { value: 'COD' }, 'COD'),
-        el('option', { value: 'CARD' }, 'Card'),
-        el('option', { value: 'BANK' }, 'Slip upload'),
-      ),
-      el('button', { class: 'btn btn-primary', onclick: () => load() }, 'Refresh'),
+      statusDropdown,
+      methodDropdown,
+      refreshButton,
       el('div', { class: 'spacer' }),
-      el('button', { class: 'btn btn-outline', onclick: async () => { try { await api.logout(); renderLogin() } catch (e) { showError(e) } } }, 'Logout')
+      logoutButton
     )
   )
 
-  const list = el('div', { class: 'card' }, el('div', {}, 'Loading...'))
-  root.append(el('div', { class: 'card' }, header), list)
+  // Enhanced loading state
+  const list = el('div', { class: 'card' }, 
+    el('div', { class: 'loading', style: 'text-align: center; padding: 40px;' }, 
+      'Loading your delivery orders...'
+    )
+  )
+  
+  root.append(animateIn(el('div', { class: 'card' }, header)), list)
 
+  // Auto-refresh functionality
+  let autoRefreshInterval
+  
   async function load() {
     const sel = document.getElementById('statusSelect')
     const msel = document.getElementById('methodSelect')
+    const statsEl = document.getElementById('orderStats')
+    
     currentStatus = sel?.value || ''
     const method = msel?.value || ''
+    
     list.innerHTML = ''
+    list.append(el('div', { class: 'loading', style: 'text-align: center; padding: 20px;' }, 
+      'Loading orders...'
+    ))
+    
     try {
       const res = await api.listOrders(currentStatus, method)
       const refresh = () => load()
+      
+      list.innerHTML = ''
+      
       if (!res.items?.length) {
-        list.append(el('div', { class: 'meta' }, 'No orders'))
-        return
+        list.append(
+          el('div', { 
+            style: 'text-align: center; padding: 60px 20px; color: var(--muted);' 
+          },
+            el('div', { style: 'font-size: 48px; margin-bottom: 16px;' }, icons.package),
+            el('div', { style: 'font-size: 18px; font-weight: 600; margin-bottom: 8px;' }, 'No Orders Found'),
+            el('div', { style: 'font-size: 14px;' }, 'Try adjusting your filters or check back later.')
+          )
+        )
+        orderCount = 0
+      } else {
+        orderCount = res.items.length
+        res.items.forEach((o, index) => {
+          // Stagger animations for a cool effect
+          setTimeout(() => {
+            list.append(orderRow(o, refresh))
+          }, index * 50)
+        })
       }
-      res.items.forEach(o => list.append(orderRow(o, refresh)))
+      
+      // Update stats
+      const statusText = currentStatus ? ` (${currentStatus.replace(/_/g, ' ').toLowerCase()})` : ''
+      const methodText = method ? ` • ${method}` : ''
+      statsEl.textContent = `${orderCount} order${orderCount !== 1 ? 's' : ''} found${statusText}${methodText}`
+      
     } catch (e) {
-      list.append(el('div', { class: 'meta' }, e.message || 'Failed to load orders'))
+      list.innerHTML = ''
+      list.append(
+        el('div', { 
+          style: 'text-align: center; padding: 60px 20px; color: var(--danger-solid);' 
+        },
+          el('div', { style: 'font-size: 48px; margin-bottom: 16px;' }, icons.failed),
+          el('div', { style: 'font-size: 18px; font-weight: 600; margin-bottom: 8px;' }, 'Failed to Load Orders'),
+          el('div', { style: 'font-size: 14px; margin-bottom: 20px;' }, e.message || 'Something went wrong'),
+          el('button', { 
+            class: 'btn btn-primary',
+            onclick: () => load()
+          }, `${icons.refresh} Try Again`)
+        )
+      )
+      showError(e)
     }
   }
+
+  // Add event listeners for filters
+  document.getElementById('statusSelect').addEventListener('change', load)
+  document.getElementById('methodSelect').addEventListener('change', load)
+  
+  // Start auto-refresh every 30 seconds
+  autoRefreshInterval = setInterval(load, 30000)
+  
+  // Clear interval when navigating away
+  window.addEventListener('beforeunload', () => {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval)
+  })
 
   await load()
 }
 
-// boot
+// Boot the application
 renderApp()
