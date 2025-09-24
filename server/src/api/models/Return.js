@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 
 const returnSchema = new mongoose.Schema({
-  order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true, unique: true, index: true },
+  order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true, unique: true },
   status: { type: String, enum: ['requested','approved','rejected','received','closed'], required: true },
   reason: { type: String, trim: true },
   requestedAt: { type: Date, default: Date.now },

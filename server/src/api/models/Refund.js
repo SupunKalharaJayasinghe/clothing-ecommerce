@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 
 const refundSchema = new mongoose.Schema({
-  order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true, unique: true, index: true },
+  order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true, unique: true },
   method: { type: String, enum: ['COD','CARD','BANK'], required: true },
   amount: { type: Number, min: 0 },
   currency: { type: String, default: 'LKR' },
