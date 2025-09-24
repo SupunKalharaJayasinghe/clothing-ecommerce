@@ -7,6 +7,7 @@ import Price from '../components/ui/Price'
 import Stars from '../components/ui/Stars'
 import Badge from '../components/ui/Badge'
 import { getColorValue } from '../lib/colors'
+import Loader from '../components/ui/Loader'
 
  
 
@@ -45,7 +46,7 @@ export default function Favorites() {
     }
   }
 
-  if (loading) return <div className="container-app section">Loading favorites…</div>
+  if (loading) return <Loader />
   if (error) return <div className="container-app section text-red-600">{error}</div>
 
   return (

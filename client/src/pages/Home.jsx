@@ -11,27 +11,29 @@ import { getProductRating, getProductReviewsCount } from '../lib/product'
 
 function Card({ p }) {
   return (
-    <Link to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden block">
+    <Link to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden block animate-fade-in-up hover-lift">
       <div className="product-img relative">
-        <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+        <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" decoding="async" />
         {/* Tags positioned on image */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {p.mainTags?.includes('new') && <Badge tone="green">New</Badge>}
+          {p.mainTags?.includes('new') && <Badge tone="green" className="animate-bounce-in">New</Badge>}
         </div>
         {/* Discount tag on right side */}
         {p.discountPercent > 0 && (
           <div className="absolute top-2 right-2">
-            <Badge tone="red">-{p.discountPercent}%</Badge>
+            <Badge tone="red" className="animate-pulse-glow">-{p.discountPercent}%</Badge>
           </div>
         )}
+        {/* Overlay gradient on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
       <div className="card-body space-y-3 p-4">
         <div>
-          <div className="card-title leading-snug line-clamp-2 mb-1">{p.name}</div>
+          <div className="card-title leading-snug line-clamp-2 mb-1 group-hover:text-[--color-brand-600] transition-colors">{p.name}</div>
           <div className="flex items-center gap-2 text-xs">
             <span className="card-subtitle">Color:</span>
             <div 
-              className="w-4 h-4 rounded-full border-2 border-gray-400 shadow-sm"
+              className="w-4 h-4 rounded-full border-2 border-gray-400 shadow-sm transition-transform hover:scale-125"
               style={{ 
                 backgroundColor: getColorValue(p.color),
                 minWidth: '16px',
@@ -50,7 +52,7 @@ function Card({ p }) {
             <span className="opacity-70">({getProductReviewsCount(p)})</span>
           </div>
           <div className="text-right">
-            {p.lowStock ? <Badge tone="red">Low stock</Badge> : p.stock > 0 ? <Badge tone="green">In stock</Badge> : <Badge>Out of stock</Badge>}
+            {p.lowStock ? <Badge tone="red" className="animate-pulse">Low stock</Badge> : p.stock > 0 ? <Badge tone="green">In stock</Badge> : <Badge>Out of stock</Badge>}
           </div>
         </div>
       </div>
@@ -174,40 +176,49 @@ export default function Home() {
     <div className="min-h-dvh">
       {/* HERO */}
       <section className="hero section relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" />
+        {/* Animated background particles */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-3 h-3 bg-[--color-brand-400] rounded-full animate-particle opacity-40 shadow-glow" />
+          <div className="absolute top-1/3 right-1/3 w-2 h-2 bg-[--color-cyan-400] rounded-full animate-particle opacity-50" style={{animationDelay: '1s'}} />
+          <div className="absolute bottom-1/4 left-1/3 w-2.5 h-2.5 bg-[--color-pink-400] rounded-full animate-particle opacity-45" style={{animationDelay: '2s'}} />
+          <div className="absolute top-1/2 right-1/4 w-2 h-2 bg-[--color-brand-500] rounded-full animate-particle opacity-35" style={{animationDelay: '0.5s'}} />
+          <div className="absolute bottom-1/3 right-1/2 w-1.5 h-1.5 bg-[--color-orange-400] rounded-full animate-particle opacity-40" style={{animationDelay: '1.5s'}} />
+          <div className="absolute top-3/4 left-1/2 w-1 h-1 bg-[--color-cyan-300] rounded-full animate-particle opacity-30" style={{animationDelay: '2.5s'}} />
+        </div>
         <div className="container-app pt-4 md:pt-8 pb-16">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
-            <div className="animate-slide-up space-lg">
-              <h1 className="text-5xl md:text-7xl font-black leading-tight gradient-text mb-4">
+            <div className="animate-fade-in-up space-lg">
+              <h1 className="text-5xl md:text-7xl font-black leading-tight gradient-text mb-4 animate-gradient">
                 Dress & Go — Fresh fits for every day.
               </h1>
-              <p className="text-lg text-[--color-muted] max-w-prose leading-relaxed">
+              <p className="text-lg text-[--color-muted] max-w-prose leading-relaxed animate-slide-up" style={{animationDelay: '0.2s'}}>
                 Discover the latest arrivals, most-loved styles, and essentials for Men, Women, and Kids.
               </p>
 
               {/* Search bar */}
-              <form onSubmit={onSubmitSearch} className="mt-6 relative" ref={suggestBoxRef}>
+              <form onSubmit={onSubmitSearch} className="mt-6 relative animate-slide-up" style={{animationDelay: '0.4s'}} ref={suggestBoxRef}>
                 <input
                   type="search"
                   value={query}
                   onChange={(e) => { setQuery(e.target.value); setShowSuggest(true) }}
                   onFocus={() => setShowSuggest(true)}
                   placeholder="Search products…"
-                  className="input w-full md:w-96"
+                  className="input w-full md:w-96 glass-card"
                   aria-label="Search products"
                 />
                 {/* Suggestions */}
                 {showSuggest && (suggest?.length > 0) && (
-                  <div className="absolute z-10 mt-2 w-full md:w-96 bg-white border rounded-xl shadow-lg overflow-hidden">
-                    {suggest.map(item => (
+                  <div className="absolute z-10 mt-2 w-full md:w-96 glass-card rounded-xl shadow-lg overflow-hidden animate-scale-in">
+                    {suggest.map((item, index) => (
                       <button
                         type="button"
                         key={item.id}
-                        className="w-full text-left px-3 py-2 hover:bg-[--color-bg-soft] flex items-center gap-3"
+                        className="w-full text-left px-3 py-2 hover:bg-white/20 flex items-center gap-3 transition-all duration-200 hover:transform hover:scale-[1.02]"
                         onClick={() => navigate(`/products/${item.slug}`)}
                         aria-label={`Go to ${item.name}`}
+                        style={{animationDelay: `${index * 0.05}s`}}
                       >
-                        <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded" />
+                        <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded transition-transform hover:scale-110" />
                         <div className="flex-1">
                           <div className="text-sm font-medium line-clamp-1">{item.name}</div>
                           <div className="text-xs text-[--color-muted]">
@@ -216,10 +227,10 @@ export default function Home() {
                         </div>
                       </button>
                     ))}
-                    <div className="border-t">
+                    <div className="border-t border-white/20">
                       <button
                         type="submit"
-                        className="w-full text-left px-3 py-2 hover:bg-[--color-bg-soft] text-sm"
+                        className="w-full text-left px-3 py-2 hover:bg-white/20 text-sm transition-all duration-200"
                         aria-label="See all search results"
                       >
                         See all results
@@ -230,38 +241,47 @@ export default function Home() {
               </form>
 
               {/* CTAs */}
-              <div className="flex items-center gap-md mt-10">
+              <div className="flex items-center gap-md mt-10 animate-slide-up" style={{animationDelay: '0.6s'}}>
                 <Link to="/products" className="btn btn-primary animate-pulse-glow hover-bounce">
-                  <Search size={20} /> Shop Now
+                  <Search size={20} className="icon-bounce" /> Shop Now
                 </Link>
-                <Link to="/about" className="btn btn-secondary hover-glow">About</Link>
-                <a href="#browse" className="text-base font-semibold inline-flex items-center gap-2 hover-lift text-[--color-brand-600]">
-                  Scroll down <ArrowRight size={16} />
+                <Link to="/about" className="btn btn-secondary hover-glow glass">About</Link>
+                <a href="#browse" className="text-base font-semibold inline-flex items-center gap-2 hover-lift text-[--color-brand-600] transition-all duration-300">
+                  Scroll down <ArrowRight size={16} className="icon-bounce" />
                 </a>
               </div>
 
               {/* Quick filter chips */}
-              <div className="chips mt-6">
+              <div className="chips mt-6 animate-slide-up" style={{animationDelay: '0.8s'}}>
                 {[
                   { label: 'New', to: `/products?category=${category}&mainTag=new` },
                   { label: 'Discounts', to: `/products?category=${category}&tags=discount` },
                   { label: 'Limited', to: `/products?category=${category}&tags=limited` },
                   { label: 'Best sellers', to: `/products?category=${category}&tags=bestseller` },
-                ].map((c) => (
-                  <Link key={c.label} to={c.to} className="chip hover-lift">{c.label}</Link>
+                ].map((c, index) => (
+                  <Link 
+                    key={c.label} 
+                    to={c.to} 
+                    className="chip hover-lift glass transition-all duration-300 hover:glass-card animate-bounce-in"
+                    style={{animationDelay: `${0.9 + index * 0.1}s`}}
+                  >
+                    {c.label}
+                  </Link>
                 ))}
               </div>
             </div>
 
             {/* Hero image */}
             <div className="hidden lg:block animate-float">
-              <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-glow bg-mesh hover-lift">
+              <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-glow bg-mesh hover-lift glass-card animate-scale-in" style={{animationDelay: '0.3s'}}>
                 <img
                   src="/image/hero%20image.png"
                   alt="Hero"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                   loading="eager"
                 />
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[--color-brand-500]/15 to-[--color-cyan-500]/15 opacity-0 hover:opacity-100 transition-opacity duration-500" />
               </div>
             </div>
           </div>
@@ -271,12 +291,13 @@ export default function Home() {
       {/* BROWSE / HIGHLIGHTS */}
       <section id="browse" className="container-app m-section">
         {/* Category tabs */}
-        <div className="flex gap-md mb-8 justify-center">
-          {['men','women','kids'].map(t => (
+        <div className="flex gap-md mb-8 justify-center animate-fade-in-up">
+          {['men','women','kids'].map((t, index) => (
             <button
               key={t}
-              className={`btn ${category === t ? 'btn-primary shadow-glow animate-scale-in' : 'btn-outline'} hover-lift px-8 py-4`}
+              className={`btn ${category === t ? 'btn-primary shadow-glow animate-scale-in glass-card' : 'btn-outline glass'} hover-lift px-8 py-4 transition-all duration-300 animate-bounce-in`}
               onClick={() => setCategory(t)}
+              style={{animationDelay: `${index * 0.1}s`}}
             >
               {t[0].toUpperCase() + t.slice(1)}
             </button>

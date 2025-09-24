@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { removeFromCart, setQty, clearCart } from '../features/cart/cartSlice'
-import { Trash2, Minus, Plus } from '../lib/icons'
+import { Trash2, Minus, Plus, ShoppingCart } from '../lib/icons'
 import Price from '../components/ui/Price'
 
 export default function Cart() {
@@ -19,8 +19,10 @@ export default function Cart() {
     return (
       <div className="container-app section max-w-4xl text-center">
         <h1 className="section-title">Cart</h1>
-        <div className="card card-body max-w-md mx-auto">
-          <p className="mb-2">Your cart is empty.</p>
+        <div className="card card-body max-w-md mx-auto empty-state space-y-2">
+          <div className="icon-wrap"><ShoppingCart size={22} /></div>
+          <h2 className="text-lg font-bold">Your cart is empty</h2>
+          <p className="text-sm text-[--color-muted]">Browse products and add your favorites to the cart.</p>
           <Link to="/products" className="btn btn-primary w-max mx-auto">Start shopping</Link>
         </div>
       </div>
