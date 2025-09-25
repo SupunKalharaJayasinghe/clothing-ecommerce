@@ -347,40 +347,6 @@ export default function ProductListing() {
             </select>
           </div>
 
-          {/* Tags */}
-          <div className="mb-3">
-            <label className="text-sm block mb-1">Tags</label>
-            <div className="flex flex-wrap gap-2">
-              {(tagsFacet || []).length === 0 && <div className="text-xs opacity-60">No tags</div>}
-              {tagsFacet.map(t => {
-                const key = String(t).toLowerCase()
-                const active = tagList.includes(key)
-                return (
-                  <button
-                    key={t}
-                    className={`btn ${active ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
-                    onClick={() => toggleInList('tags', tags.toLowerCase(), key)}
-                  >
-                    {t}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Main tag */}
-          <div className="mb-2">
-            <label className="text-sm block mb-1">Main tag</label>
-            <div className="flex gap-2 flex-wrap">
-              {['any','new','discount','limited','bestseller','featured'].map(tag => (
-                <button
-                  key={tag}
-                  className={`btn ${mainTag === tag ? 'btn-primary' : 'btn-outline'} text-sm px-2 py-1`}
-                  onClick={() => setParam('mainTag', tag)}
-                >{tag[0].toUpperCase() + tag.slice(1)}</button>
-              ))}
-            </div>
-          </div>
           </div>
         </aside>
 
@@ -414,16 +380,12 @@ export default function ProductListing() {
             {colorList.map(c => (
               <button key={c} className="chip" onClick={() => toggleInList('color', color.toLowerCase(), c)}>Color: {c} ×</button>
             ))}
-            {tagList.map(t => (
-              <button key={t} className="chip" onClick={() => toggleInList('tags', tags.toLowerCase(), t)}>Tag: {t} ×</button>
-            ))}
             {ratingMin && <button className="chip" onClick={() => setParam('ratingMin','')}>Rating ≥ {ratingMin} ×</button>}
             {(priceMin || priceMax) && (
               <button className="chip" onClick={resetPriceFilter}>Price {priceMin || 0}–{priceMax || '∞'} ×</button>
             )}
             {stock !== 'any' && <button className="chip" onClick={() => setParam('stock','any')}>Stock: {stock} ×</button>}
-            {mainTag !== 'any' && <button className="chip" onClick={() => setParam('mainTag','any')}>Main: {mainTag} ×</button>}
-            { (q || colorList.length || tagList.length || ratingMin || priceMin || priceMax || stock !== 'any' || mainTag !== 'any') && (
+            { (q || colorList.length || ratingMin || priceMin || priceMax || stock !== 'any') && (
               <button className="chip" onClick={clearFilters}>Clear all</button>
             )}
           </div>

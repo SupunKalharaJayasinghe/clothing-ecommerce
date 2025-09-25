@@ -123,15 +123,15 @@ export default function Register() {
                 <Link
                   to={s.to}
                   key={i}
-                  className="group flex items-center gap-3 rounded-xl border bg-white p-3 hover-lift"
+                  className="group flex items-center gap-3 rounded-xl border border-[--color-border] bg-[--color-surface-glass] backdrop-blur-sm p-3 hover:bg-[--color-surface-hover] transition-all duration-200 hover:transform hover:scale-[1.02]"
                   aria-label={`${s.title} – ${s.hint}`}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[--color-brand-50] text-[--color-brand-700] flex items-center justify-center shadow-soft">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[--color-brand-600] to-[--color-brand-500] text-white flex items-center justify-center shadow-lg">
                     {s.Icon ? <s.Icon size={18} /> : null}
                   </div>
                   <div>
-                    <div className="font-semibold leading-tight">{s.title}</div>
-                    <div className="text-xs text-[--color-muted]">{s.hint}</div>
+                    <div className="font-semibold leading-tight text-[--color-text-high]">{s.title}</div>
+                    <div className="text-xs text-[--color-text-medium]">{s.hint}</div>
                   </div>
                 </Link>
               ))}
@@ -146,11 +146,11 @@ export default function Register() {
 
         {/* Right: Registration Form */}
         <section className="order-1 lg:order-2">
-          <div className="max-w-md ml-auto">
-            <h2 className="section-title">Create account</h2>
+          <div className="max-w-md ml-auto card p-6">
+            <h2 className="text-2xl font-bold text-[--color-text-high] mb-2">Create account</h2>
             {nextPath !== '/' && (
-              <p className="text-xs text-[--color-muted] mt-1">
-                You’ll be returned to <span className="font-mono">{nextPath}</span> after signup.
+              <p className="text-xs text-[--color-text-medium] mt-1">
+                You'll be returned to <span className="font-mono text-[--color-brand-400]">{nextPath}</span> after signup.
               </p>
             )}
 
