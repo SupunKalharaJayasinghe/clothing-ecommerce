@@ -27,7 +27,8 @@ const twoFASchema = new mongoose.Schema({
   enabled: { type: Boolean, default: false },
   secret: { type: String },
   tempSecret: { type: String },
-  backupCodes: [{ type: String }]
+  backupCodes: [{ type: String }],
+  preferredMethod: { type: String, enum: ['email','totp'], default: undefined }
 }, { _id: false })
 
 const passwordResetSchema = new mongoose.Schema({
@@ -40,6 +41,13 @@ const deletionRequestSchema = new mongoose.Schema({
   reason: { type: String, trim: true },
   requestedAt: { type: Date },
   updatedAt: { type: Date }
+}, { _id: false })
+
+// Generic one-time code storage
+const otpSchema = new mongoose.Schema({
+  codeHash: { type: String },
+  expiresAt: { type: Date },
+  attempts: { type: Number, default: 0 }
 }, { _id: false })
 
 const userSchema = new mongoose.Schema(
@@ -71,7 +79,13 @@ const userSchema = new mongoose.Schema(
     },
 
     passwordReset: passwordResetSchema,
-    deletionRequest: deletionRequestSchema
+    deletionRequest: deletionRequestSchema,
+
+    // Email verification state
+    emailVerified: { type: Boolean, default: false },
+    emailVerification: otpSchema,
+    // Login-time email OTP
+    loginOTP: otpSchema
   },
   { timestamps: true }
 )

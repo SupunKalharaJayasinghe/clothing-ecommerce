@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { loginUser, verifyTwoFA } from '../features/auth/authSlice'
+import { loginUser, verifyTwoFA, verifyEmailLogin, chooseLoginMethod } from '../features/auth/authSlice'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { getNextFromSearch, getRegisterPathWithNext } from '../lib/nextParam'
 import { APP_NAME } from '../lib/constants'
@@ -12,7 +12,7 @@ export default function Login() {
   const dispatch = useAppDispatch()
   const nav = useNavigate()
   const location = useLocation()
-  const { status, error, twoFA, user, hydrated } = useAppSelector(s => s.auth)
+const { status, error, methodChoice, twoFA, email, user, hydrated } = useAppSelector(s => s.auth)
 
   // Determine where to go after successful auth
   const nextPath = useMemo(() => getNextFromSearch(location.search), [location.search])
@@ -31,7 +31,7 @@ export default function Login() {
   if (!form.identifier.trim()) errors.identifier = 'Username or email is required'
   if (!form.password) errors.password = 'Password is required'
 
-  // step 2 form
+  // step 2 forms
   const [code, setCode] = useState('')
   const [remember, setRemember] = useState(true)
 
@@ -40,7 +40,14 @@ export default function Login() {
     setTouched({ identifier: true, password: true })
     if (Object.keys(errors).length) return
     const res = await dispatch(loginUser(form))
-    if (loginUser.fulfilled.match(res) && !res.payload?.twoFARequired) nav(nextPath, { replace: true })
+    if (
+      loginUser.fulfilled.match(res) &&
+      !res.payload?.chooseMethodRequired &&
+      !res.payload?.twoFARequired &&
+      !res.payload?.emailLoginRequired
+    ) {
+      nav(nextPath, { replace: true })
+    }
   }
 
   async function onVerify(e) {
@@ -50,7 +57,22 @@ export default function Login() {
     if (verifyTwoFA.fulfilled.match(res)) nav(nextPath, { replace: true })
   }
 
+  async function onVerifyEmail(e) {
+    e.preventDefault()
+    if (!code.trim()) return
+    const res = await dispatch(verifyEmailLogin({ tmpToken: email.tmpToken, code: code.trim(), remember }))
+    if (verifyEmailLogin.fulfilled.match(res)) {
+      nav(nextPath, { replace: true })
+    }
+  }
+
   const inputCls = "input"
+
+  async function onChoose(method) {
+    if (!methodChoice?.tmpToken) return
+    const res = await dispatch(chooseLoginMethod({ tmpToken: methodChoice.tmpToken, method }))
+    // If fulfilled, next step (email or 2FA) will render automatically via state updates.
+  }
 
   // Greeting based on local time
   const greeting = useMemo(() => {
@@ -114,7 +136,44 @@ export default function Login() {
               </p>
             )}
 
-            {!twoFA.required ? (
+            {methodChoice?.required ? (
+              <div className="mt-6">
+                <p className="text-sm text-[--color-text-medium] mb-3">Choose a verification method to continue:</p>
+                {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
+                <div className="grid gap-3">
+                  <button type="button" className="btn btn-primary" onClick={() => onChoose('totp')} disabled={status==='loading'}>
+                    Use Google Authenticator code
+                  </button>
+                  <button type="button" className="btn btn-outline" onClick={() => onChoose('email')} disabled={status==='loading'}>
+                    Send a code to my email
+                  </button>
+                </div>
+              </div>
+            ) : email.required ? (
+              <form onSubmit={onVerifyEmail} className="mt-6 form-grid">
+                <p className="text-sm text-[--color-text-medium]">We sent a 6-digit verification code to your email. Enter it below to continue.</p>
+                <TextField
+                  label="Email verification code"
+                  placeholder="Enter 6-digit code"
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
+                  required
+                />
+                <label className="flex items-center gap-2 text-sm text-[--color-text-medium]">
+                  <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
+                  Don't ask for 30 days on this device
+                </label>
+                {error && <p className="text-red-600 text-sm">{error}</p>}
+                <div className="flex gap-2">
+                  <button className="btn btn-primary" type="submit" disabled={status==='loading'}>
+                    {status==='loading' ? 'Verifying…' : 'Verify'}
+                  </button>
+                  <button className="btn btn-outline" type="button" onClick={() => window.location.reload()}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : !twoFA.required ? (
               <form onSubmit={onSubmit} className="mt-6 form-grid">
                 <TextField
                   label="Username or Email"

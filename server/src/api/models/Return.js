@@ -10,6 +10,5 @@ const returnSchema = new mongoose.Schema({
   createdBy: { type: String, enum: ['user','admin','system'], default: 'admin' }
 }, { timestamps: true })
 
-returnSchema.index({ order: 1 })
 
 export default mongoose.model('Return', returnSchema)
