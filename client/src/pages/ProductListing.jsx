@@ -219,23 +219,28 @@ export default function ProductListing() {
   return (
     <div className="container-app section">
       {/* Mobile toolbar */}
-      <div className="md:hidden flex items-center justify-between mb-3">
-        <button className="btn btn-outline" onClick={() => setShowFiltersMobile(v => !v)}>
+      <div className="md:hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <button className="btn btn-outline w-full sm:w-auto" onClick={() => setShowFiltersMobile(v => !v)}>
           {showFiltersMobile ? 'Hide filters' : 'Show filters'}
         </button>
-        <div className="text-sm text-[--color-muted]">{total ? `${total.toLocaleString()} items` : ''}</div>
+        <div className="text-sm text-[--color-text-medium] self-end sm:self-auto">
+          {total ? `${total.toLocaleString()} items` : ''}
+        </div>
       </div>
+      
       {/* Tabs */}
-      <div className="mb-8 flex gap-2">
-        {['all','men','women','kids'].map(t => (
-          <button
-            key={t}
-            className={`btn ${category === t ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setParam('category', t)}
-          >
-            {t === 'all' ? 'All' : t[0].toUpperCase() + t.slice(1)}
-          </button>
-        ))}
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-wrap gap-2">
+          {['all','men','women','kids'].map(t => (
+            <button
+              key={t}
+              className={`btn text-sm sm:text-base ${category === t ? 'btn-primary' : 'btn-outline'} flex-1 sm:flex-none min-w-0`}
+              onClick={() => setParam('category', t)}
+            >
+              {t === 'all' ? 'All' : t[0].toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -411,7 +416,7 @@ export default function ProductListing() {
           )}
 
           {!loading && items.length > 0 && (
-            <div className="grid gap-6 mt-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
+            <div className="product-grid grid gap-3 sm:gap-4 md:gap-6 mt-6 grid-cols-1 sm:grid-cols-1 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3">
               {items.map(p => {
                 return (
                   <Link key={p._id || p.id} to={`/products/${p.slug}`} className="group card product-card card-hover overflow-hidden relative">

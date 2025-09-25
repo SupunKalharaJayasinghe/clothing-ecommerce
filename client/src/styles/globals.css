@@ -669,41 +669,139 @@ textarea:focus-visible {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Responsive Design Enhancements */
-@media (max-width: 480px) {
-  .hero {
-    min-height: 100vh;
-    padding-top: 2rem;
+/* Comprehensive Responsive Design */
+
+/* Mobile Small (320px - 479px) */
+@media (max-width: 479px) {
+  .container-app {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
+  
+  .hero h1 {
+    font-size: 2.25rem !important;
+    line-height: 1.1;
+  }
+  
+  .hero p {
+    font-size: 0.875rem;
+  }
+  
+  .product-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .card {
+    padding: 0.75rem;
+  }
+  
+  .btn {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .input {
+    font-size: 16px; /* Prevent iOS zoom */
+    min-height: 44px;
+    padding: 0.75rem;
+  }
+  
+  .section-title {
+    font-size: 1.75rem;
+  }
+}
+
+/* Mobile Large (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
   .container-app {
     padding-left: 1rem;
     padding-right: 1rem;
   }
+  
+  .hero h1 {
+    font-size: 3rem !important;
+    line-height: 1.1;
+  }
+  
+  .product-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+  
   .btn {
     min-height: 48px;
-    font-size: 16px;
-    font-weight: 700;
+    padding: 0.875rem 1.25rem;
   }
+  
   .input {
-    font-size: 16px;
+    font-size: 16px; /* Prevent iOS zoom */
     min-height: 48px;
-    font-weight: 500;
-  }
-  body {
-    font-size: 16px;
-    font-weight: 600;
+    padding: 0.875rem 1rem;
   }
 }
 
-@media (min-width: 481px) and (max-width: 768px) {
-  .hero {
-    min-height: 100vh;
+/* Tablet Portrait (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container-app {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  
+  .hero h1 {
+    font-size: 4rem !important;
+  }
+  
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  
+  .card {
+    padding: 1.25rem;
+  }
+  
+  .btn {
+    min-height: 48px;
+    padding: 1rem 1.5rem;
+  }
+  
+  .input {
+    min-height: 48px;
+    padding: 1rem;
   }
 }
 
-@media (min-width: 769px) {
-  .hero {
-    min-height: 100vh;
+/* Desktop Small (1024px - 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .hero h1 {
+    font-size: 5rem !important;
+  }
+}
+
+/* Desktop Large (1280px+) */
+@media (min-width: 1280px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+  
+  .hero h1 {
+    font-size: 6rem !important;
+  }
+  
+  .container-app {
+    max-width: 1400px;
   }
 }
 
@@ -712,10 +810,16 @@ textarea:focus-visible {
   .btn:hover {
     transform: none;
   }
+  
   .card-hover:hover {
     transform: none;
   }
+  
   .hover-lift:hover {
+    transform: none;
+  }
+  
+  .hover-bounce:hover {
     transform: none;
   }
 }

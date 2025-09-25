@@ -177,29 +177,29 @@ export default function Home() {
       {/* HERO */}
       <section className="hero section relative overflow-hidden">
         <div className="container-app pt-4 md:pt-8 pb-16">
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
-            <div className="space-lg">
-              <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-4 text-[--color-text-high]">
+          <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
+            <div className="space-y-6 lg:space-y-8 text-center lg:text-left">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight text-[--color-text-high]">
                 Dress & Go — Fresh fits for every day.
               </h1>
-              <p className="text-lg text-[--color-muted] max-w-prose leading-relaxed">
+              <p className="text-base sm:text-lg text-[--color-text-medium] max-w-prose leading-relaxed mx-auto lg:mx-0">
                 Discover the latest arrivals, most-loved styles, and essentials for Men, Women, and Kids.
               </p>
 
               {/* Search bar */}
-              <form onSubmit={onSubmitSearch} className="mt-6 relative" ref={suggestBoxRef}>
+              <form onSubmit={onSubmitSearch} className="relative max-w-md mx-auto lg:mx-0 lg:max-w-lg" ref={suggestBoxRef}>
                 <input
                   type="search"
                   value={query}
                   onChange={(e) => { setQuery(e.target.value); setShowSuggest(true) }}
                   onFocus={() => setShowSuggest(true)}
                   placeholder="Search products…"
-                  className="input w-full md:w-96 glass-card"
+                  className="input w-full glass-card text-base"
                   aria-label="Search products"
                 />
                 {/* Suggestions */}
                 {showSuggest && (suggest?.length > 0) && (
-                  <div className="absolute z-10 mt-2 w-full md:w-96 glass-card rounded-xl shadow-md overflow-hidden">
+                  <div className="absolute z-10 mt-2 w-full glass-card rounded-xl shadow-md overflow-hidden">
                     {suggest.map((item, index) => (
                       <button
                         type="button"
@@ -408,7 +408,7 @@ export default function Home() {
                   <h2 className="section-title text-2xl">Latest Drops</h2>
                   <Link to={`/products?category=${category}&sort=new`} className="btn btn-ghost">View all</Link>
                 </div>
-                <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid gap-4 mt-3 grid-cols-1 sm:grid-cols-1 md:grid-cols-3 lg:grid-cols-3">
                   {latest.map(p => <Card key={p.id || p._id} p={p} />)}
                 </div>
               </div>
@@ -421,7 +421,7 @@ export default function Home() {
                   <h2 className="section-title text-2xl">Top Rated</h2>
                   <Link to={`/products?category=${category}&sort=rating`} className="btn btn-ghost">View all</Link>
                 </div>
-                <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid gap-4 mt-3 grid-cols-1 sm:grid-cols-1 md:grid-cols-3 lg:grid-cols-3">
                   {topRated.map(p => <Card key={p.id || p._id} p={p} />)}
                 </div>
               </div>
@@ -434,7 +434,7 @@ export default function Home() {
                   <h2 className="section-title text-2xl">Top Rated All Products</h2>
                   <Link to={`/products?category=all&sort=rating`} className="btn btn-ghost">View all</Link>
                 </div>
-                <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid gap-4 mt-3 grid-cols-1 sm:grid-cols-1 md:grid-cols-3 lg:grid-cols-3">
                   {topRatedAllSorted.map(p => <Card key={p.id || p._id} p={p} />)}
                 </div>
               </div>
@@ -447,7 +447,7 @@ export default function Home() {
                   <h2 className="section-title text-2xl">Trending Now</h2>
                   <Link to={`/products?category=${category}`} className="btn btn-ghost">View all</Link>
                 </div>
-                <div className="grid gap-6 mt-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid gap-4 mt-3 grid-cols-1 sm:grid-cols-1 md:grid-cols-3 lg:grid-cols-3">
                   {popular.map(p => <Card key={p.id || p._id} p={p} />)}
                 </div>
               </div>

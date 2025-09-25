@@ -46,7 +46,7 @@ export default function RootLayout() {
     <div className="min-h-dvh flex flex-col">
       <header className="sticky top-0 z-50">
         <div className="container-app py-2">
-          <div className="h-16 px-4 rounded-xl border border-[--color-border] bg-[--color-surface] backdrop-filter backdrop-blur-lg shadow-lg flex items-center justify-between gap-4">
+          <div className="h-14 sm:h-16 px-3 sm:px-4 rounded-xl border border-[--color-border] bg-[--color-surface] backdrop-filter backdrop-blur-lg shadow-lg flex items-center justify-between gap-2 sm:gap-4">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity duration-150">
               <img 
                 src="/image/site logo.png" 
@@ -230,8 +230,8 @@ export default function RootLayout() {
               </div>
             </div>
 
-            {/* Shop Section */}
-            <div>
+            {/* Shop Section - Hidden on mobile */}
+            <div className="hidden md:block">
               <h3 className="font-bold text-[--color-text-high] mb-4 text-base">Shop</h3>
               <ul className="space-y-3">
                 <li><Link to="/products" className="text-sm text-[--color-text-medium] hover:text-[--color-brand-400] hover:translate-x-1 transition-all duration-200 block">All Products</Link></li>
@@ -241,8 +241,8 @@ export default function RootLayout() {
               </ul>
             </div>
 
-            {/* Account Section */}
-            <div>
+            {/* Account Section - Hidden on mobile */}
+            <div className="hidden md:block">
               <h3 className="font-bold text-[--color-text-high] mb-4 text-base">Account</h3>
               <ul className="space-y-3">
                 {user ? (
@@ -261,8 +261,8 @@ export default function RootLayout() {
               </ul>
             </div>
 
-            {/* Support Section */}
-            <div>
+            {/* Support Section - Hidden on mobile */}
+            <div className="hidden md:block">
               <h3 className="font-bold text-[--color-text-high] mb-4 text-base">Support</h3>
               <ul className="space-y-3">
                 <li><Link to="/contact" className="text-sm text-[--color-text-medium] hover:text-[--color-brand-400] hover:translate-x-1 transition-all duration-200 block">Contact Us</Link></li>
