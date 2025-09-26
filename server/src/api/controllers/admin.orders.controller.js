@@ -4,7 +4,6 @@ import Order from '../models/Order.js'
 import User from '../models/User.js'
 import Product from '../models/Product.js'
 import Delivery from '../models/Delivery.js'
-import PaymentTransaction from '../models/PaymentTransaction.js'
 import mongoose from 'mongoose'
 import { getInitialStates, updateOrderStates, applyStateChanges, DELIVERY_STATES, ORDER_STATES, validateDispatchRequirements } from '../../utils/stateManager.js'
 
@@ -327,21 +326,6 @@ export const createOrder = catchAsync(async (req, res) => {
       order = created[0]
     })
     session.endSession()
-  }
-
-  // Log payment transaction for created order (non-blocking)
-  try {
-    await PaymentTransaction.create({
-      order: order._id,
-      method,
-      action: 'CREATED',
-      status: payment.status,
-      amount: totals.grandTotal,
-      currency: 'LKR',
-      createdBy: 'admin'
-    })
-  } catch (err) {
-    // Do not block order creation on audit log failure
   }
 
   res.status(201).json({ ok: true, orderId: order._id })

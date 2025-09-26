@@ -2,7 +2,6 @@ import 'dotenv/config'
 import mongoose from 'mongoose'
 import { connectDB } from '../../src/config/db.js'
 import Product, { toSlug } from '../../src/api/models/Product.js'
-import Category from '../../src/api/models/Category.js'
 
 async function run() {
   const uri = process.env.MONGO_URI
@@ -13,25 +12,6 @@ async function run() {
   await connectDB(uri)
 
   const now = Date.now()
-
-  // Ensure default categories exist
-  function toSlugLocal(str) { return String(str).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') }
-  const defaults = [
-    { name: 'Men', slug: 'men', sortOrder: 1 },
-    { name: 'Women', slug: 'women', sortOrder: 2 },
-    { name: 'Kids', slug: 'kids', sortOrder: 3 }
-  ]
-  const existing = await Category.find({ slug: { $in: defaults.map(d => d.slug) } }).lean()
-  const have = new Map(existing.map(c => [c.slug, c]))
-  const cats = {}
-  for (const d of defaults) {
-    if (!have.has(d.slug)) {
-      const c = await Category.create({ name: d.name, slug: d.slug, sortOrder: d.sortOrder, active: true })
-      cats[d.slug] = c
-    } else {
-      cats[d.slug] = have.get(d.slug)
-    }
-  }
 
   const samples = [
     {
@@ -91,12 +71,7 @@ async function run() {
 
   console.log('Seeding products...')
   await Product.deleteMany({})
-  // Assign categoryRef based on top-level category
-  const withCat = samples.map(p => ({
-    ...p,
-    categoryRef: (p.category && cats[toSlugLocal(p.category)]) ? cats[toSlugLocal(p.category)]._id : undefined
-  }))
-  await Product.insertMany(withCat)
+  await Product.insertMany(samples)
   console.log('Seed complete! Inserted:', samples.length)
 
   await mongoose.connection.close()

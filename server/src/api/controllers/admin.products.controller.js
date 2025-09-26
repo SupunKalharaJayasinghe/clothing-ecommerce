@@ -1,7 +1,6 @@
 import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import Product from '../models/Product.js'
-import mongoose from 'mongoose'
 
 function mapProduct(p) {
   if (!p) return null
@@ -21,7 +20,6 @@ function mapProduct(p) {
     tags: p.tags || [],
     mainTags: p.mainTags || [],
     category: p.category,
-    categoryId: p.categoryRef || undefined,
     metaTitle: p.metaTitle,
     metaDescription: p.metaDescription,
     createdAt: p.createdAt,
@@ -30,7 +28,7 @@ function mapProduct(p) {
 }
 
 export const listProducts = catchAsync(async (req, res) => {
-  const { q = '', page = 1, limit = 20, category, categoryId } = req.query
+  const { q = '', page = 1, limit = 20, category } = req.query
 
   const filters = []
   if (q) {
@@ -39,7 +37,6 @@ export const listProducts = catchAsync(async (req, res) => {
     filters.push({ $or: [ { name: rx }, { slug: rx }, { description: rx }, { tags: rx } ] })
   }
   if (category) filters.push({ category })
-  if (categoryId && mongoose.isValidObjectId(String(categoryId))) filters.push({ categoryRef: categoryId })
 
   const where = filters.length ? { $and: filters } : {}
   const pageNum = Math.max(parseInt(page, 10) || 1, 1)
@@ -74,7 +71,6 @@ export const createProduct = catchAsync(async (req, res) => {
     tags = [],
     mainTags = [],
     category,
-    categoryId,
     metaTitle,
     metaDescription
   } = req.body
@@ -91,7 +87,6 @@ export const createProduct = catchAsync(async (req, res) => {
     tags,
     mainTags,
     category,
-    categoryRef: mongoose.isValidObjectId(String(categoryId)) ? categoryId : undefined,
     metaTitle,
     metaDescription
   })
@@ -111,12 +106,6 @@ export const updateProduct = catchAsync(async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(update, f)) {
       p[f] = update[f]
     }
-  }
-
-  // Optional categoryRef via categoryId
-  if (Object.prototype.hasOwnProperty.call(update, 'categoryId')) {
-    const cid = update.categoryId
-    p.categoryRef = mongoose.isValidObjectId(String(cid)) ? cid : undefined
   }
 
   await p.save()

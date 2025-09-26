@@ -1,7 +1,6 @@
 import Product from '../models/Product.js'
 import catchAsync from '../../utils/catchAsync.js'
 import ApiError from '../../utils/ApiError.js'
-import mongoose from 'mongoose'
 
 const RESERVED_CATEGORY_TAGS = ['men', 'women', 'kids']
 
@@ -35,7 +34,6 @@ export const listProducts = catchAsync(async (req, res) => {
 
     // new filters
     category,                 // 'men' | 'women' | 'kids'
-    categoryId,               // ObjectId string
     color,                    // csv
     priceMin: qpMin,          // number
     priceMax: qpMax,          // number
@@ -70,10 +68,6 @@ export const listProducts = catchAsync(async (req, res) => {
     const cat = String(category).toLowerCase()
     const catRx = new RegExp(`^${escapeRegExp(cat)}$`, 'i')
     catClause = { $or: [{ category: catRx }, { tags: catRx }] }
-  }
-  // normalized category by id
-  if (categoryId && mongoose.isValidObjectId(String(categoryId))) {
-    match.categoryRef = new mongoose.Types.ObjectId(String(categoryId))
   }
 
   // color (array csv) - normalized exact matches using indexed field
@@ -198,7 +192,7 @@ export const listProducts = catchAsync(async (req, res) => {
 
 // GET /api/products/highlights
 export const getHighlights = catchAsync(async (req, res) => {
-  const { q = '', category, categoryId, limit = '8' } = req.query
+  const { q = '', category, limit = '8' } = req.query
   const limitNum = Math.min(Math.max(parseInt(limit, 10) || 8, 1), 16)
 
   const filter = {}
@@ -210,9 +204,6 @@ export const getHighlights = catchAsync(async (req, res) => {
     const catRx = new RegExp(`^${escapeRegExp(cat)}$`, 'i')
     const catClause = { $or: [{ category: catRx }, { tags: catRx }] }
     filter.$and = (filter.$and || []).concat([catClause])
-  }
-  if (categoryId && mongoose.isValidObjectId(String(categoryId))) {
-    filter.categoryRef = new mongoose.Types.ObjectId(String(categoryId))
   }
 
   const pick = 'name slug images price discountPercent rating reviewsCount stock mainTags color createdAt'

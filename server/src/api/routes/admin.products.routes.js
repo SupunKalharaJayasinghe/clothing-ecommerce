@@ -1,4 +1,4 @@
-﻿import { Router } from 'express'
+import { Router } from 'express'
 import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
@@ -14,10 +14,9 @@ const listSchema = z.object({
   query: z.object({
     q: z.string().optional(),
     category: z.enum(['men','women','kids']).optional(),
-    categoryId: z.string().min(8).optional(),
     page: z.coerce.number().min(1).optional(),
     limit: z.coerce.number().min(1).max(100).optional()
-  })
+  }).optional()
 })
 
 const idParam = z.object({ params: z.object({ id: z.string().min(8) }) })
@@ -35,7 +34,6 @@ const createSchema = z.object({
     tags: z.array(z.string()).optional().default([]),
     mainTags: z.array(z.enum(['discount','new','limited','bestseller','featured'])).optional().default([]),
     category: z.enum(['men','women','kids']).optional(),
-    categoryId: z.string().min(8).optional(),
     metaTitle: z.string().optional(),
     metaDescription: z.string().optional()
   })
@@ -55,7 +53,6 @@ const updateSchema = z.object({
     tags: z.array(z.string()).optional(),
     mainTags: z.array(z.enum(['discount','new','limited','bestseller','featured'])).optional(),
     category: z.enum(['men','women','kids']).optional(),
-    categoryId: z.string().min(8).optional(),
     metaTitle: z.string().optional(),
     metaDescription: z.string().optional()
   })
