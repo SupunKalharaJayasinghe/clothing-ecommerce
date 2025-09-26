@@ -459,23 +459,82 @@ async function renderApp() {
 
   const logoutButton = el('button', { 
     class: 'btn btn-outline',
-    style: 'display: flex; align-items: center; gap: 6px;',
-    onclick: async (e) => { 
-      const btn = e.target
-      try { 
-        setLoading(btn, true)
-        await api.logout()
-        showSuccess('Logged out successfully', 'Goodbye')
-        setTimeout(() => renderLogin(), 1000)
-      } catch (e) { 
-        showError(e) 
-      } finally {
-        setLoading(btn, false)
-      }
-    } 
+    style: 'display: flex; align-items: center; gap: 6px;'
   })
   logoutButton.appendChild(icons.logout())
   logoutButton.appendChild(document.createTextNode('Logout'))
+
+  // Wrap to anchor the dropdown confirmation
+  const logoutWrap = el('div', { style: 'position: relative; display: inline-block;' }, logoutButton)
+
+  // Logout confirmation with 5s countdown before enabling actions
+  function showLogoutConfirm() {
+    // Remove existing if present
+    const existing = document.querySelector('.dropdown-panel')
+    if (existing) existing.remove()
+
+    const panel = el('div', { class: 'dropdown-panel card slide-in' })
+    panel.style.position = 'fixed'
+    const rect = logoutButton.getBoundingClientRect()
+    panel.style.top = `${Math.round(rect.bottom + 8)}px`
+    const panelWidth = 300
+    const left = Math.max(10, Math.round(rect.right - panelWidth))
+    panel.style.left = `${left}px`
+    panel.style.minWidth = '300px'
+    panel.style.zIndex = '99999'
+
+    const title = el('div', { class: 'title', style: 'margin-bottom: 8px; font-weight: 700;' }, 'Are you want to loggout?')
+    const desc = el('div', { class: 'hint', style: 'margin-bottom: 8px;' }, 'Please wait 5 seconds before you can confirm.')
+    const countdownEl = el('div', { style: 'font-weight: 600; margin-bottom: 12px; text-align: center;' }, '5')
+
+    const actions = el('div', { class: 'row', style: 'justify-content: flex-end; gap: 8px; display: none;' },
+      el('button', { class: 'btn btn-outline', type: 'button', onclick: () => { panel.remove(); /* also remove outside click listener */ document.removeEventListener('click', onDocClick, true) } }, 'Cancel'),
+      el('button', { class: 'btn btn-primary', type: 'button', onclick: async (e) => {
+        const btn = e.target
+        try {
+          setLoading(btn, true)
+          await api.logout()
+          showSuccess('Logged out successfully', 'Goodbye')
+          setTimeout(() => renderLogin(), 500)
+        } catch (err) {
+          showError(err)
+        } finally {
+          setLoading(btn, false)
+          panel.remove()
+          document.removeEventListener('click', onDocClick, true)
+        }
+      } }, 'Logout')
+    )
+
+    panel.append(title, desc, countdownEl, actions)
+    document.body.append(panel)
+
+    // Close when clicking outside
+    const onDocClick = (ev) => {
+      if (!panel.contains(ev.target) && ev.target !== logoutButton) {
+        panel.remove()
+        document.removeEventListener('click', onDocClick, true)
+      }
+    }
+    setTimeout(() => document.addEventListener('click', onDocClick, true), 0)
+
+    let remaining = 5
+    const timer = setInterval(() => {
+      remaining -= 1
+      countdownEl.textContent = String(remaining)
+      if (remaining <= 0) {
+        clearInterval(timer)
+        desc.textContent = 'You can now cancel or logout.'
+        countdownEl.style.display = 'none'
+        actions.style.display = 'flex'
+      }
+    }, 1000)
+  }
+
+  logoutButton.addEventListener('click', (e) => {
+    e.preventDefault()
+    showLogoutConfirm()
+  })
 
   // Create enhanced dropdown options with icons
   function createSelectWithIcons(id, title, options) {
@@ -535,7 +594,7 @@ async function renderApp() {
       methodDropdown,
       refreshButton,
       el('div', { class: 'spacer' }),
-      logoutButton
+      logoutWrap
     )
   )
 
