@@ -1,5 +1,12 @@
 import mongoose from 'mongoose'
 
+// Generic one-time code storage for login verification
+const otpSchema = new mongoose.Schema({
+  codeHash: { type: String },
+  expiresAt: { type: Date },
+  attempts: { type: Number, default: 0 }
+}, { _id: false })
+
 const adminSchema = new mongoose.Schema({
   firstName: { type: String, required: true, trim: true, minlength: 2, maxlength: 60 },
   lastName:  { type: String, required: true, trim: true, minlength: 2, maxlength: 60 },
@@ -13,6 +20,12 @@ const adminSchema = new mongoose.Schema({
   roles: { type: [String], default: ['user_manager'] },
   // Single, non-removable primary admin account
   isPrimaryAdmin: { type: Boolean, default: false },
+
+  // Login-time email OTP for admins
+  loginOTP: otpSchema,
+
+  // OTP for approving creation of new admin accounts
+  createAdminOTP: otpSchema,
 }, { timestamps: true })
 
 adminSchema.virtual('name').get(function () {

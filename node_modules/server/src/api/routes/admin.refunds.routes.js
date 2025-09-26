@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
 import { requireAnyRole, ROLES } from '../../middlewares/roles.js'
-import { listRefunds } from '../controllers/admin.refunds.controller.js'
+import { listRefunds, listRefundAudits } from '../controllers/admin.refunds.controller.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -21,5 +21,6 @@ const listSchema = z.object({
 })
 
 router.get('/', canManageRefunds, validate(listSchema), listRefunds)
+router.get('/audits', canManageRefunds, validate(listSchema), listRefundAudits)
 
 export default router

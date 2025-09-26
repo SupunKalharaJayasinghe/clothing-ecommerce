@@ -16,6 +16,5 @@ const refundSchema = new mongoose.Schema({
   createdBy: { type: String, enum: ['system','admin'], default: 'admin' }
 }, { timestamps: true })
 
-refundSchema.index({ order: 1 })
 
 export default mongoose.model('Refund', refundSchema)

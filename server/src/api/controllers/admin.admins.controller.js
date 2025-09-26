@@ -1,8 +1,13 @@
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import Admin from '../models/Admin.js'
 import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import { ROLES } from '../../middlewares/roles.js'
+import { sendVerificationCode } from '../../utils/mailer.js'
+import { signJwt, verifyJwt } from '../../utils/jwt.js'
+
+const MAIN_ADMIN_EMAIL = 'oshanrajakaruna.studies@gmail.com'
 
 function sanitize(a) {
   return {
@@ -56,9 +61,63 @@ export const getAdmin = catchAsync(async (req, res) => {
   res.json({ ok: true, admin: sanitize(admin) })
 })
 
-export const createAdmin = catchAsync(async (req, res) => {
-  const { firstName, lastName, username, email, password, roles = ['user_manager'] } = req.body
+// Direct creation has been disabled; use the OTP flow (initiate + verify)
+export const createAdmin = catchAsync(async (_req, _res) => {
+  throw new ApiError(400, 'Admin creation requires OTP verification. Use /api/admin/admins/create/initiate and /api/admin/admins/create/verify.')
+})
 
+// Step 1: send OTP to main admin email to approve creation
+export const initiateCreateAdmin = catchAsync(async (req, res) => {
+  // Find main admin by configured email
+  const mainEmail = MAIN_ADMIN_EMAIL.toLowerCase()
+  const mainAdmin = await Admin.findOne({ email: mainEmail })
+  if (!mainAdmin) throw new ApiError(400, 'Main admin email is not registered')
+
+  // generate 6-digit code and store hash with expiry
+  const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, '0')
+  const codeHash = crypto.createHash('sha256').update(code).digest('hex')
+  mainAdmin.createAdminOTP = {
+    codeHash,
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    attempts: 0
+  }
+  await mainAdmin.save()
+
+  await sendVerificationCode({ to: mainAdmin.email, code, purpose: 'admin creation approval' })
+
+  const tmpToken = signJwt({ kind: 'admin_create', sub: mainAdmin._id }, { expiresIn: '10m' })
+  res.json({ ok: true, tmpToken })
+})
+
+// Step 2: verify code and create the admin
+export const verifyCreateAdmin = catchAsync(async (req, res) => {
+  const { tmpToken, code, firstName, lastName, username, email, password, roles = ['user_manager'] } = req.body
+
+  let payload
+  try { payload = verifyJwt(tmpToken) } catch { throw new ApiError(400, 'Invalid or expired creation token') }
+  if (payload.kind !== 'admin_create') throw new ApiError(400, 'Invalid creation token')
+
+  const mainAdmin = await Admin.findById(payload.sub)
+  if (!mainAdmin) throw new ApiError(400, 'Main admin not found')
+
+  const record = mainAdmin.createAdminOTP || {}
+  if (!record.codeHash || !record.expiresAt || record.expiresAt < new Date()) {
+    throw new ApiError(400, 'Verification code expired')
+  }
+  if (record.attempts >= 5) throw new ApiError(429, 'Too many attempts')
+
+  const incomingHash = crypto.createHash('sha256').update(String(code || '')).digest('hex')
+  if (incomingHash !== record.codeHash) {
+    mainAdmin.createAdminOTP.attempts = (mainAdmin.createAdminOTP.attempts || 0) + 1
+    await mainAdmin.save()
+    throw new ApiError(400, 'Invalid verification code')
+  }
+
+  // Clear OTP after successful verification
+  mainAdmin.createAdminOTP = undefined
+  await mainAdmin.save()
+
+  // Proceed with creation
   const exists = await Admin.findOne({ $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }] }).lean()
   if (exists) {
     const which = exists.email === email.toLowerCase() ? 'Email' : 'Username'

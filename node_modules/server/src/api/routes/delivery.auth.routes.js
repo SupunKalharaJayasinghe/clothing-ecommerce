@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
-import { login, me, logout, register } from '../controllers/delivery.auth.controller.js'
+import { login, me, logout, register, verifyEmailOnLogin } from '../controllers/delivery.auth.controller.js'
 import { requireDeliveryAuth } from '../../middlewares/deliveryAuth.js'
 
 const router = Router()
@@ -10,7 +10,12 @@ const loginSchema = z.object({
   body: z.object({ identifier: z.string().min(1), password: z.string().min(1) })
 })
 
+const loginVerifySchema = z.object({
+  body: z.object({ tmpToken: z.string().min(10), code: z.string().min(4) })
+})
+
 router.post('/login', validate(loginSchema), login)
+router.post('/login/verify', validate(loginVerifySchema), verifyEmailOnLogin)
 
 // Minimal registration schema: exactly 10 fields
 const registerSchema = z.object({

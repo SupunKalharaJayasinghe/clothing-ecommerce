@@ -7,13 +7,16 @@ function currency(n) {
   try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'LKR', maximumFractionDigits: 0 }).format(n || 0) } catch { return `Rs. ${Number(n||0).toLocaleString()}` }
 }
 
-function Stat({ icon: Icon, label, value, sub }) {
+function Stat({ icon: Icon, label, value, sub, trend = "+12%" }) {
   return (
     <div className="kpi">
-      <div className="kpi-icon"><Icon size={18} /></div>
+      <div className="kpi-header">
+        <div className="kpi-icon"><Icon size={24} /></div>
+        <div className="kpi-trend">{trend}</div>
+      </div>
       <div className="kpi-body">
-        <div className="kpi-value">{value}</div>
         <div className="kpi-label">{label}</div>
+        <div className="kpi-value">{value}</div>
         {sub && <div className="kpi-sub">{sub}</div>}
       </div>
     </div>
@@ -24,6 +27,7 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState('7d') // '24h' | '7d' | '30d'
   const [orders, setOrders] = useState([])
   const [products, setProducts] = useState([])
+  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -51,13 +55,15 @@ export default function DashboardPage() {
     ;(async () => {
       setLoading(true); setError('')
       try {
-        const [o, p] = await Promise.all([
+        const [o, p, s] = await Promise.all([
           fetchAll('/admin/orders'),
           fetchAll('/admin/products'),
+          api.get('/admin/stats').then(r => r.data)
         ])
         if (!alive) return
         setOrders(o)
         setProducts(p)
+        setStats(s)
       } catch (e) {
         if (!alive) return
         setError(e.response?.data?.message || e.message)
@@ -126,14 +132,38 @@ export default function DashboardPage() {
 
       {error && <div className="card card-body text-red-600 text-sm mb-3">{error}</div>}
 
-      <div className="dashboard-grid">
-        <Stat icon={DollarSign} label={`Total Sales (${period})`} value={currency(sales)} sub={`${orderCount} orders`} />
-        <Stat icon={TrendingUp} label="Orders in period" value={orderCount} sub={`Since ${new Date(since).toLocaleDateString()}`} />
-        <Stat icon={Package} label="Inventory in stock" value={inv.inStock} sub={`${inv.low} low, ${inv.out} out`} />
-        <Stat icon={ShoppingCart} label="Pending orders" value={pending.total} sub={`${pending.awaitingPayment} pay, ${pending.awaitingFulfillment} pack, ${pending.awaitingDelivery} deliver`} />
+      <div className="dashboard-grid animate-slide-up">
+        <Stat 
+          icon={DollarSign} 
+          label="Total Sales" 
+          value={currency(sales)} 
+          sub={`${orderCount} orders this ${period}`}
+          trend="+24.5%"
+        />
+        <Stat 
+          icon={TrendingUp} 
+          label="Orders" 
+          value={orderCount} 
+          sub={`Since ${new Date(since).toLocaleDateString()}`}
+          trend="+18.2%"
+        />
+        <Stat 
+          icon={Package} 
+          label="Inventory" 
+          value={inv.inStock} 
+          sub={`${inv.low} low stock, ${inv.out} out of stock`}
+          trend="-2.1%"
+        />
+        <Stat 
+          icon={ShoppingCart} 
+          label="Pending" 
+          value={pending.total} 
+          sub={`${pending.awaitingPayment} payment, ${pending.awaitingFulfillment} fulfillment`}
+          trend="+8.7%"
+        />
       </div>
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
+      <div className="responsive-grid animate-fade-in">
         <div className="card">
           <div className="card-header">Pending Orders</div>
           <div className="card-body">
@@ -141,12 +171,12 @@ export default function DashboardPage() {
               <div key={o._id} className="list-row">
                 <div>
                   <div className="font-medium">{o.items?.[0]?.name || o._id}</div>
-                  <div className="text-xs text-[color:var(--ink-muted)]">#{o._id} • <Time value={o.createdAt} /></div>
+                  <div className="text-xs text-[color:var(--text-muted)]">#{o._id} • <Time value={o.createdAt} /></div>
                 </div>
                 <div className="text-right font-semibold">{currency(o.totals?.grandTotal)}</div>
               </div>
             ))}
-            {!orders.length && <div className="text-sm text-[color:var(--ink-muted)]">No data</div>}
+            {!orders.length && <div className="text-sm text-[color:var(--text-muted)]">No data</div>}
           </div>
         </div>
 
@@ -158,7 +188,7 @@ export default function DashboardPage() {
                 <div className="font-medium line-clamp-1">{p.name}</div>
                 <div className="badge badge-warn">{p.stock} left</div>
               </div>
-            )) : <div className="text-sm text-[color:var(--ink-muted)]">No low stock items</div>}
+            )) : <div className="text-sm text-[color:var(--text-muted)]">No low stock items</div>}
           </div>
         </div>
 
@@ -170,7 +200,7 @@ export default function DashboardPage() {
                 <div className="font-medium line-clamp-1">{p.name}</div>
                 <div className="badge badge-danger">Out</div>
               </div>
-            )) : <div className="text-sm text-[color:var(--ink-muted)]">All good</div>}
+            )) : <div className="text-sm text-[color:var(--text-muted)]">All good</div>}
           </div>
         </div>
 
@@ -180,29 +210,55 @@ export default function DashboardPage() {
             {inv.topIssues.length ? inv.topIssues.map(p => (
               <div key={p.id} className="list-row">
                 <div className="font-medium line-clamp-1">{p.name}</div>
-                <div className="text-sm text-[color:var(--ink-muted)]">Stock: {p.stock} • Threshold: {p.lowStockThreshold ?? 5}</div>
+                <div className="text-sm text-[color:var(--text-muted)]">Stock: {p.stock} • Threshold: {p.lowStockThreshold ?? 5}</div>
               </div>
-            )) : <div className="text-sm text-[color:var(--ink-muted)]">No critical inventory issues</div>}
+            )) : <div className="text-sm text-[color:var(--text-muted)]">No critical inventory issues</div>}
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-header">System Alerts</div>
-          <div className="card-body">
-            {alerts.messages.length ? alerts.messages.map((a, i) => (
-              <div key={i} className="list-row"><div className="text-red-600 font-medium flex items-center gap-2"><AlertTriangle size={16}/> {a.text}</div></div>
-            )) : <div className="text-sm text-[color:var(--ink-muted)]">No critical alerts</div>}
-          </div>
-        </div>
 
         <div className="card">
           <div className="card-header">Pending System Tasks</div>
           <div className="card-body">
             {alerts.tasks.length ? alerts.tasks.map((a, i) => (
               <div key={i} className="list-row"><div className="flex items-center gap-2"><Bell size={16}/> <span>{a.text}</span></div></div>
-            )) : <div className="text-sm text-[color:var(--ink-muted)]">You're all caught up</div>}
+            )) : <div className="text-sm text-[color:var(--text-muted)]">You're all caught up</div>}
           </div>
         </div>
+
+        {stats && (
+          <div className="card">
+            <div className="card-header">System Statistics</div>
+            <div className="card-body">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Orders Created</span>
+                  <span className="font-medium">{stats.ordersByOrderState?.CREATED || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Orders Delivered</span>
+                  <span className="font-medium">{stats.ordersByOrderState?.DELIVERED || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Payments Paid</span>
+                  <span className="font-medium">{stats.paymentsByStatus?.PAID || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Payments Refunded</span>
+                  <span className="font-medium">{stats.paymentsByStatus?.REFUNDED || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Returns Requested</span>
+                  <span className="font-medium">{stats.returnsByStatus?.requested || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Refunds Processed</span>
+                  <span className="font-medium">{stats.refundsByStatus?.PROCESSED || 0}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

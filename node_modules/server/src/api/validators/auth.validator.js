@@ -27,7 +27,8 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   body: z.object({
     identifier: z.string().min(3),
-    password: z.string().min(1)
+    password: z.string().min(1),
+    method: z.enum(['email','totp']).optional()
   })
 })
 
@@ -54,5 +55,37 @@ export const resetPasswordSchema = z.object({
     if (d.newPassword !== d.confirmPassword) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['confirmPassword'], message: 'Passwords do not match' })
     }
+  })
+})
+
+// Email code verification for signup
+export const emailVerifySchema = z.object({
+  body: z.object({
+    tmpToken: z.string().min(10),
+    code: z.string().min(4)
+  })
+})
+
+// Email code verification for login
+export const loginVerifySchema = z.object({
+  body: z.object({
+    tmpToken: z.string().min(10),
+    code: z.string().min(4),
+    remember: z.boolean().optional()
+  })
+})
+
+// Choose login method when 2FA is enabled
+export const loginMethodSchema = z.object({
+  body: z.object({
+    tmpToken: z.string().min(10), // kind: 'login_method'
+    method: z.enum(['email','totp'])
+  })
+})
+
+// Resend email code for login
+export const loginResendSchema = z.object({
+  body: z.object({
+    tmpToken: z.string().min(10) // kind: 'email_login'
   })
 })

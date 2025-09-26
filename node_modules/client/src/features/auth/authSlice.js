@@ -13,7 +13,8 @@ export const registerUser = createAsyncThunk('auth/registerUser', async (payload
       confirmPassword: payload.confirmPassword
     }
     const { data } = await api.post('/auth/register', clean)
-    return data.user
+    if (data.verificationRequired) return { verificationRequired: true, tmpToken: data.tmpToken }
+    return { user: data.user }
   } catch (err) {
     return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
   }
@@ -23,6 +24,8 @@ export const loginUser = createAsyncThunk('auth/loginUser', async (payload, thun
   try {
     const clean = { identifier: payload.identifier?.trim().toLowerCase(), password: payload.password }
     const { data } = await api.post('/auth/login', clean)
+    if (data.chooseMethodRequired) return { chooseMethodRequired: true, tmpToken: data.tmpToken, methods: data.methods }
+    if (data.emailLoginRequired) return { emailLoginRequired: true, tmpToken: data.tmpToken }
     if (data.twoFARequired) return { twoFARequired: true, tmpToken: data.tmpToken }
     return { user: data.user }
   } catch (err) {
@@ -35,6 +38,41 @@ export const verifyTwoFA = createAsyncThunk('auth/verifyTwoFA', async (payload, 
     const { tmpToken, code, remember } = payload
     const { data } = await api.post('/auth/2fa/verify', { tmpToken, code, remember })
     return data.user
+  } catch (err) {
+    return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
+  }
+})
+
+// Verify email code after login challenge
+export const verifyEmailLogin = createAsyncThunk('auth/verifyEmailLogin', async (payload, thunkAPI) => {
+  try {
+    const { tmpToken, code, remember } = payload
+    const { data } = await api.post('/auth/login/verify', { tmpToken, code, remember })
+    if (data.twoFARequired) return { twoFARequired: true, tmpToken: data.tmpToken }
+    return { user: data.user }
+  } catch (err) {
+    return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
+  }
+})
+
+export const chooseLoginMethod = createAsyncThunk('auth/chooseLoginMethod', async (payload, thunkAPI) => {
+  try {
+    const { tmpToken, method } = payload
+    const { data } = await api.post('/auth/login/method', { tmpToken, method })
+    if (data.emailLoginRequired) return { emailLoginRequired: true, tmpToken: data.tmpToken }
+    if (data.twoFARequired) return { twoFARequired: true, tmpToken: data.tmpToken }
+    return thunkAPI.rejectWithValue('Unexpected response')
+  } catch (err) {
+    return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
+  }
+})
+
+// Verify email code after registration
+export const verifyEmailRegister = createAsyncThunk('auth/verifyEmailRegister', async (payload, thunkAPI) => {
+  try {
+    const { tmpToken, code } = payload
+    const { data } = await api.post('/auth/email/verify', { tmpToken, code })
+    return { user: data.user }
   } catch (err) {
     return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
   }
@@ -98,7 +136,9 @@ const initialState = {
   status: 'idle',
   error: null,
   hydrated: false, // set true after first fetchMe completes (success or fail)
+  methodChoice: { required: false, tmpToken: null, methods: [] },
   twoFA: { required: false, tmpToken: null },
+  email: { required: false, tmpToken: null, mode: null },
   forgot: { status: 'idle', message: null, devToken: null },
   reset: { status: 'idle', message: null }
 }
@@ -111,15 +151,27 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(registerUser.pending, (s) => { s.status = 'loading'; s.error = null })
-      .addCase(registerUser.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload; saveUserToStorage(s.user) })
+      .addCase(registerUser.pending, (s) => { s.status = 'loading'; s.error = null; s.email = { required: false, tmpToken: null, mode: null } })
+      .addCase(registerUser.fulfilled, (s, a) => {
+        s.status = 'succeeded'; s.error = null
+        if (a.payload?.verificationRequired) {
+          s.email = { required: true, tmpToken: a.payload.tmpToken, mode: 'register' }
+        } else if (a.payload?.user) {
+          s.user = a.payload.user
+          saveUserToStorage(s.user)
+        }
+      })
       .addCase(registerUser.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
 
-      .addCase(loginUser.pending, (s) => { s.status = 'loading'; s.error = null; s.twoFA = { required: false, tmpToken: null } })
+.addCase(loginUser.pending, (s) => { s.status = 'loading'; s.error = null; s.methodChoice = { required: false, tmpToken: null, methods: [] }; s.twoFA = { required: false, tmpToken: null }; s.email = { required: false, tmpToken: null, mode: null } })
       .addCase(loginUser.fulfilled, (s, a) => {
         s.status = 'succeeded'; s.error = null
-        // if 2FA required, do not set user yet
-        if (a.payload?.twoFARequired) {
+        // if email verification required, do not set user yet
+if (a.payload?.chooseMethodRequired) {
+          s.methodChoice = { required: true, tmpToken: a.payload.tmpToken, methods: a.payload.methods || ['email','totp'] }
+        } else if (a.payload?.emailLoginRequired) {
+          s.email = { required: true, tmpToken: a.payload.tmpToken, mode: 'login' }
+        } else if (a.payload?.twoFARequired) {
           s.twoFA = { required: true, tmpToken: a.payload.tmpToken }
         } else {
           s.user = a.payload.user
@@ -131,6 +183,39 @@ const authSlice = createSlice({
       .addCase(verifyTwoFA.pending, (s) => { s.status = 'loading'; s.error = null })
       .addCase(verifyTwoFA.fulfilled, (s, a) => { s.status = 'succeeded'; s.user = a.payload; s.twoFA = { required: false, tmpToken: null }; saveUserToStorage(s.user) })
       .addCase(verifyTwoFA.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
+
+      .addCase(verifyEmailLogin.pending, (s) => { s.status = 'loading'; s.error = null })
+.addCase(verifyEmailLogin.fulfilled, (s, a) => {
+        s.status = 'succeeded'; s.error = null
+        s.email = { required: false, tmpToken: null, mode: null }
+        if (a.payload?.twoFARequired) {
+          s.twoFA = { required: true, tmpToken: a.payload.tmpToken }
+        } else if (a.payload?.user) {
+          s.user = a.payload.user
+          saveUserToStorage(s.user)
+        }
+      })
+      .addCase(chooseLoginMethod.pending, (s) => { s.status = 'loading'; s.error = null })
+      .addCase(chooseLoginMethod.fulfilled, (s, a) => {
+        s.status = 'succeeded'; s.error = null
+        s.methodChoice = { required: false, tmpToken: null, methods: [] }
+        if (a.payload?.emailLoginRequired) {
+          s.email = { required: true, tmpToken: a.payload.tmpToken, mode: 'login' }
+        } else if (a.payload?.twoFARequired) {
+          s.twoFA = { required: true, tmpToken: a.payload.tmpToken }
+        }
+      })
+      .addCase(chooseLoginMethod.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
+      .addCase(verifyEmailLogin.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
+
+      .addCase(verifyEmailRegister.pending, (s) => { s.status = 'loading'; s.error = null })
+      .addCase(verifyEmailRegister.fulfilled, (s, a) => {
+        s.status = 'succeeded'; s.error = null
+        s.email = { required: false, tmpToken: null, mode: null }
+        s.user = a.payload.user
+        saveUserToStorage(s.user)
+      })
+      .addCase(verifyEmailRegister.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
 
       .addCase(forgotPassword.pending, (s) => { s.forgot.status = 'loading'; s.forgot.message = null; s.forgot.devToken = null; s.error = null })
       .addCase(forgotPassword.fulfilled, (s, a) => { s.forgot.status = 'succeeded'; s.forgot.message = a.payload.message; s.forgot.devToken = a.payload.devToken || null })

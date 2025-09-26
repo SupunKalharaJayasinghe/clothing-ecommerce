@@ -131,6 +131,8 @@ function verifyBlocked() {
 }
 
 function renderLogin() {
+  // Prime CSRF cookie by calling a safe GET endpoint
+  api.health().catch(() => {})
   root.innerHTML = ''
   
   // Create title with icon
@@ -186,9 +188,14 @@ function renderLogin() {
     
     const fd = new FormData(form)
     try {
-      await api.login(fd.get('identifier'), fd.get('password'))
-      showSuccess('Login successful! Loading your dashboard...')
-      setTimeout(() => renderApp(), 1000)
+      const data = await api.login(fd.get('identifier'), fd.get('password'))
+      if (data?.emailLoginRequired && data?.tmpToken) {
+        showSuccess('We sent a 6-digit code to your email. Please verify to continue.', 'Check your email')
+        renderVerifyEmail(data.tmpToken)
+      } else {
+        showSuccess('Login successful! Loading your dashboard...')
+        setTimeout(() => renderApp(), 500)
+      }
     } catch (err) {
       showError(err)
     } finally {
@@ -362,6 +369,58 @@ function orderRow(o, refresh) {
   ))
 }
 
+function renderVerifyEmail(tmpToken) {
+  root.innerHTML = ''
+  const form = el('form', { class: 'login', id: 'verifyForm' },
+    animateIn(el('div', { class: 'card' },
+      el('div', { class: 'title' }, 'Email Verification'),
+      el('div', { class: 'hint' }, 'Enter the 6-digit code we sent to your email to continue.'),
+      el('div', { class: 'row' },
+        el('input', {
+          class: 'input',
+          type: 'text',
+          placeholder: '123456',
+          name: 'code',
+          required: true,
+          minlength: 4,
+          maxlength: 8,
+          style: 'flex:1'
+        })
+      ),
+      el('div', { class: 'row', style: 'margin-top:16px; justify-content: space-between' },
+        el('button', { type: 'button', class: 'btn btn-outline', onclick: () => renderLogin() }, 'Back'),
+        el('button', { type: 'submit', class: 'btn btn-primary' }, 'Verify')
+      ),
+      el('div', { class: 'row', style: 'margin-top:8px; justify-content:flex-end' },
+        el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
+          try {
+            const r = await api.login(document.querySelector('input[name="identifier"]')?.value || '', document.querySelector('input[name="password"]')?.value || '')
+            if (r?.tmpToken) showSuccess('A new code was sent to your email.')
+          } catch (e) { showError(e) }
+        } }, 'Resend code')
+      )
+    ))
+  )
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const submitBtn = form.querySelector('button[type="submit"]')
+    setLoading(submitBtn, true)
+    const fd = new FormData(form)
+    try {
+      await api.verifyEmailLogin(tmpToken, String(fd.get('code') || '').trim())
+      showSuccess('Verified! Loading your dashboard...')
+      setTimeout(() => renderApp(), 500)
+    } catch (err) {
+      showError(err)
+    } finally {
+      setLoading(submitBtn, false)
+    }
+  })
+
+  root.append(form)
+}
+
 async function renderApp() {
   // Check session with loading state
   try { 
@@ -400,23 +459,82 @@ async function renderApp() {
 
   const logoutButton = el('button', { 
     class: 'btn btn-outline',
-    style: 'display: flex; align-items: center; gap: 6px;',
-    onclick: async (e) => { 
-      const btn = e.target
-      try { 
-        setLoading(btn, true)
-        await api.logout()
-        showSuccess('Logged out successfully', 'Goodbye')
-        setTimeout(() => renderLogin(), 1000)
-      } catch (e) { 
-        showError(e) 
-      } finally {
-        setLoading(btn, false)
-      }
-    } 
+    style: 'display: flex; align-items: center; gap: 6px;'
   })
   logoutButton.appendChild(icons.logout())
   logoutButton.appendChild(document.createTextNode('Logout'))
+
+  // Wrap to anchor the dropdown confirmation
+  const logoutWrap = el('div', { style: 'position: relative; display: inline-block;' }, logoutButton)
+
+  // Logout confirmation with 5s countdown before enabling actions
+  function showLogoutConfirm() {
+    // Remove existing if present
+    const existing = document.querySelector('.dropdown-panel')
+    if (existing) existing.remove()
+
+    const panel = el('div', { class: 'dropdown-panel card slide-in' })
+    panel.style.position = 'fixed'
+    const rect = logoutButton.getBoundingClientRect()
+    panel.style.top = `${Math.round(rect.bottom + 8)}px`
+    const panelWidth = 300
+    const left = Math.max(10, Math.round(rect.right - panelWidth))
+    panel.style.left = `${left}px`
+    panel.style.minWidth = '300px'
+    panel.style.zIndex = '99999'
+
+    const title = el('div', { class: 'title', style: 'margin-bottom: 8px; font-weight: 700;' }, 'Are you want to loggout?')
+    const desc = el('div', { class: 'hint', style: 'margin-bottom: 8px;' }, 'Please wait 5 seconds before you can confirm.')
+    const countdownEl = el('div', { style: 'font-weight: 600; margin-bottom: 12px; text-align: center;' }, '5')
+
+    const actions = el('div', { class: 'row', style: 'justify-content: flex-end; gap: 8px; display: none;' },
+      el('button', { class: 'btn btn-outline', type: 'button', onclick: () => { panel.remove(); /* also remove outside click listener */ document.removeEventListener('click', onDocClick, true) } }, 'Cancel'),
+      el('button', { class: 'btn btn-primary', type: 'button', onclick: async (e) => {
+        const btn = e.target
+        try {
+          setLoading(btn, true)
+          await api.logout()
+          showSuccess('Logged out successfully', 'Goodbye')
+          setTimeout(() => renderLogin(), 500)
+        } catch (err) {
+          showError(err)
+        } finally {
+          setLoading(btn, false)
+          panel.remove()
+          document.removeEventListener('click', onDocClick, true)
+        }
+      } }, 'Logout')
+    )
+
+    panel.append(title, desc, countdownEl, actions)
+    document.body.append(panel)
+
+    // Close when clicking outside
+    const onDocClick = (ev) => {
+      if (!panel.contains(ev.target) && ev.target !== logoutButton) {
+        panel.remove()
+        document.removeEventListener('click', onDocClick, true)
+      }
+    }
+    setTimeout(() => document.addEventListener('click', onDocClick, true), 0)
+
+    let remaining = 5
+    const timer = setInterval(() => {
+      remaining -= 1
+      countdownEl.textContent = String(remaining)
+      if (remaining <= 0) {
+        clearInterval(timer)
+        desc.textContent = 'You can now cancel or logout.'
+        countdownEl.style.display = 'none'
+        actions.style.display = 'flex'
+      }
+    }, 1000)
+  }
+
+  logoutButton.addEventListener('click', (e) => {
+    e.preventDefault()
+    showLogoutConfirm()
+  })
 
   // Create enhanced dropdown options with icons
   function createSelectWithIcons(id, title, options) {
@@ -476,7 +594,7 @@ async function renderApp() {
       methodDropdown,
       refreshButton,
       el('div', { class: 'spacer' }),
-      logoutButton
+      logoutWrap
     )
   )
 

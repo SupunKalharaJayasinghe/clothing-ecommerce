@@ -2,6 +2,7 @@ import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import Order from '../models/Order.js'
 import { PAYMENT_STATES, updateOrderStates, applyStateChanges } from '../../utils/stateManager.js'
+import PaymentTransaction from '../models/PaymentTransaction.js'
 
 // GET /api/delivery/cod?status=...
 export const listCodOrders = catchAsync(async (req, res) => {
@@ -45,6 +46,16 @@ export const updateCodPayment = catchAsync(async (req, res) => {
   const changes = updateOrderStates(o, { paymentStatus: target })
   applyStateChanges(o, changes)
   await o.save()
+
+  // Log COD collection/failed
+  await PaymentTransaction.create({
+    order: o._id,
+    method: 'COD',
+    action: 'COD_COLLECTION',
+    status: target,
+    notes: target === PAYMENT_STATES.PAID ? 'COD collected by delivery' : 'COD collection failed',
+    createdBy: 'delivery'
+  })
   res.json({ ok: true, orderId: o._id, paymentStatus: o.payment?.status })
 })
 

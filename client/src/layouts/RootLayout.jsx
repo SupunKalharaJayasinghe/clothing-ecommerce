@@ -3,13 +3,67 @@ import { useEffect, useRef, useState } from 'react'
 import { APP_NAME } from '../lib/constants'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { logoutUser, fetchMe } from '../features/auth/authSlice'
-import { Menu, X } from '../lib/icons'
+import { Menu, X, Shield } from '../lib/icons'
 
 export default function RootLayout() {
   const [open, setOpen] = useState(false)
   const { user, status, hydrated } = useAppSelector(s => s.auth)
   const { items: cartItems = [] } = useAppSelector(s => s.cart || { items: [] })
   const dispatch = useAppDispatch()
+
+  // Logout confirm modal state
+  const [showLogout, setShowLogout] = useState(false)
+  const [canAct, setCanAct] = useState(false)
+  const [secondsLeft, setSecondsLeft] = useState(5)
+  const logoutTimerRef = useRef(null)
+
+  function openLogoutConfirm() {
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
+    setSecondsLeft(5)
+    setCanAct(false)
+    setShowLogout(true)
+  }
+  function closeLogoutConfirm() {
+    setShowLogout(false)
+    setCanAct(false)
+    setSecondsLeft(5)
+    if (logoutTimerRef.current) {
+      clearInterval(logoutTimerRef.current)
+      logoutTimerRef.current = null
+    }
+  }
+  async function confirmLogout() {
+    if (!canAct) return
+    await dispatch(logoutUser())
+    closeLogoutConfirm()
+  }
+
+  // countdown for enabling the buttons
+  useEffect(() => {
+    if (!showLogout) return
+    if (logoutTimerRef.current) clearInterval(logoutTimerRef.current)
+    setSecondsLeft(5)
+    setCanAct(false)
+    logoutTimerRef.current = setInterval(() => {
+      setSecondsLeft(prev => {
+        const next = Math.max(0, prev - 1)
+        if (next === 0) {
+          setCanAct(true)
+          if (logoutTimerRef.current) {
+            clearInterval(logoutTimerRef.current)
+            logoutTimerRef.current = null
+          }
+        }
+        return next
+      })
+    }, 1000)
+    return () => {
+      if (logoutTimerRef.current) {
+        clearInterval(logoutTimerRef.current)
+        logoutTimerRef.current = null
+      }
+    }
+  }, [showLogout])
 
   // hydrate session from cookie (guard against StrictMode double-effect)
   const didHydrate = useRef(false)
@@ -110,7 +164,7 @@ export default function RootLayout() {
                   <div className="flex items-center gap-4">
                     <NavLink to="/orders" className={({isActive}) => `px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover] hover:backdrop-blur-sm'}`}>Orders</NavLink>
                     <NavLink to="/account" className={({isActive}) => `px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover] hover:backdrop-blur-sm'}`}>Account</NavLink>
-                    <button className="btn btn-outline btn-sm" onClick={() => dispatch(logoutUser())}>
+                    <button className="btn btn-outline btn-sm" onClick={openLogoutConfirm}>
                       Logout
                     </button>
                   </div>
@@ -181,7 +235,7 @@ export default function RootLayout() {
                         <NavLink to="/account" className={({isActive}) => `px-5 py-3 rounded-lg text-sm font-medium transition-all duration-150 ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover]'}`} onClick={() => setOpen(false)}>Account</NavLink>
                         <button
                           className="btn btn-outline btn-sm w-max ml-2 mt-4"
-                          onClick={() => { setOpen(false); dispatch(logoutUser()) }}
+                          onClick={() => { setOpen(false); openLogoutConfirm() }}
                         >
                           Logout
                         </button>
@@ -198,6 +252,78 @@ export default function RootLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
+
+      {/* Logout confirmation modal */}
+      {showLogout && (
+        <div className="fixed inset-0" style={{ zIndex: 2000 }} aria-modal="true" role="dialog">
+          {/* backdrop */}
+          <div
+            className={`absolute inset-0 transition-opacity ${canAct ? 'opacity-100' : 'opacity-90'}`}
+            style={{ backgroundColor: 'rgba(10, 13, 22, 0.65)' }}
+            onClick={() => { if (canAct) closeLogoutConfirm() }}
+          />
+
+          {/* modal */}
+          <div className="absolute inset-0 grid place-items-center p-4">
+            <div
+              className="w-full max-w-md rounded-2xl shadow-2xl p-6 relative"
+              style={{
+                background: 'linear-gradient(180deg, rgba(16, 20, 32, 0.98) 0%, rgba(12, 16, 28, 0.98) 100%)',
+                border: '1px solid rgba(99, 102, 241, 0.35)',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.45), 0 0 0 2px rgba(99,102,241,0.15) inset'
+              }}
+            >
+              {/* icon header */}
+              <div className="flex items-start gap-4 mb-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' }}>
+                  <Shield size={22} className="text-white" />
+                </div>
+                <div>
+                  <div className="text-xl font-extrabold tracking-tight text-white">Are you sure, Do you want to logout?</div>
+                  <div className="text-sm text-[--color-text-medium] mt-1">Please wait {secondsLeft}s before you can choose.</div>
+                </div>
+              </div>
+
+              {/* progress */}
+              <div className="w-full h-2 rounded-full overflow-hidden mb-5"
+                style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                <div
+                  className="h-full transition-all duration-1000"
+                  style={{
+                    width: `${((5 - secondsLeft) / 5) * 100}%`,
+                    background: 'linear-gradient(90deg, #22c55e 0%, #3b82f6 50%, #8b5cf6 100%)',
+                    boxShadow: '0 0 8px rgba(59, 130, 246, 0.6)'
+                  }}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-2">
+                <button
+                  className="btn transition-opacity duration-300"
+                  disabled={!canAct}
+                  style={{
+                    opacity: canAct ? 1 : 0.35,
+                    pointerEvents: canAct ? 'auto' : 'none',
+                    background: canAct ? '' : 'rgba(255,255,255,0.04)'
+                  }}
+                  onClick={closeLogoutConfirm}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary transition-opacity duration-300"
+                  disabled={!canAct}
+                  style={{ opacity: canAct ? 1 : 0.35, pointerEvents: canAct ? 'auto' : 'none' }}
+                  onClick={confirmLogout}
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="mt-16 border-t border-[--color-border] bg-[--color-surface-glass] backdrop-blur-xl">
         <div className="container-app py-12">
