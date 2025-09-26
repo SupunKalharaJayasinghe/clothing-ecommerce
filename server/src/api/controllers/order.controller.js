@@ -5,6 +5,7 @@ import catchAsync from '../../utils/catchAsync.js'
 import mongoose from 'mongoose'
 import User from '../models/User.js'
 import { getInitialStates, PAYMENT_METHODS, updateOrderStates, applyStateChanges } from '../../utils/stateManager.js'
+import PaymentTransaction from '../models/PaymentTransaction.js'
 
 function calcTotals(items) {
   const subtotal = items.reduce((s, it) => s + (it.price * it.quantity), 0)
@@ -92,6 +93,18 @@ export const placeOrder = catchAsync(async (req, res) => {
       statusHistory: [{ status: legacyStatus }],
       payment
     })
+    // Log initial transaction
+    await PaymentTransaction.create({
+      order: order._id,
+      method: 'CARD',
+      action: 'CREATED',
+      status: payment.status,
+      amount: totals.grandTotal,
+      currency: 'LKR',
+      gateway: 'PAYHERE',
+      notes: 'Order created awaiting card payment',
+      createdBy: 'user'
+    })
   } else {
     // Atomically reserve stock for non-card methods
     const session = await mongoose.startSession()
@@ -121,6 +134,17 @@ export const placeOrder = catchAsync(async (req, res) => {
       order = created[0]
     })
     session.endSession()
+    // Log initial transaction for COD/BANK
+    await PaymentTransaction.create({
+      order: order._id,
+      method,
+      action: 'CREATED',
+      status: payment.status,
+      amount: totals.grandTotal,
+      currency: 'LKR',
+      notes: method === 'COD' ? 'Order created (COD)' : 'Order created awaiting bank slip',
+      createdBy: 'user'
+    })
   }
 
   // For CARD: return minimal payload you can use to build a PayHere form client-side (sandbox)

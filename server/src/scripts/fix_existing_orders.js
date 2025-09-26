@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import mongoose from 'mongoose'
 import Order from '../api/models/Order.js'
-import { getInitialStates, getLegacyStatus } from '../utils/stateManager.js'
+import { getLegacyStatus, PAYMENT_STATES } from '../utils/stateManager.js'
 import { env } from '../config/env.js'
 import { connectDB } from '../config/db.js'
 
@@ -33,37 +33,55 @@ try {
     let needsUpdate = false
     const updates = {}
 
-    // Fix COD orders with wrong payment status
-    if (order.payment?.method === 'COD' && order.payment?.status === 'pending') {
-      updates['payment.status'] = 'cod_pending'
-      needsUpdate = true
-      console.log(`🔄 COD Order ${order._id}: pending → cod_pending`)
+    const method = String(order.payment?.method || '').toUpperCase()
+    const statusRaw = String(order.payment?.status || '').toUpperCase()
+    const mapLegacyToEnum = (m, s) => {
+      if (m === 'COD') {
+        // Valid: UNPAID | PAID | FAILED
+        if (s === 'PAID' || s === 'UNPAID' || s === 'FAILED') return s
+        if (s === 'PENDING' || s === 'COD_PENDING') return 'UNPAID'
+        return 'UNPAID'
+      }
+      if (m === 'CARD') {
+        // Valid: PENDING | AUTHORIZED | PAID | FAILED | REFUND_PENDING | REFUNDED
+        if (['PENDING','AUTHORIZED','PAID','FAILED','REFUND_PENDING','REFUNDED'].includes(s)) return s
+        if (s === 'INITIATED') return 'PENDING'
+        if (s === 'CANCELLED') return 'FAILED'
+        return 'PENDING'
+      }
+      if (m === 'BANK') {
+        if (['PENDING','PAID','FAILED','REFUND_PENDING','REFUNDED'].includes(s)) return s
+        if (s === 'PENDING_VERIFICATION' || s === 'INITIATED' || s === 'PENDING') return 'PENDING'
+        return 'PENDING'
+      }
+      return s || 'UNPAID'
     }
 
-    // Fix CARD orders with wrong payment status (if they're not initiated/paid)
-    if (order.payment?.method === 'CARD' && 
-        !['initiated', 'paid', 'authorized', 'failed', 'cancelled'].includes(order.payment?.status)) {
-      updates['payment.status'] = 'initiated'
+    // Determine normalized status
+    const normalized = mapLegacyToEnum(method, statusRaw)
+    if (normalized && normalized !== statusRaw) {
+      updates['payment.status'] = normalized
       needsUpdate = true
-      console.log(`🔄 CARD Order ${order._id}: ${order.payment?.status} → initiated`)
+      console.log(`🔄 Order ${order._id}: payment.status ${statusRaw || '(empty)'} → ${normalized}`)
     }
 
-    // Fix BANK orders with wrong payment status
-    if (order.payment?.method === 'BANK' && 
-        order.payment?.status === 'pending' && 
-        !order.payment?.bank?.verifiedAt) {
-      updates['payment.status'] = 'pending_verification'
-      needsUpdate = true
-      console.log(`🔄 BANK Order ${order._id}: pending → pending_verification`)
+    // If bank and a verifiedAt exists, ensure status is PAID
+    if (method === 'BANK' && order.payment?.bank?.verifiedAt) {
+      if (normalized !== PAYMENT_STATES.PAID) {
+        updates['payment.status'] = PAYMENT_STATES.PAID
+        needsUpdate = true
+        console.log(`🔄 bank Order ${order._id}: verified → PAID`)
+      }
     }
 
     // Fix legacy status if needed
     if (order.orderState && order.deliveryState && order.payment) {
+      const finalPay = updates['payment.status'] || order.payment.status
       const correctLegacyStatus = getLegacyStatus(
         order.orderState,
         order.deliveryState,
         order.payment.method,
-        updates['payment.status'] || order.payment.status
+        finalPay
       )
       
       if (order.status !== correctLegacyStatus) {
@@ -84,7 +102,6 @@ try {
   console.log(`📊 Total orders checked: ${totalCount}`)
   console.log(`🔧 Orders fixed: ${fixedCount}`)
   console.log(`✨ Orders already correct: ${totalCount - fixedCount}`)
-
 } catch (error) {
   console.error('❌ Migration failed:', error)
 } finally {

@@ -6,6 +6,7 @@ import mongoose from 'mongoose'
 import crypto from 'crypto'
 import { env } from '../../config/env.js'
 import { PAYMENT_STATES, updateOrderStates, applyStateChanges, ORDER_STATES } from '../../utils/stateManager.js'
+import PaymentTransaction from '../models/PaymentTransaction.js'
 
 // BANK: POST /api/payments/bank/:orderId/slip
 export const uploadBankSlip = catchAsync(async (req, res) => {
@@ -29,6 +30,18 @@ export const uploadBankSlip = catchAsync(async (req, res) => {
     order.payment.status = PAYMENT_STATES.PENDING
   }
   await order.save()
+
+  // Log transaction
+  await PaymentTransaction.create({
+    order: order._id,
+    method: 'BANK',
+    action: 'SLIP_UPLOADED',
+    status: order.payment.status,
+    gateway: undefined,
+    gatewayRef: undefined,
+    notes: 'Bank slip uploaded',
+    meta: { filename: req.file.filename, slipUrl: order.payment.bank.slipUrl, verifyBy }
+  })
 
   res.json({ ok: true, orderId: order._id, slipUrl: order.payment.bank.slipUrl, verifyBy })
 })
@@ -82,6 +95,19 @@ export const payhereWebhook = catchAsync(async (req, res) => {
     applyStateChanges(order, changes)
     order.payment.gatewayRef = payment_id || order.payment.gatewayRef
     await order.save()
+    // Log failed webhook
+    await PaymentTransaction.create({
+      order: order._id,
+      method: 'CARD',
+      action: 'WEBHOOK',
+      status: PAYMENT_STATES.FAILED,
+      amount: Number(payhere_amount) || undefined,
+      currency: payhere_currency || undefined,
+      gateway: 'PAYHERE',
+      gatewayRef: payment_id || undefined,
+      notes: 'Card payment failed',
+      meta: { raw: req.body }
+    })
     return res.json({ ok: true, paid: false })
   }
 
@@ -110,6 +136,20 @@ export const payhereWebhook = catchAsync(async (req, res) => {
     await order.save({ session })
   })
   session.endSession()
+
+  // Log success webhook
+  await PaymentTransaction.create({
+    order: order._id,
+    method: 'CARD',
+    action: 'WEBHOOK',
+    status: PAYMENT_STATES.PAID,
+    amount: Number(payhere_amount) || order.totals?.grandTotal,
+    currency: payhere_currency || 'LKR',
+    gateway: 'PAYHERE',
+    gatewayRef: payment_id || undefined,
+    notes: 'Card payment captured via webhook',
+    meta: { raw: req.body }
+  })
 
   res.json({ ok: true, paid: true })
 })

@@ -29,6 +29,7 @@ export const highlightsSchema = z.object({
   query: z.object({
     q: z.string().optional(),
     category: categoryEnum,
+    categoryId: z.string().min(8).optional(),
     limit: intString.optional()
   })
 })
