@@ -1,12 +1,53 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { loginUser, verifyTwoFA, verifyEmailLogin, chooseLoginMethod } from '../features/auth/authSlice'
+import { loginUser, verifyTwoFA, verifyEmailLogin, chooseLoginMethod, resendLoginEmailCode } from '../features/auth/authSlice'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { getNextFromSearch, getRegisterPathWithNext } from '../lib/nextParam'
 import { APP_NAME } from '../lib/constants'
 import TextField from '../components/ui/TextField'
 import PasswordField from '../components/ui/PasswordField'
 import { User as UserIcon } from '../lib/icons'
+
+function ResendButton() {
+  const dispatch = useAppDispatch()
+  const { email, status } = useAppSelector(s => s.auth)
+  const [cooldown, setCooldown] = useState(0)
+
+  // initialize countdown from global state (first send and any resends)
+  useEffect(() => {
+    const until = email?.cooldownUntil || 0
+    const now = Date.now()
+    const remaining = Math.ceil((until - now) / 1000)
+    setCooldown(remaining > 0 ? remaining : 0)
+  }, [email?.cooldownUntil])
+
+  // tick countdown every second
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const id = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000)
+    return () => clearInterval(id)
+  }, [cooldown])
+
+  async function onResend() {
+    if (!email?.tmpToken) return
+    await dispatch(resendLoginEmailCode({ tmpToken: email.tmpToken }))
+    setCooldown(30)
+  }
+
+  const disabled = status === 'loading' || cooldown > 0
+
+  return (
+    <button
+      type="button"
+      className="btn btn-plain text-sm"
+      onClick={onResend}
+      disabled={disabled}
+      title={cooldown > 0 ? `Wait ${cooldown}s` : 'Resend code'}
+    >
+      {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+    </button>
+  )
+}
 
 export default function Login() {
   const dispatch = useAppDispatch()
@@ -164,13 +205,15 @@ const { status, error, methodChoice, twoFA, email, user, hydrated } = useAppSele
                   Don't ask for 30 days on this device
                 </label>
                 {error && <p className="text-red-600 text-sm">{error}</p>}
-                <div className="flex gap-2">
+                {/** resend status message could be shown via global toast; keep UI minimal here */}
+                <div className="flex gap-2 items-center flex-wrap">
                   <button className="btn btn-primary" type="submit" disabled={status==='loading'}>
                     {status==='loading' ? 'Verifying…' : 'Verify'}
                   </button>
                   <button className="btn btn-outline" type="button" onClick={() => window.location.reload()}>
                     Cancel
                   </button>
+                  <ResendButton />
                 </div>
               </form>
             ) : !twoFA.required ? (

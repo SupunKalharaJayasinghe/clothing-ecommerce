@@ -78,6 +78,16 @@ export const verifyEmailRegister = createAsyncThunk('auth/verifyEmailRegister', 
   }
 })
 
+export const resendLoginEmailCode = createAsyncThunk('auth/resendLoginEmailCode', async (payload, thunkAPI) => {
+  try {
+    const { tmpToken } = payload
+    const { data } = await api.post('/auth/login/resend', { tmpToken })
+    return data
+  } catch (err) {
+    return thunkAPI.rejectWithValue(err.response?.data?.message || err.message)
+  }
+})
+
 export const forgotPassword = createAsyncThunk('auth/forgotPassword', async (payload, thunkAPI) => {
   try {
     const { identifier } = payload
@@ -138,9 +148,10 @@ const initialState = {
   hydrated: false, // set true after first fetchMe completes (success or fail)
   methodChoice: { required: false, tmpToken: null, methods: [] },
   twoFA: { required: false, tmpToken: null },
-  email: { required: false, tmpToken: null, mode: null },
+  email: { required: false, tmpToken: null, mode: null, cooldownUntil: 0 },
   forgot: { status: 'idle', message: null, devToken: null },
-  reset: { status: 'idle', message: null }
+  reset: { status: 'idle', message: null },
+  resend: { status: 'idle', message: null }
 }
 
 const authSlice = createSlice({
@@ -170,7 +181,7 @@ const authSlice = createSlice({
 if (a.payload?.chooseMethodRequired) {
           s.methodChoice = { required: true, tmpToken: a.payload.tmpToken, methods: a.payload.methods || ['email','totp'] }
         } else if (a.payload?.emailLoginRequired) {
-          s.email = { required: true, tmpToken: a.payload.tmpToken, mode: 'login' }
+          s.email = { required: true, tmpToken: a.payload.tmpToken, mode: 'login', cooldownUntil: Date.now() + 30_000 }
         } else if (a.payload?.twoFARequired) {
           s.twoFA = { required: true, tmpToken: a.payload.tmpToken }
         } else {
@@ -187,7 +198,7 @@ if (a.payload?.chooseMethodRequired) {
       .addCase(verifyEmailLogin.pending, (s) => { s.status = 'loading'; s.error = null })
 .addCase(verifyEmailLogin.fulfilled, (s, a) => {
         s.status = 'succeeded'; s.error = null
-        s.email = { required: false, tmpToken: null, mode: null }
+        s.email = { required: false, tmpToken: null, mode: null, cooldownUntil: 0 }
         if (a.payload?.twoFARequired) {
           s.twoFA = { required: true, tmpToken: a.payload.tmpToken }
         } else if (a.payload?.user) {
@@ -200,7 +211,7 @@ if (a.payload?.chooseMethodRequired) {
         s.status = 'succeeded'; s.error = null
         s.methodChoice = { required: false, tmpToken: null, methods: [] }
         if (a.payload?.emailLoginRequired) {
-          s.email = { required: true, tmpToken: a.payload.tmpToken, mode: 'login' }
+          s.email = { required: true, tmpToken: a.payload.tmpToken, mode: 'login', cooldownUntil: Date.now() + 30_000 }
         } else if (a.payload?.twoFARequired) {
           s.twoFA = { required: true, tmpToken: a.payload.tmpToken }
         }
@@ -216,6 +227,17 @@ if (a.payload?.chooseMethodRequired) {
         saveUserToStorage(s.user)
       })
       .addCase(verifyEmailRegister.rejected, (s, a) => { s.status = 'failed'; s.error = a.payload })
+
+      // resend login email code
+      .addCase(resendLoginEmailCode.pending, (s) => { s.resend.status = 'loading'; s.resend.message = null; s.error = null })
+      .addCase(resendLoginEmailCode.fulfilled, (s, a) => {
+        s.resend.status = 'succeeded';
+        s.resend.message = a.payload?.message || 'Code resent'
+        if (a.payload?.tmpToken) {
+          s.email = { ...s.email, tmpToken: a.payload.tmpToken, required: true, mode: 'login', cooldownUntil: Date.now() + 30_000 }
+        }
+      })
+      .addCase(resendLoginEmailCode.rejected, (s, a) => { s.resend.status = 'failed'; s.error = a.payload })
 
       .addCase(forgotPassword.pending, (s) => { s.forgot.status = 'loading'; s.forgot.message = null; s.forgot.devToken = null; s.error = null })
       .addCase(forgotPassword.fulfilled, (s, a) => { s.forgot.status = 'succeeded'; s.forgot.message = a.payload.message; s.forgot.devToken = a.payload.devToken || null })

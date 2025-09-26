@@ -194,6 +194,34 @@ if (method === 'totp') {
   throw new ApiError(400, 'Unknown method')
 })
 
+/* ---------- RESEND EMAIL CODE (LOGIN) ---------- */
+export const resendEmailLoginCode = catchAsync(async (req, res) => {
+  const { tmpToken } = req.body
+  let payload
+  try {
+    payload = verifyJwt(tmpToken)
+  } catch {
+    throw new ApiError(400, 'Invalid or expired token')
+  }
+  if (payload.kind !== 'email_login') throw new ApiError(400, 'Invalid token kind')
+
+  const user = await User.findById(payload.sub)
+  if (!user) throw new ApiError(400, 'User not found')
+
+  const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, '0')
+  const codeHash = crypto.createHash('sha256').update(code).digest('hex')
+  user.loginOTP = {
+    codeHash,
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    attempts: 0
+  }
+  await user.save()
+  await sendVerificationCode({ to: user.email, code, purpose: 'login' })
+
+  const freshTmp = signJwt({ kind: 'email_login', sub: user._id }, { expiresIn: '10m' })
+  res.json({ ok: true, message: 'Verification code resent', tmpToken: freshTmp })
+})
+
 /* ---------- ME / LOGOUT ---------- */
 export const me = catchAsync(async (req, res) => {
   const user = await User.findById(req.user.sub)

@@ -82,3 +82,10 @@ export const loginMethodSchema = z.object({
     method: z.enum(['email','totp'])
   })
 })
+
+// Resend email code for login
+export const loginResendSchema = z.object({
+  body: z.object({
+    tmpToken: z.string().min(10) // kind: 'email_login'
+  })
+})
