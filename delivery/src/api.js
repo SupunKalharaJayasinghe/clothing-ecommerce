@@ -30,8 +30,10 @@ async function http(path, { method = 'GET', body, headers = {} } = {}) {
 }
 
 export const api = {
+  health: () => http('/health'),
   me: () => http('/delivery/auth/me'),
   login: (identifier, password) => http('/delivery/auth/login', { method: 'POST', body: { identifier, password } }),
+  verifyEmailLogin: (tmpToken, code) => http('/delivery/auth/login/verify', { method: 'POST', body: { tmpToken, code } }),
   register: (payload) => http('/delivery/auth/register', { method: 'POST', body: payload }),
   logout: () => http('/delivery/auth/logout', { method: 'POST' }),
   listOrders: (status, method) => http(`/delivery/orders${[status ? `status=${encodeURIComponent(status)}` : '', method ? `method=${encodeURIComponent(method)}` : ''].filter(Boolean).map((v,i)=> (i===0?'?':'&')+v).join('')}`),

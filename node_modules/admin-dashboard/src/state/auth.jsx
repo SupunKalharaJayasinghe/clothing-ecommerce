@@ -6,6 +6,7 @@ const AuthCtx = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [emailStep, setEmailStep] = useState({ required: false, tmpToken: null })
 
   useEffect(() => {
     // attempt to load session
@@ -17,7 +18,20 @@ export function AuthProvider({ children }) {
 
   const login = async (identifier, password) => {
     const res = await api.post('/admin/auth/login', { identifier, password })
+    if (res.data?.emailLoginRequired) {
+      setEmailStep({ required: true, tmpToken: res.data.tmpToken })
+      return { emailLoginRequired: true }
+    }
     setUser(res.data.admin)
+    return { ok: true }
+  }
+
+  const verifyEmailLogin = async (code) => {
+    if (!emailStep.tmpToken) throw new Error('Missing verification token')
+    const res = await api.post('/admin/auth/login/verify', { tmpToken: emailStep.tmpToken, code })
+    setUser(res.data.admin)
+    setEmailStep({ required: false, tmpToken: null })
+    return { ok: true }
   }
 
   const logout = async () => {
@@ -27,7 +41,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, setUser, login, logout, loading }}>
+    <AuthCtx.Provider value={{ user, setUser, login, verifyEmailLogin, emailStep, logout, loading }}>
       {!loading && children}
     </AuthCtx.Provider>
   )

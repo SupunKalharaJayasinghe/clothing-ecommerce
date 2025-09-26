@@ -25,6 +25,9 @@ export default function AdminsPage() {
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [createStep, setCreateStep] = useState('form') // 'form' | 'verify'
+  const [creationTmpToken, setCreationTmpToken] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -49,11 +52,37 @@ export default function AdminsPage() {
         const payload = { ...form }
         if (!payload.password) delete payload.password
         await api.patch(`/admin/admins/${editingId}`, payload)
+        setForm({ firstName: '', lastName: '', email: '', username: '', password: '', roles: ['user_manager'] })
+        setEditingId('')
+        setShowModal(false)
+        await load()
       } else {
-        await api.post('/admin/admins', form)
+        // Step 1: initiate OTP (sent to main admin email)
+        const res = await api.post('/admin/admins/create/initiate')
+        setCreationTmpToken(res.data.tmpToken)
+        setCreateStep('verify')
       }
+    } catch (e) {
+      alert(e.response?.data?.message || e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onVerifyCreate = async (e) => {
+    e.preventDefault()
+    if (!creationTmpToken || !verificationCode.trim()) {
+      alert('Enter verification code')
+      return
+    }
+    setSaving(true)
+    try {
+      await api.post('/admin/admins/create/verify', { tmpToken: creationTmpToken, code: verificationCode.trim(), ...form })
+      // reset
       setForm({ firstName: '', lastName: '', email: '', username: '', password: '', roles: ['user_manager'] })
-      setEditingId('')
+      setVerificationCode('')
+      setCreationTmpToken('')
+      setCreateStep('form')
       setShowModal(false)
       await load()
     } catch (e) {
@@ -89,6 +118,9 @@ export default function AdminsPage() {
   const openCreateModal = () => {
     setEditingId('')
     setForm({ firstName: '', lastName: '', email: '', username: '', password: '', roles: ['user_manager'] })
+    setVerificationCode('')
+    setCreationTmpToken('')
+    setCreateStep('form')
     setShowModal(true)
   }
 
@@ -96,6 +128,9 @@ export default function AdminsPage() {
     setShowModal(false)
     setEditingId('')
     setForm({ firstName: '', lastName: '', email: '', username: '', password: '', roles: ['user_manager'] })
+    setVerificationCode('')
+    setCreationTmpToken('')
+    setCreateStep('form')
   }
 
   const allRoles = useMemo(() => Object.keys(roleLabels), [])
@@ -253,9 +288,10 @@ export default function AdminsPage() {
             </div>
             {/* Modal Body */}
             <div className="px-8 py-6 max-h-[calc(95vh-200px)] overflow-y-auto">
-              <form onSubmit={onSubmit} className="space-y-8">
-                {/* Personal Information Section */}
-                <div className="space-y-6">
+              {(editingId || createStep === 'form') ? (
+                <form onSubmit={onSubmit} className="space-y-8">
+                  {/* Personal Information Section */}
+                  <div className="space-y-6">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
                       <span className="text-white font-bold text-sm">1</span>
@@ -389,34 +425,92 @@ export default function AdminsPage() {
                     ))}
                   </div>
                 </div>
-              </form>
+                </form>
+              ) : (
+                <form onSubmit={onVerifyCreate} className="space-y-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">2</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-[color:var(--text-primary)]">Verify Creation</h3>
+                  </div>
+                  <p className="text-sm text-[color:var(--text-muted)]">
+                    A 6-digit code has been sent to the main admin email. Enter it below to approve creating this admin.
+                  </p>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-[color:var(--text-primary)]">Verification code</label>
+                    <input
+                      className="w-full px-4 py-3 bg-[color:var(--surface-elevated)] border border-[color:var(--surface-border)] rounded-xl"
+                      value={verificationCode}
+                      onChange={e=>setVerificationCode(e.target.value)}
+                      placeholder="123456"
+                      required
+                    />
+                  </div>
+                </form>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="px-8 py-6 bg-[color:var(--surface-elevated)] border-t border-[color:var(--surface-border)]">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button 
-                  type="button" 
-                  className="flex-1 px-6 py-3 bg-[color:var(--surface-hover)] hover:bg-[color:var(--surface-border)] text-[color:var(--text-secondary)] font-semibold rounded-xl transition-all duration-200 border border-[color:var(--surface-border)]" 
-                  onClick={closeModal}
-                >
-                  Cancel
-                </button>
-                <button 
-                  disabled={saving} 
-                  onClick={onSubmit}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:transform-none disabled:opacity-50"
-                >
-                  {saving ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      Saving...
-                    </div>
-                  ) : (
-                    editingId ? 'Save Changes' : 'Create Admin'
-                  )}
-                </button>
-              </div>
+              {(!editingId && createStep === 'verify') ? (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    type="button" 
+                    className="flex-1 px-6 py-3 bg-[color:var(--surface-hover)] hover:bg-[color:var(--surface-border)] text-[color:var(--text-secondary)] font-semibold rounded-xl transition-all duration-200 border border-[color:var(--surface-border)]" 
+                    onClick={() => setCreateStep('form')}
+                  >
+                    Back
+                  </button>
+                  <div className="flex-1 flex gap-2">
+                    <button
+                      type="button"
+                      className="flex-1 px-6 py-3 bg-[color:var(--surface-hover)] hover:bg-[color:var(--surface-border)] text-[color:var(--text-secondary)] font-semibold rounded-xl transition-all duration-200 border border-[color:var(--surface-border)]"
+                      onClick={async ()=>{ try { const r = await api.post('/admin/admins/create/initiate'); setCreationTmpToken(r.data.tmpToken); alert('A new code has been sent to the main admin email.') } catch(e){ alert(e.response?.data?.message || e.message) } }}
+                    >
+                      Resend code
+                    </button>
+                    <button 
+                      disabled={saving} 
+                      onClick={onVerifyCreate}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:transform-none disabled:opacity-50"
+                    >
+                      {saving ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Verifying...
+                        </div>
+                      ) : (
+                        'Verify & Create'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    type="button" 
+                    className="flex-1 px-6 py-3 bg-[color:var(--surface-hover)] hover:bg-[color:var(--surface-border)] text-[color:var(--text-secondary)] font-semibold rounded-xl transition-all duration-200 border border-[color:var(--surface-border)]" 
+                    onClick={closeModal}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    disabled={saving} 
+                    onClick={onSubmit}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:transform-none disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Saving...
+                      </div>
+                    ) : (
+                      editingId ? 'Save Changes' : 'Create Admin'
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

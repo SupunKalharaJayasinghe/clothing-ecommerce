@@ -131,6 +131,8 @@ function verifyBlocked() {
 }
 
 function renderLogin() {
+  // Prime CSRF cookie by calling a safe GET endpoint
+  api.health().catch(() => {})
   root.innerHTML = ''
   
   // Create title with icon
@@ -186,9 +188,14 @@ function renderLogin() {
     
     const fd = new FormData(form)
     try {
-      await api.login(fd.get('identifier'), fd.get('password'))
-      showSuccess('Login successful! Loading your dashboard...')
-      setTimeout(() => renderApp(), 1000)
+      const data = await api.login(fd.get('identifier'), fd.get('password'))
+      if (data?.emailLoginRequired && data?.tmpToken) {
+        showSuccess('We sent a 6-digit code to your email. Please verify to continue.', 'Check your email')
+        renderVerifyEmail(data.tmpToken)
+      } else {
+        showSuccess('Login successful! Loading your dashboard...')
+        setTimeout(() => renderApp(), 500)
+      }
     } catch (err) {
       showError(err)
     } finally {
@@ -360,6 +367,58 @@ function orderRow(o, refresh) {
       paymentBadge,
     )
   ))
+}
+
+function renderVerifyEmail(tmpToken) {
+  root.innerHTML = ''
+  const form = el('form', { class: 'login', id: 'verifyForm' },
+    animateIn(el('div', { class: 'card' },
+      el('div', { class: 'title' }, 'Email Verification'),
+      el('div', { class: 'hint' }, 'Enter the 6-digit code we sent to your email to continue.'),
+      el('div', { class: 'row' },
+        el('input', {
+          class: 'input',
+          type: 'text',
+          placeholder: '123456',
+          name: 'code',
+          required: true,
+          minlength: 4,
+          maxlength: 8,
+          style: 'flex:1'
+        })
+      ),
+      el('div', { class: 'row', style: 'margin-top:16px; justify-content: space-between' },
+        el('button', { type: 'button', class: 'btn btn-outline', onclick: () => renderLogin() }, 'Back'),
+        el('button', { type: 'submit', class: 'btn btn-primary' }, 'Verify')
+      ),
+      el('div', { class: 'row', style: 'margin-top:8px; justify-content:flex-end' },
+        el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
+          try {
+            const r = await api.login(document.querySelector('input[name="identifier"]')?.value || '', document.querySelector('input[name="password"]')?.value || '')
+            if (r?.tmpToken) showSuccess('A new code was sent to your email.')
+          } catch (e) { showError(e) }
+        } }, 'Resend code')
+      )
+    ))
+  )
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const submitBtn = form.querySelector('button[type="submit"]')
+    setLoading(submitBtn, true)
+    const fd = new FormData(form)
+    try {
+      await api.verifyEmailLogin(tmpToken, String(fd.get('code') || '').trim())
+      showSuccess('Verified! Loading your dashboard...')
+      setTimeout(() => renderApp(), 500)
+    } catch (err) {
+      showError(err)
+    } finally {
+      setLoading(submitBtn, false)
+    }
+  })
+
+  root.append(form)
 }
 
 async function renderApp() {

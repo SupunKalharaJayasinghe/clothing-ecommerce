@@ -1,5 +1,11 @@
 import mongoose from 'mongoose'
 
+const otpSchema = new mongoose.Schema({
+  codeHash: { type: String },
+  expiresAt: { type: Date },
+  attempts: { type: Number, default: 0 }
+}, { _id: false })
+
 const deliverySchema = new mongoose.Schema({
   firstName: { type: String, required: true, trim: true, minlength: 2, maxlength: 60 },
   lastName:  { type: String, required: true, trim: true, minlength: 2, maxlength: 60 },
@@ -92,7 +98,10 @@ const deliverySchema = new mongoose.Schema({
 
   active:    { type: Boolean, default: true },
   regions:   { type: [String], default: [] },
-  lastSeenAt:{ type: Date }
+  lastSeenAt:{ type: Date },
+
+  // Login-time email OTP
+  loginOTP: otpSchema
 }, { timestamps: true })
 
 export default mongoose.model('Delivery', deliverySchema)
