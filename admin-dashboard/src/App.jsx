@@ -17,13 +17,27 @@ import { useAuth } from './state/auth'
 
 function Protected({ children, anyOfRoles }) {
   const { user, loading } = useAuth()
-  if (loading) return <div style={{color:'#fff', padding:'2rem'}}>Loading…</div>
+  if (loading) return (
+    <div className="loading-screen">
+      <div className="loading-content">
+        <div className="loading-spinner"></div>
+        <span>Loading...</span>
+      </div>
+    </div>
+  )
   if (!user) return <LoginPage />
   if (!anyOfRoles || anyOfRoles.length === 0) return children
   const roles = user?.roles || []
   const can = roles.includes('admin') || roles.some(r => anyOfRoles.includes(r))
   if (!can) {
-    return <div style={{color:'#fff', padding:'2rem'}}>Forbidden: insufficient role</div>
+    return (
+      <div className="error-screen">
+        <div className="error-content">
+          <h2>Access Denied</h2>
+          <p>You don't have sufficient permissions to access this resource.</p>
+        </div>
+      </div>
+    )
   }
   return children
 }
