@@ -1,6 +1,14 @@
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api'
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api'
+export const API_ORIGIN = API_BASE.replace(/\/?api\/?$/, '')
+
+export function fileUrl(u) {
+  if (!u) return u
+  if (/^https?:\/\//i.test(u)) return u
+  if (u.startsWith('/')) return API_ORIGIN + u
+  return API_ORIGIN + '/' + u.replace(/^\/?/, '')
+}
 
 export const api = axios.create({
   baseURL: API_BASE,

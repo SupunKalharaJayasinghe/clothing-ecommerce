@@ -40,8 +40,9 @@ const returnSchema = new mongoose.Schema({
   // Return details
   reason: { type: String, required: true, trim: true },
   customerNotes: { type: String, trim: true },
-  adminNotes: { type: String, trim: true },
+  photos: { type: [String], default: [] },
   
+  // Financial details
   // Financial details
   refundAmount: { type: Number, min: 0 },
   restockingFee: { type: Number, min: 0, default: 0 },

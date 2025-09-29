@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react'
-import { api } from '../utils/http'
+import { api, fileUrl } from '../utils/http'
 import { Search, Plus, X, RotateCcw, Package, FileText, Eye, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react'
 
 const statuses = ['', 'requested', 'approved', 'rejected', 'received', 'closed']
 
-export default function ReturnsPage() {
+export default function RefundsPage() {
   const [items, setItems] = useState([])
   const [auditItems, setAuditItems] = useState([])
   const [q, setQ] = useState('')
+  const [method, setMethod] = useState('')
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useState('orders') // 'orders' or 'audits'
-
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detail, setDetail] = useState(null) // Return doc
   // init form and modal
   const [showModal, setShowModal] = useState(false)
   const [newOrderId, setNewOrderId] = useState('')
@@ -149,10 +151,11 @@ export default function ReturnsPage() {
                   <thead>
                     <tr>
                       <th>Order Details</th>
-                      <th>Return Status</th>
-                      <th>Reason</th>
+                      <th>Payment Method</th>
+                      <th>Status</th>
+                      <th>Amount</th>
                       <th>Last Updated</th>
-                      <th>Actions</th>
+                      <th>Details</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -243,6 +246,23 @@ export default function ReturnsPage() {
                           <td>
                             <div className="text-sm text-[color:var(--text-muted)]">—</div>
                           </td>
+                          <td>
+                            <button
+                              className="btn btn-sm inline-flex items-center gap-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-all duration-200"
+                              onClick={async () => {
+                                try {
+                                  const res = await api.get('/admin/returns/audits', { params: { q: o._id, limit: 1 } })
+                                  setDetail((res.data.items || [])[0] || null)
+                                  setDetailOpen(true)
+                                } catch (e) {
+                                  alert(e.response?.data?.message || e.message)
+                                }
+                              }}
+                              title="View return details"
+                            >
+                              <Eye size={14}/> View
+                            </button>
+                          </td>
                         </tr>
                       )
                     })}
@@ -256,6 +276,8 @@ export default function ReturnsPage() {
                       <th>Order ID</th>
                       <th>Status</th>
                       <th>Reason</th>
+                      <th>Notes</th>
+                      <th>Photos</th>
                       <th>Requested At</th>
                       <th>Updated At</th>
                     </tr>
@@ -327,6 +349,23 @@ export default function ReturnsPage() {
                           <td>
                             <div className="max-w-[200px] text-sm text-[color:var(--text-secondary)] truncate" title={r.reason}>
                               {r.reason || '—'}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="max-w-[240px] text-sm text-[color:var(--text-secondary)] truncate" title={r.customerNotes}>
+                              {r.customerNotes || '—'}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="flex gap-1">
+                              {(r.photos || []).slice(0,3).map((url, i) => (
+                                <a key={i} href={url} target="_blank" rel="noreferrer">
+                                  <img src={url} alt="return" className="w-10 h-10 object-cover rounded border" />
+                                </a>
+                              ))}
+                              {Array.isArray(r.photos) && r.photos.length > 3 && (
+                                <span className="text-xs opacity-70">+{r.photos.length - 3} more</span>
+                              )}
                             </div>
                           </td>
                           <td>
@@ -432,6 +471,47 @@ export default function ReturnsPage() {
           </div>
         </div>
       )}
+
+      {/* Return Details Modal */}
+      {detailOpen && detail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 bg-black/70" onClick={() => setDetailOpen(false)}></div>
+          <div className="relative bg-[color:var(--surface)] rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden border border-[color:var(--surface-border)] animate-slide-up">
+            <div className="px-6 py-4 border-b border-[color:var(--surface-border)] flex items-center justify-between">
+              <div>
+                <div className="text-sm opacity-70">Order #{(detail.order?._id || detail.order)?.slice(-8)}</div>
+                <h3 className="text-lg font-semibold">Return Details</h3>
+              </div>
+              <button className="btn btn-sm" onClick={() => setDetailOpen(false)}>Close</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="badge">Status: {detail.status}</span>
+                {detail.requestedAt && <span className="opacity-70">Requested {new Date(detail.requestedAt).toLocaleString()}</span>}
+                {detail.updatedAt && <span className="opacity-70">Updated {new Date(detail.updatedAt).toLocaleString()}</span>}
+              </div>
+              <div className="text-sm">
+                <div className="mb-2"><span className="font-medium">Reason:</span> {detail.reason || '—'}</div>
+                <div className="mb-2"><span className="font-medium">Customer Notes:</span> {detail.customerNotes || '—'}</div>
+              </div>
+              <div>
+                <div className="font-medium mb-2">Photos</div>
+                {Array.isArray(detail.photos) && detail.photos.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {detail.photos.map((url, i) => (
+                      <a key={i} href={fileUrl(url)} target="_blank" rel="noreferrer">
+                        <img src={fileUrl(url)} alt="return" className="w-full h-28 object-cover rounded border border-[color:var(--surface-border)]" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm opacity-70">No photos</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+)}
     </div>
   )
 }

@@ -652,6 +652,17 @@ textarea:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 
+/* Solid modal styling: no transparency anywhere inside */
+.modal-solid { background: var(--color-bg-soft); }
+.modal-solid .input,
+.modal-solid .select,
+.modal-solid .textarea { 
+  background: var(--color-bg-muted) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: var(--color-border) !important;
+}
+
 /* Icon Animations */
 .icon-bounce {
   transition: color 0.2s ease;

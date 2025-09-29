@@ -15,6 +15,10 @@ fs.mkdirSync(receiptsDir, { recursive: true })
 const deliveryDir = path.resolve(__dirname, '..', 'files', 'delivery')
 fs.mkdirSync(deliveryDir, { recursive: true })
 
+// Directory for return request photos
+const returnsDir = path.resolve(__dirname, '..', 'files', 'returns')
+fs.mkdirSync(returnsDir, { recursive: true })
+
 const storageReceipts = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, receiptsDir),
   filename: (_req, file, cb) => {
@@ -41,6 +45,17 @@ const storageDelivery = multer.diskStorage({
   }
 })
 
+const storageReturns = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, returnsDir),
+  filename: (_req, file, cb) => {
+    const original = file.originalname || 'return'
+    const ext = (path.extname(original) || '').toLowerCase()
+    const safeBase = path.basename(original, ext).replace(/[^a-z0-9_-]/gi, '').slice(0, 40) || 'photo'
+    const rand = Math.random().toString(36).slice(2, 8)
+    cb(null, `${Date.now()}-${rand}-${safeBase}${ext || '.jpg'}`)
+  }
+})
+
 function fileFilter(_req, file, cb) {
   const ok =
     /^(image\/(png|jpe?g|webp|gif)|application\/pdf)$/i.test(file.mimetype)
@@ -59,5 +74,11 @@ export const uploadDelivery = multer({
   limits: { fileSize: 8 * 1024 * 1024 } // 8MB
 })
 
+export const uploadReturns = multer({
+  storage: storageReturns,
+  fileFilter,
+  limits: { fileSize: 6 * 1024 * 1024 } // 6MB per photo
+})
+
 // (optional) export path if you need it elsewhere
-export { receiptsDir, deliveryDir }
+export { receiptsDir, deliveryDir, returnsDir }

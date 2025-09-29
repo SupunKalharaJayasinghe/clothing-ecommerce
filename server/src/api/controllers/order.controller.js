@@ -6,6 +6,8 @@ import mongoose from 'mongoose'
 import User from '../models/User.js'
 import { getInitialStates, PAYMENT_METHODS, updateOrderStates, applyStateChanges } from '../../utils/stateManager.js'
 import PaymentTransaction from '../models/PaymentTransaction.js'
+import { env } from '../../config/env.js'
+import { sendMail } from '../../utils/mailer.js'
 
 function calcTotals(items) {
   const subtotal = items.reduce((s, it) => s + (it.price * it.quantity), 0)
@@ -217,4 +219,115 @@ export const cancelMyOrder = catchAsync(async (req, res) => {
   await o.save()
 
   res.json({ ok: true, orderId: o._id, orderState: o.orderState })
+})
+
+// POST /api/orders/:id/return-request
+// Customer-initiated return: allowed only if delivered and paid
+export const requestReturn = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const { reason, description, items } = req.body || {}
+
+  const o = await Order.findOne({ _id: id, user: req.user.sub })
+  if (!o) throw new ApiError(404, 'Order not found')
+
+  const paid = String(o.payment?.status || '').toUpperCase() === 'PAID'
+  const delivered = (
+    String(o.deliveryState || '').toUpperCase() === 'DELIVERED' ||
+    String(o.orderState || '').toUpperCase() === 'DELIVERED' ||
+    String(o.status || '').toUpperCase() === 'COMPLETED' ||
+    String(o.status || '').toUpperCase() === 'DELIVERED'
+  )
+
+  // Determine deliveredAt for window enforcement
+  function getDeliveredAt(order) {
+    const evAt = order.deliveryMeta?.evidence?.delivered?.at
+    if (evAt) return new Date(evAt)
+    const hist = Array.isArray(order.statusHistory) ? order.statusHistory : []
+    for (let i = hist.length - 1; i >= 0; i--) {
+      const s = String(hist[i]?.status || '').toUpperCase()
+      if (s.includes('DELIVERED') || s === 'COMPLETED') return new Date(hist[i]?.at || order.updatedAt || order.createdAt)
+    }
+    return new Date(order.updatedAt || order.createdAt)
+  }
+  if (!(paid && delivered)) {
+    throw new ApiError(400, 'Return allowed only after delivery and successful payment')
+  }
+  const deliveredAt = getDeliveredAt(o)
+  const daysSince = Math.floor((Date.now() - deliveredAt.getTime()) / (24*3600*1000))
+  if (daysSince > env.RETURN_WINDOW_DAYS) {
+    throw new ApiError(400, `Return window expired (${env.RETURN_WINDOW_DAYS} days after delivery)`) 
+  }
+  if (o.returnRequest?.status) {
+    throw new ApiError(400, 'Return already requested for this order')
+  }
+
+  // Validate items against order items
+  const bySlug = new Map((o.items || []).map(i => [String(i.slug), i]))
+  const selected = []
+  for (const it of items || []) {
+    const slug = typeof it === 'string' ? it : it?.slug
+    const s = bySlug.get(String(slug))
+    if (!s) throw new ApiError(400, `Invalid item: ${slug}`)
+    // Business rule: users cannot change quantity; return full ordered qty for selected item
+    const qty = Number(s.quantity || 0)
+    if (qty < 1) throw new ApiError(400, `Invalid quantity for ${slug}`)
+    selected.push({
+      product: s.product,
+      slug: s.slug,
+      name: s.name,
+      quantity: qty,
+      price: s.price,
+      reason: String(reason || '').trim() || 'No reason provided',
+      // condition defaults via schema
+    })
+  }
+  if (!selected.length) throw new ApiError(400, 'No items selected for return')
+
+  // Mark order with returnRequest (lowercase status to match admin filters)
+  o.returnRequest = {
+    status: 'requested',
+    reason: String(reason || '').trim() || undefined,
+    requestedAt: new Date(),
+    updatedAt: new Date()
+  }
+  await o.save()
+
+  // Upsert into Return collection with item-level detail (lowercase status per admin usage)
+  const { default: Return } = await import('../models/Return.js')
+  const photos = (req.files || []).map(f => `/files/returns/${f.filename}`)
+  const retDoc = await Return.findOneAndUpdate(
+    { order: o._id },
+    {
+      order: o._id,
+      user: o.user,
+      items: selected,
+      status: 'requested',
+      reason: String(reason || '').trim() || undefined,
+      customerNotes: String(description || reason || '').trim() || undefined,
+      photos,
+      requestedAt: o.returnRequest.requestedAt,
+      updatedAt: o.returnRequest.updatedAt
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  )
+
+  // Notify return manager (optional)
+  if (env.RETURN_NOTIFY_EMAIL) {
+    const subject = `New return request: Order ${String(o._id).slice(-8)}`
+    const text = `Order ${o._id} requested return with ${selected.length} item(s). Reason: ${reason || ''}`
+    const html = `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;">
+        <h3>New Return Request</h3>
+        <p><strong>Order:</strong> ${o._id}</p>
+        <p><strong>User:</strong> ${o.user}</p>
+        <p><strong>Reason:</strong> ${reason || ''}</p>
+        <p><strong>Description:</strong> ${(description || reason || '')}</p>
+        <p><strong>Items:</strong></p>
+        <ul>${selected.map(it => `<li>${it.slug} × ${it.quantity}</li>`).join('')}</ul>
+      </div>
+    `
+    try { await sendMail({ to: env.RETURN_NOTIFY_EMAIL, subject, text, html }) } catch {}
+  }
+
+  res.status(201).json({ ok: true })
 })

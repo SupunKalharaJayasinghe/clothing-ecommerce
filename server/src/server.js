@@ -74,6 +74,8 @@ export function createServer() {
   app.use('/files/receipts', express.static(path.resolve(__dirname, 'files', 'receipts')))
   // serve delivery uploads (profile photos, licenses)
   app.use('/files/delivery', express.static(path.resolve(__dirname, 'files', 'delivery')))
+  // serve return request photos
+  app.use('/files/returns', express.static(path.resolve(__dirname, 'files', 'returns')))
 
   // routes
   app.use('/api/health', healthRoutes)

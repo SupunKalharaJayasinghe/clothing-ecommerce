@@ -17,7 +17,11 @@ const EnvSchema = z.object({
   PAYHERE_MERCHANT_SECRET: z.string().optional(),
   PAYHERE_RETURN_URL: z.string().optional(),
   PAYHERE_CANCEL_URL: z.string().optional(),
-  PAYHERE_NOTIFY_URL: z.string().optional()
+  PAYHERE_NOTIFY_URL: z.string().optional(),
+
+  // Returns feature
+  RETURN_WINDOW_DAYS: z.coerce.number().default(14),
+  RETURN_NOTIFY_EMAIL: z.string().optional()
 })
 
 export const env = EnvSchema.parse({
@@ -35,5 +39,8 @@ export const env = EnvSchema.parse({
   PAYHERE_MERCHANT_SECRET: process.env.PAYHERE_MERCHANT_SECRET,
   PAYHERE_RETURN_URL: process.env.PAYHERE_RETURN_URL,
   PAYHERE_CANCEL_URL: process.env.PAYHERE_CANCEL_URL,
-  PAYHERE_NOTIFY_URL: process.env.PAYHERE_NOTIFY_URL
+  PAYHERE_NOTIFY_URL: process.env.PAYHERE_NOTIFY_URL,
+
+  RETURN_WINDOW_DAYS: process.env.RETURN_WINDOW_DAYS,
+  RETURN_NOTIFY_EMAIL: process.env.RETURN_NOTIFY_EMAIL
 })

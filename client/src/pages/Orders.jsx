@@ -14,6 +14,12 @@ export default function Orders() {
   const [orders, setOrders] = useState([])
   const [uploading, setUploading] = useState('') // orderId currently uploading slip
   const [expanded, setExpanded] = useState({}) // map of orderId => bool (mobile only)
+  const [returnOpen, setReturnOpen] = useState(false)
+  const [returnFor, setReturnFor] = useState(null)
+  const [retReason, setRetReason] = useState('')
+  const [retSel, setRetSel] = useState([]) // [slug]
+  const [retSubmitting, setRetSubmitting] = useState(false)
+  const [retFiles, setRetFiles] = useState([])
 
   // route-level protection handles redirects; no page-level redirects needed
 
@@ -80,6 +86,66 @@ export default function Orders() {
     if (v === 'UNPAID') return 'gray'
     return 'gray'
   }
+  function toneForReturnStatus(s) {
+    const v = (s || '').toString().toLowerCase()
+    switch (v) {
+      case 'requested': return 'blue'
+      case 'approved': return 'green'
+      case 'received': return 'blue'
+      case 'rejected': return 'red'
+      case 'closed': return 'green'
+      default: return 'gray'
+    }
+  }
+
+  function eligibleForReturn(o) {
+    const paid = String(o.payment?.status || '').toUpperCase() === 'PAID'
+    const delivered = (
+      String(o.deliveryState || '').toUpperCase() === 'DELIVERED' ||
+      String(o.orderState || '').toUpperCase() === 'DELIVERED' ||
+      String(o.status || '').toUpperCase() === 'COMPLETED' ||
+      String(o.status || '').toUpperCase() === 'DELIVERED'
+    )
+    const already = !!o.returnRequest?.status
+    return paid && delivered && !already
+  }
+
+  function openReturnModal(o) {
+    setReturnFor(o)
+    setRetReason('')
+    setRetSel([])
+    setReturnOpen(true)
+  }
+
+  async function submitReturn() {
+    if (!returnFor) return
+    const selectedSlugs = retSel || []
+    if (!retReason.trim() || selectedSlugs.length === 0) {
+      alert('Please provide a reason and select at least one item.')
+      return
+    }
+    try {
+      setRetSubmitting(true)
+      const fd = new FormData()
+      fd.append('reason', retReason.trim())
+      fd.append('description', retReason.trim())
+      // Send only slugs; server will map to full ordered quantities
+      fd.append('items', JSON.stringify(selectedSlugs))
+      for (const f of retFiles) fd.append('photos', f)
+      await api.post(`/orders/${returnFor._id}/return-request`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setReturnOpen(false)
+      setReturnFor(null)
+      setRetSel([])
+      setRetReason('')
+      setRetFiles([])
+      const { data } = await api.get('/orders/me')
+      setOrders(data.items || [])
+    } catch (e) {
+      alert(e.response?.data?.message || e.message)
+    } finally {
+      setRetSubmitting(false)
+    }
+  }
 
   if (loading) return <Loader />
   if (error) return <div className="container-app section text-red-600">{error}</div>
@@ -133,6 +199,11 @@ export default function Orders() {
                 {o.payment?.status && (
                   <Badge tone={toneForPaymentStatus(o.payment?.status)}>
                     {o.payment.status}
+                  </Badge>
+                )}
+                {o.returnRequest?.status && (
+                  <Badge tone={toneForReturnStatus(o.returnRequest.status)}>
+                    Return: {o.returnRequest.status}
                   </Badge>
                 )}
               </div>
@@ -214,6 +285,27 @@ export default function Orders() {
                   </div>
                 </div>
 
+                {o.returnRequest?.status && (
+                  <div>
+                    <h3 className="font-semibold mb-1">Return</h3>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Badge tone={toneForReturnStatus(o.returnRequest.status)}>Status: {o.returnRequest.status}</Badge>
+                      {o.returnRequest?.requestedAt && (
+                        <span className="opacity-70">requested {formatDate(o.returnRequest.requestedAt)}</span>
+                      )}
+                    </div>
+                    {o.returnRequest?.reason && (
+                      <div className="text-sm opacity-80 mt-1">Reason: {o.returnRequest.reason}</div>
+                    )}
+                  </div>
+                )}
+
+                {eligibleForReturn(o) && (
+                  <div>
+                    <button className="btn btn-outline w-full" onClick={() => openReturnModal(o)}>Request Return</button>
+                  </div>
+                )}
+
                 {o.payment?.method === 'BANK' && (String(o.payment?.status || '').toUpperCase() !== 'PAID') && (
                   <div>
                     <label className="text-sm font-medium">Upload bank slip</label>
@@ -253,6 +345,25 @@ export default function Orders() {
                     <div className="flex justify-between font-semibold"><span>Total</span><span className="whitespace-nowrap"><Price price={o.totals?.grandTotal} /></span></div>
                   </div>
                 </div>
+                {o.returnRequest?.status && (
+                  <div>
+                    <h3 className="font-semibold mb-1">Return</h3>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Badge tone={toneForReturnStatus(o.returnRequest.status)}>Status: {o.returnRequest.status}</Badge>
+                      {o.returnRequest?.requestedAt && (
+                        <span className="opacity-70">requested {formatDate(o.returnRequest.requestedAt)}</span>
+                      )}
+                    </div>
+                    {o.returnRequest?.reason && (
+                      <div className="text-sm opacity-80 mt-1">Reason: {o.returnRequest.reason}</div>
+                    )}
+                  </div>
+                )}
+                {o.payment?.method === 'BANK' && (String(o.payment?.status || '').toUpperCase() !== 'PAID') && (
+                  <div>
+                    <button className="btn btn-outline w-full" onClick={() => openReturnModal(o)}>Request Return</button>
+                  </div>
+                )}
                 {o.payment?.method === 'BANK' && (String(o.payment?.status || '').toUpperCase() !== 'PAID') && (
                   <div>
                     <label className="text-sm font-medium">Upload bank slip</label>
@@ -274,6 +385,64 @@ export default function Orders() {
           </div>
         ))}
       </div>
+
+      {/* Return Request Modal */}
+      {returnOpen && returnFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80" onClick={() => setReturnOpen(false)}></div>
+          <div className="relative modal-solid rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-[--color-border]">
+            <div className="px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold">Request Return</h2>
+              <div className="text-xs opacity-70">Order #{returnFor._id}</div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="text-sm opacity-80">
+                <div><span className="font-medium">Total:</span> <Price price={returnFor.totals?.grandTotal} /></div>
+                <div className="mt-1"><span className="font-medium">Delivered to:</span> {returnFor.address?.line1}{returnFor.address?.line2 ? `, ${returnFor.address.line2}` : ''}, {returnFor.address?.city}</div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Reason for return</label>
+                <textarea rows={3} className="textarea w-full" value={retReason} onChange={e=>setRetReason(e.target.value)} placeholder="Describe the reason for return" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Upload photos (optional)</label>
+                <input type="file" accept="image/*" multiple onChange={e=>setRetFiles(Array.from(e.target.files || []))} />
+                {retFiles.length > 0 && (
+                  <div className="text-xs opacity-70 mt-1">{retFiles.length} file(s) selected</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Items to return</label>
+                <div className="space-y-2">
+                  {returnFor.items.map(it => {
+                    const checked = retSel.includes(it.slug)
+                    return (
+                      <label key={it.slug} className="flex items-center justify-between gap-3 p-2 rounded border border-[--color-border] cursor-pointer">
+                        <div className="min-w-0">
+                          <div className="font-medium leading-tight truncate">{it.name}</div>
+                          <div className="text-xs opacity-70">Ordered: {it.quantity}</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="checkbox"
+                          checked={checked}
+                          onChange={e => setRetSel(prev => e.target.checked ? [...prev, it.slug] : prev.filter(s => s !== it.slug))}
+                        />
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button className="btn btn-ghost" onClick={() => setReturnOpen(false)} disabled={retSubmitting}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitReturn} disabled={retSubmitting}>
+                {retSubmitting ? 'Submitting…' : 'Submit Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

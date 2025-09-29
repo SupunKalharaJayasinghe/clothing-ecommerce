@@ -37,3 +37,27 @@ export const cancelOrderSchema = z.object({
   params: z.object({ id: z.string().min(8) }),
   body: z.object({ reason: z.string().min(1).optional() }).passthrough()
 })
+
+export const requestReturnSchema = z.object({
+  params: z.object({ id: z.string().min(8) }),
+  body: z.object({
+    reason: z.string().min(3).max(500),
+    description: z.string().min(0).max(2000).optional(),
+    // Accept items either as JSON string (from multipart form) or as parsed array
+    items: z.union([
+      z.array(z.object({ slug: z.string().min(1), quantity: z.number().int().min(1).max(99) })).min(1),
+      z.array(z.string().min(1)).min(1),
+      z.string().min(2)
+    ]).transform((v) => {
+      if (typeof v === 'string') {
+        try {
+          const parsed = JSON.parse(v)
+          return parsed
+        } catch {
+          throw new Error('Invalid items JSON')
+        }
+      }
+      return v
+    })
+  })
+})
