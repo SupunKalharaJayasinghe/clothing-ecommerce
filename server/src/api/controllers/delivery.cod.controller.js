@@ -51,8 +51,10 @@ export const updateCodPayment = catchAsync(async (req, res) => {
   await PaymentTransaction.create({
     order: o._id,
     method: 'COD',
-    action: 'COD_COLLECTION',
+    action: target === PAYMENT_STATES.PAID ? 'COD_COLLECTED' : 'COD_FAILED',
     status: target,
+    amount: o.totals?.grandTotal,
+    currency: 'LKR',
     notes: target === PAYMENT_STATES.PAID ? 'COD collected by delivery' : 'COD collection failed',
     createdBy: 'delivery'
   })

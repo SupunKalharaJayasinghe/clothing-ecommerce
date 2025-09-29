@@ -57,6 +57,8 @@ export const verifyBankSlip = catchAsync(async (req, res) => {
     method: 'BANK',
     action: 'BANK_VERIFIED',
     status: PAYMENT_STATES.PAID,
+    amount: o.totals?.grandTotal,
+    currency: 'LKR',
     notes: 'Bank slip verified by admin',
     createdBy: 'admin'
   })
@@ -99,6 +101,8 @@ export const updatePaymentStatus = catchAsync(async (req, res) => {
     method: o.payment?.method,
     action: 'STATUS_UPDATED',
     status,
+    amount: o.totals?.grandTotal,
+    currency: 'LKR',
     notes: 'Payment status updated by admin',
     createdBy: 'admin'
   })

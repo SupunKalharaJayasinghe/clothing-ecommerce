@@ -37,6 +37,8 @@ export const uploadBankSlip = catchAsync(async (req, res) => {
     method: 'BANK',
     action: 'SLIP_UPLOADED',
     status: order.payment.status,
+    amount: order.totals?.grandTotal,
+    currency: 'LKR',
     gateway: undefined,
     gatewayRef: undefined,
     notes: 'Bank slip uploaded',

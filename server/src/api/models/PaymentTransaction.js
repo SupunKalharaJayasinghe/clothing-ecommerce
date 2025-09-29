@@ -5,7 +5,15 @@ const paymentTransactionSchema = new mongoose.Schema({
   method: { type: String, enum: ['COD', 'CARD', 'BANK'], required: true },
   action: { 
     type: String, 
-    enum: ['CREATED', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'REFUNDED', 'CANCELLED', 'VERIFIED'], 
+    enum: [
+      'CREATED', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'REFUNDED', 'CANCELLED', 'VERIFIED',
+      // Extended actions used by controllers
+      'BANK_VERIFIED', 'STATUS_UPDATED',
+      // COD-specific actions
+      'COD_COLLECTED', 'COD_FAILED',
+      // Webhooks/uploads
+      'SLIP_UPLOADED', 'WEBHOOK'
+    ], 
     required: true 
   },
   status: { 
@@ -23,7 +31,7 @@ const paymentTransactionSchema = new mongoose.Schema({
   
   // Internal tracking
   notes: { type: String, trim: true },
-  createdBy: { type: String, enum: ['user', 'admin', 'system'], default: 'system' },
+  createdBy: { type: String, enum: ['user', 'admin', 'delivery', 'system'], default: 'system' },
   processedAt: { type: Date },
   
   // Error tracking
