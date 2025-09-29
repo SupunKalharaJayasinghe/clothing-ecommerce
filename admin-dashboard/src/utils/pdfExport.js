@@ -77,8 +77,6 @@ export const exportCustomersPDF = (customers) => {
     }
   })
   
-  })
-  
   // Add footer
   const pageCount = doc.internal.getNumberOfPages()
   for (let i = 1; i <= pageCount; i++) {
@@ -258,9 +256,9 @@ export const exportSingleCustomerPDF = (customer) => {
   )
   
   // Save the PDF
-    const customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.username || 'customer'
-    doc.save(`customer-${customerName}-${new Date().toISOString().split('T')[0]}.pdf`)
-    console.log('Single customer PDF saved successfully')
+  const customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.username || 'customer'
+  doc.save(`customer-${customerName}-${new Date().toISOString().split('T')[0]}.pdf`)
+  console.log('Single customer PDF saved successfully')
   } catch (error) {
     console.error('Error generating single customer PDF:', error)
     throw error
