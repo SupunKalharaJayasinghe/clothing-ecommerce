@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
+import { formatLKR } from '../utils/currency'
 import { Search, RefreshCw, DollarSign, CreditCard, Clock, CheckCircle, XCircle, AlertCircle, Eye, FileText } from 'lucide-react'
 
 const methods = ['', 'BANK', 'CARD', 'COD']
@@ -169,8 +170,8 @@ export default function RefundsPage() {
                             </div>
                           </td>
                           <td>
-                            <div className="font-semibold text-lg text-[color:var(--text-primary)]">
-                              ${o.totals?.grandTotal || 0}
+<div className="font-semibold text-lg text-[color:var(--text-primary)]">
+                              {formatLKR(o.totals?.grandTotal || 0)}
                             </div>
                           </td>
                           <td>
@@ -260,8 +261,8 @@ export default function RefundsPage() {
                             </div>
                           </td>
                           <td>
-                            <div className="font-semibold text-lg text-[color:var(--text-primary)]">
-                              ${r.amount || 0}
+<div className="font-semibold text-lg text-[color:var(--text-primary)]">
+                              {formatLKR(r.amount || 0)}
                             </div>
                           </td>
                           <td>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
+import { formatLKR } from '../utils/currency'
 import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon } from 'lucide-react'
 
 // Clean status sets for Admin
@@ -326,8 +327,8 @@ export default function OrdersPage() {
                           </div>
                         </td>
                         <td>
-                          <div className="font-semibold text-lg text-[color:var(--text-primary)]">
-                            ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+<div className="font-semibold text-lg text-[color:var(--text-primary)]">
+                            {formatLKR(total, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         </td>
                         <td>

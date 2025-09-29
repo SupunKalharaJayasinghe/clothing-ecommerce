@@ -28,6 +28,7 @@ import adminReviewsRoutes from './api/routes/admin.reviews.routes.js'
 import adminPaymentsRoutes from './api/routes/admin.payments.routes.js'
 import adminReturnsRoutes from './api/routes/admin.returns.routes.js'
 import adminRefundsRoutes from './api/routes/admin.refunds.routes.js'
+import adminStatsRoutes from './api/routes/admin.stats.routes.js'
 import adminDeliveryRoutes from './api/routes/admin.delivery.routes.js'
 import adminDeliveryUploadRoutes from './api/routes/admin.delivery.upload.routes.js'
 import deliveryCodRoutes from './api/routes/delivery.cod.routes.js'
@@ -107,6 +108,9 @@ export function createServer() {
   app.use('/api/delivery/cod', deliveryCodRoutes)
   // Delivery staff general orders listing and status updates
   app.use('/api/delivery/orders', deliveryOrdersRoutes)
+
+  // Admin system stats for dashboard overview
+  app.use('/api/admin/stats', adminStatsRoutes)
 
   app.use(notFound)
   app.use(errorHandler)

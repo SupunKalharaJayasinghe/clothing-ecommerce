@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
+import { formatLKR } from '../utils/currency'
 import { ChevronDown, ChevronRight, Search, CreditCard, DollarSign, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
 
 const methods = ['', 'BANK', 'CARD', 'COD']
@@ -263,7 +264,7 @@ export default function PaymentsPage() {
                                                 </div>
                                               </td>
                                               <td className="p-4 text-sm font-semibold text-[color:var(--text-primary)]">
-                                                {tx.amount ? `$${tx.amount}` : '—'}
+{tx.amount ? formatLKR(tx.amount) : '—'}
                                               </td>
                                               <td className="p-4 text-sm text-[color:var(--text-secondary)]">{tx.notes || tx.createdBy || '—'}</td>
                                             </tr>

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import { useAuth } from '../state/auth'
 import { Search, Plus, X, Trash2, Package, Tag, DollarSign } from 'lucide-react'
+import { formatLKR } from '../utils/currency'
 
 const mainTagOptions = ['discount','new','limited','bestseller','featured']
 const categories = ['', 'men', 'women', 'kids']
@@ -210,7 +211,7 @@ export default function ProductsPage() {
                           <div className="text-xs text-[color:var(--text-muted)]">{p.slug}</div>
                         </td>
                         <td>
-                          <div className="font-semibold text-[color:var(--text-primary)]">${p.price}</div>
+<div className="font-semibold text-[color:var(--text-primary)]">{formatLKR(p.price)}</div>
                           {p.discountPercent > 0 && (
                             <div className="text-xs text-green-400">-{p.discountPercent}% off</div>
                           )}
