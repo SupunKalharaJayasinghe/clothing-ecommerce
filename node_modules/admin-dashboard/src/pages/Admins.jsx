@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import ConfirmLogout from '../ui/ConfirmLogout'
 import { api } from '../utils/http'
 import { Trash2, Search, Plus, X } from 'lucide-react'
 
@@ -92,10 +93,18 @@ export default function AdminsPage() {
     }
   }
 
-  const onDelete = async (id) => {
-    if (!confirm('Are you sure?')) return
+  const [openDelete, setOpenDelete] = useState(false)
+  const [deleteId, setDeleteId] = useState('')
+  const onDeleteClick = (id) => {
+    setDeleteId(id)
+    setOpenDelete(true)
+  }
+  const onConfirmDelete = async () => {
+    if (!deleteId) return
     try {
-      await api.delete(`/admin/admins/${id}`)
+      await api.delete(`/admin/admins/${deleteId}`)
+      setOpenDelete(false)
+      setDeleteId('')
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
@@ -245,7 +254,7 @@ export default function AdminsPage() {
                                 Edit
                               </button>
                               <button 
-                                onClick={() => onDelete(u.id)} 
+                                onClick={() => onDeleteClick(u.id)} 
                                 className="btn btn-sm inline-flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30"
                               >
                                 <Trash2 size={14}/> Delete
@@ -442,8 +451,12 @@ export default function AdminsPage() {
                     <input
                       className="w-full px-4 py-3 bg-[color:var(--surface-elevated)] border border-[color:var(--surface-border)] rounded-xl"
                       value={verificationCode}
-                      onChange={e=>setVerificationCode(e.target.value)}
+                      onChange={e=> setVerificationCode(e.target.value.replace(/[^0-9]/g, '').slice(0,6))}
                       placeholder="123456"
+                      inputMode="numeric"
+                      pattern="\d{6}"
+                      minLength={6}
+                      maxLength={6}
                       required
                     />
                   </div>
@@ -515,6 +528,14 @@ export default function AdminsPage() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmLogout
+        open={openDelete}
+        onClose={() => { setOpenDelete(false); setDeleteId('') }}
+        onConfirm={onConfirmDelete}
+        title="Are you sure, Do you want to delete this admin?"
+        confirmLabel="Delete"
+      />
     </div>
   )
 }
