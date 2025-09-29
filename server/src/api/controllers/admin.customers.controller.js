@@ -51,6 +51,38 @@ export const getCustomer = catchAsync(async (req, res) => {
   res.json({ ok: true, user: sanitize(user) })
 })
 
+// Get detailed customer information for PDF export
+export const getCustomerDetails = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const user = await User.findById(id).lean()
+  if (!user) throw new ApiError(404, 'User not found')
+  
+  // Return full customer details (excluding sensitive fields)
+  const detailedUser = {
+    id: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    username: user.username,
+    email: user.email,
+    mobile: user.mobile,
+    gender: user.gender,
+    birthday: user.birthday,
+    country: user.country,
+    roles: user.roles || ['user'],
+    addresses: user.addresses || [],
+    notifications: user.notifications || {
+      purchases: true,
+      account: true,
+      events: true
+    },
+    emailVerified: user.emailVerified || false,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  }
+  
+  res.json({ ok: true, user: detailedUser })
+})
+
 export const createCustomer = catchAsync(async (req, res) => {
   const { firstName, lastName, username, email, password, roles = ['user'] } = req.body
 
