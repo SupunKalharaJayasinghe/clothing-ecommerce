@@ -1,14 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
 import { useAuth } from '../state/auth'
-import { Search, Plus, X, Trash2 } from 'lucide-react'
-<<<<<<< Updated upstream
-import ConfirmLogout from '../ui/ConfirmLogout'
 import { Search, Plus, X, Trash2, Download, FileText } from 'lucide-react'
 import ConfirmLogout from '../ui/ConfirmLogout'
 import { exportCustomersPDF, exportSingleCustomerPDF } from '../utils/pdfExport'
-=======
->>>>>>> Stashed changes
 
 export default function CustomersPage() {
   const { user } = useAuth()
@@ -62,11 +57,19 @@ export default function CustomersPage() {
     }
   }
 
-  const onDelete = async (id) => {
+  const [openDelete, setOpenDelete] = useState(false)
+  const [deleteId, setDeleteId] = useState('')
+  const onDeleteClick = (id) => {
     if (!canManage) { alert('Only the primary admin can delete customers.'); return }
-    if (!confirm('Are you sure?')) return
+    setDeleteId(id)
+    setOpenDelete(true)
+  }
+  const onConfirmDelete = async () => {
+    if (!deleteId) return
     try {
-      await api.delete(`/admin/customers/${id}`)
+      await api.delete(`/admin/customers/${deleteId}`)
+      setOpenDelete(false)
+      setDeleteId('')
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
@@ -219,7 +222,7 @@ export default function CustomersPage() {
                         <td>
                           <div className="flex items-center gap-2">
                             <button onClick={() => onEdit(u)} className="btn btn-secondary btn-sm">Edit</button>
-                            <button onClick={() => onDelete(u.id)} className="btn btn-sm inline-flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30">
+                            <button onClick={() => onDeleteClick(u.id)} className="btn btn-sm inline-flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30">
                               <Trash2 size={14}/> Delete
                             </button>
                           </div>
@@ -233,6 +236,15 @@ export default function CustomersPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmLogout
+        open={openDelete}
+        onClose={() => { setOpenDelete(false); setDeleteId('') }}
+        onConfirm={onConfirmDelete}
+        title="Are you sure, Do you want to delete this User?"
+        confirmLabel="Delete"
+      />
 
       {/* Modal */}
       {showModal && (
