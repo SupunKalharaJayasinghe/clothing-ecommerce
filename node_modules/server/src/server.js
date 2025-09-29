@@ -23,7 +23,6 @@ import adminAuthRoutes from './api/routes/admin.auth.routes.js'
 import adminAdminsRoutes from './api/routes/admin.admins.routes.js'
 import adminCustomersRoutes from './api/routes/admin.customers.routes.js'
 import adminProductsRoutes from './api/routes/admin.products.routes.js'
-import adminCategoriesRoutes from './api/routes/admin.categories.routes.js'
 import adminOrdersRoutes from './api/routes/admin.orders.routes.js'
 import adminReviewsRoutes from './api/routes/admin.reviews.routes.js'
 import adminPaymentsRoutes from './api/routes/admin.payments.routes.js'
@@ -31,7 +30,6 @@ import adminReturnsRoutes from './api/routes/admin.returns.routes.js'
 import adminRefundsRoutes from './api/routes/admin.refunds.routes.js'
 import adminDeliveryRoutes from './api/routes/admin.delivery.routes.js'
 import adminDeliveryUploadRoutes from './api/routes/admin.delivery.upload.routes.js'
-import adminStatsRoutes from './api/routes/admin.stats.routes.js'
 import deliveryCodRoutes from './api/routes/delivery.cod.routes.js'
 import deliveryOrdersRoutes from './api/routes/delivery.orders.routes.js'
 import deliveryAuthRoutes from './api/routes/delivery.auth.routes.js'
@@ -95,8 +93,6 @@ export function createServer() {
   // Delivery staff auth & APIs (separate cookie/JWT)
   app.use('/api/delivery/auth', deliveryAuthRoutes)
   app.use('/api/admin/products', adminProductsRoutes)
-  // Product categories management
-  app.use('/api/admin/categories', adminCategoriesRoutes)
   // Orders management
   app.use('/api/admin/orders', adminOrdersRoutes)
   // Reviews moderation
@@ -107,8 +103,6 @@ export function createServer() {
   app.use('/api/admin/returns', adminReturnsRoutes)
   // Refunds overview
   app.use('/api/admin/refunds', adminRefundsRoutes)
-  // Admin stats
-  app.use('/api/admin/stats', adminStatsRoutes)
   // Delivery staff limited COD management
   app.use('/api/delivery/cod', deliveryCodRoutes)
   // Delivery staff general orders listing and status updates
