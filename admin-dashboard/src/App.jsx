@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import React, { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
@@ -137,37 +136,3 @@ export default function App() {
     </Routes>
   )
 }
-=======
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, CssBaseline } from '@mui/material';
-import Sidebar from './ui/Sidebar';
-import Topbar from './ui/Topbar';
-import Customers from './pages/Customers';
-import Products from './pages/Products';
-import Admins from './pages/Admins';
-
-function App() {
-  return (
-    <Router>
-      <CssBaseline />
-      <Box sx={{ display: 'flex' }}>
-        <Sidebar />
-        <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-          <Topbar />
-          <Box sx={{ flexGrow: 1, p: 3 }}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/customers" replace />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/admins" element={<Admins />} />
-            </Routes>
-          </Box>
-        </Box>
-      </Box>
-    </Router>
-  );
-}
-
-export default App;
->>>>>>> Stashed changes
