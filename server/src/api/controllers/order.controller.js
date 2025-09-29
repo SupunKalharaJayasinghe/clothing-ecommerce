@@ -151,7 +151,7 @@ export const placeOrder = catchAsync(async (req, res) => {
   let payhere = null
   if (method === 'CARD') {
     // NOTE: To really charge, fill these from env and generate md5sig in a dedicated service.
-    payhere = {
+    /*payhere = {
       sandbox: true,
       action: 'https://sandbox.payhere.lk/pay/checkout',
       params: {
@@ -172,7 +172,48 @@ export const placeOrder = catchAsync(async (req, res) => {
         country: addr.country
         // md5sig should be added here after hashing (left to your PayHere service)
       }
-    }
+    }*/
+
+                    // Build PayHere request (sandbox/live) with required hash
+              const merchantId = process.env.PAYHERE_MERCHANT_ID || '1232195'
+              const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || 'MjczODU2MTUzMzM1MDIxMDcxMjkzNDIzOTI2NDQ2Njc0ODAwOTMx'
+              const orderId = String(order._id)
+              const currency = 'LKR'
+              const amount = Number(totals.grandTotal).toFixed(2)
+
+            payhere = {
+              sandbox: process.env.NODE_ENV === 'production' ? false : true,
+              action: checkoutAction(process.env.NODE_ENV === 'production'),
+              params: {
+                merchant_id: merchantId,
+                return_url: process.env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders',
+                cancel_url: process.env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout',
+                notify_url: process.env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook',
+                order_id: orderId,
+                items: `Order ${orderId}`,
+                currency,
+                amount,
+                first_name: user.firstName || 'Customer',
+                last_name: user.lastName || '',
+                email: user.email || 'no-reply@example.com',
+                phone: addr.phone || '',
+                address: `${addr.line1} ${addr.line2 || ''}`.trim(),
+                city: addr.city,
+                country: addr.country,
+                // ✨ required signature
+                hash: buildRequestHash({
+                  merchantId,
+                  merchantSecret,
+                  orderId,
+                  amount,
+                  currency
+                })
+              }
+            }
+
+
+
+
   }
 
   res.status(201).json({ ok: true, orderId: order._id, payhere })

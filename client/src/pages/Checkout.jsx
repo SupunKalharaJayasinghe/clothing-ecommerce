@@ -81,6 +81,7 @@ export default function Checkout() {
 
       // CARD: if backend returned PayHere form params (sandbox), auto-submit a form
       if (method === 'CARD' && data.payhere?.action) {
+        
         const form = document.createElement('form')
         form.method = 'POST'
         form.action = data.payhere.action
@@ -124,7 +125,9 @@ export default function Checkout() {
       const orderId = data.orderId
 
       if (method === 'CARD' && data.payhere?.action) {
+
         const form = document.createElement('form')
+        
         form.method = 'POST'
         form.action = data.payhere.action
         for (const [k, v] of Object.entries(data.payhere.params || {})) {

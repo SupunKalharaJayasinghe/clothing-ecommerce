@@ -46,8 +46,8 @@ export const uploadBankSlip = catchAsync(async (req, res) => {
   res.json({ ok: true, orderId: order._id, slipUrl: order.payment.bank.slipUrl, verifyBy })
 })
 
-// CARD: POST /api/payments/payhere/webhook
-// NOTE: In production verify md5sig and merchant_id properly.
+  // CARD: POST /api/payments/payhere/webhook
+  // NOTE: In production verify md5sig and merchant_id properly.
 export const payhereWebhook = catchAsync(async (req, res) => {
   const {
     order_id: orderId,
