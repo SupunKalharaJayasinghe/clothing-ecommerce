@@ -30,6 +30,11 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  
+  // State for "See More" functionality
+  const [showAllPendingOrders, setShowAllPendingOrders] = useState(false)
+  const [showAllLowStock, setShowAllLowStock] = useState(false)
+  const [showAllTopIssues, setShowAllTopIssues] = useState(false)
 
   function msFor(p) {
     if (p === '24h') return 24*3600*1000
@@ -101,8 +106,14 @@ export default function DashboardPage() {
     const topIssues = products
       .filter(p => (p.stock || 0) <= (p.lowStockThreshold ?? 5))
       .sort((a, b) => (a.stock || 0) - (b.stock || 0))
-      .slice(0, 6)
-    return { inStock: inStock.length, low: low.length, out: out.length, lowList: low.slice(0, 6), outList: out.slice(0, 6), topIssues }
+    return { 
+      inStock: inStock.length, 
+      low: low.length, 
+      out: out.length, 
+      lowList: low, 
+      outList: out, 
+      topIssues 
+    }
   }, [products])
 
   const alerts = useMemo(() => {
@@ -167,28 +178,66 @@ export default function DashboardPage() {
         <div className="card">
           <div className="card-header">Pending Orders</div>
           <div className="card-body">
-            {orders.filter(o => ['pending_payment','placed','packing','handed_over','out_for_delivery'].includes(o.status)).slice(0,8).map(o => (
-              <div key={o._id} className="list-row">
-                <div>
-                  <div className="font-medium">{o.items?.[0]?.name || o._id}</div>
-                  <div className="text-xs text-[color:var(--text-muted)]">#{o._id} • <Time value={o.createdAt} /></div>
-                </div>
-                <div className="text-right font-semibold">{currency(o.totals?.grandTotal)}</div>
-              </div>
-            ))}
-            {!orders.length && <div className="text-sm text-[color:var(--text-muted)]">No data</div>}
+            {(() => {
+              const pendingOrders = orders.filter(o => ['pending_payment','placed','packing','handed_over','out_for_delivery'].includes(o.status))
+              const displayOrders = showAllPendingOrders ? pendingOrders : pendingOrders.slice(0, 4)
+              
+              return (
+                <>
+                  {displayOrders.map(o => (
+                    <div key={o._id} className="list-row">
+                      <div>
+                        <div className="font-medium">{o.items?.[0]?.name || o._id}</div>
+                        <div className="text-xs text-[color:var(--text-muted)]">#{o._id} • <Time value={o.createdAt} /></div>
+                      </div>
+                      <div className="text-right font-semibold">{currency(o.totals?.grandTotal)}</div>
+                    </div>
+                  ))}
+                  {pendingOrders.length === 0 && <div className="text-sm text-[color:var(--text-muted)]">No pending orders</div>}
+                  {pendingOrders.length > 4 && (
+                    <div className="mt-3 pt-3 border-t border-[color:var(--surface-border)]">
+                      <button 
+                        onClick={() => setShowAllPendingOrders(!showAllPendingOrders)}
+                        className="btn btn-ghost btn-sm w-full"
+                      >
+                        {showAllPendingOrders ? 'Show Less' : `See More (${pendingOrders.length - 4} more)`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </div>
 
         <div className="card">
           <div className="card-header">Low Stock Alerts</div>
           <div className="card-body">
-            {inv.lowList.length ? inv.lowList.map(p => (
-              <div key={p.id} className="list-row">
-                <div className="font-medium line-clamp-1">{p.name}</div>
-                <div className="badge badge-warn">{p.stock} left</div>
-              </div>
-            )) : <div className="text-sm text-[color:var(--text-muted)]">No low stock items</div>}
+            {(() => {
+              const displayLowStock = showAllLowStock ? inv.lowList : inv.lowList.slice(0, 4)
+              
+              return (
+                <>
+                  {displayLowStock.map(p => (
+                    <div key={p.id} className="list-row">
+                      <div className="font-medium line-clamp-1">{p.name}</div>
+                      <div className="badge badge-warn">{p.stock} left</div>
+                    </div>
+                  ))}
+                  {inv.lowList.length === 0 && <div className="text-sm text-[color:var(--text-muted)]">No low stock items</div>}
+                  {inv.lowList.length > 4 && (
+                    <div className="mt-3 pt-3 border-t border-[color:var(--surface-border)]">
+                      <button 
+                        onClick={() => setShowAllLowStock(!showAllLowStock)}
+                        className="btn btn-ghost btn-sm w-full"
+                      >
+                        {showAllLowStock ? 'Show Less' : `See More (${inv.lowList.length - 4} more)`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </div>
 
@@ -207,12 +256,31 @@ export default function DashboardPage() {
         <div className="card">
           <div className="card-header">Top Inventory Issues</div>
           <div className="card-body">
-            {inv.topIssues.length ? inv.topIssues.map(p => (
-              <div key={p.id} className="list-row">
-                <div className="font-medium line-clamp-1">{p.name}</div>
-                <div className="text-sm text-[color:var(--text-muted)]">Stock: {p.stock} • Threshold: {p.lowStockThreshold ?? 5}</div>
-              </div>
-            )) : <div className="text-sm text-[color:var(--text-muted)]">No critical inventory issues</div>}
+            {(() => {
+              const displayTopIssues = showAllTopIssues ? inv.topIssues : inv.topIssues.slice(0, 4)
+              
+              return (
+                <>
+                  {displayTopIssues.map(p => (
+                    <div key={p.id} className="list-row">
+                      <div className="font-medium line-clamp-1">{p.name}</div>
+                      <div className="text-sm text-[color:var(--text-muted)]">Stock: {p.stock} • Threshold: {p.lowStockThreshold ?? 5}</div>
+                    </div>
+                  ))}
+                  {inv.topIssues.length === 0 && <div className="text-sm text-[color:var(--text-muted)]">No critical inventory issues</div>}
+                  {inv.topIssues.length > 4 && (
+                    <div className="mt-3 pt-3 border-t border-[color:var(--surface-border)]">
+                      <button 
+                        onClick={() => setShowAllTopIssues(!showAllTopIssues)}
+                        className="btn btn-ghost btn-sm w-full"
+                      >
+                        {showAllTopIssues ? 'Show Less' : `See More (${inv.topIssues.length - 4} more)`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </div>
 

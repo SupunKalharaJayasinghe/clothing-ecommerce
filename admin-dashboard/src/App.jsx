@@ -16,12 +16,16 @@ import DeliveryPage from './pages/Delivery'
 import { useAuth } from './state/auth'
 
 function Protected({ children, anyOfRoles }) {
-  const { user } = useAuth()
-  if (!user) return <Navigate to="/login" replace />
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{color:'#fff', padding:'2rem'}}>Loading…</div>
+  if (!user) return <LoginPage />
   if (!anyOfRoles || anyOfRoles.length === 0) return children
   const roles = user?.roles || []
   const can = roles.includes('admin') || roles.some(r => anyOfRoles.includes(r))
-  return can ? children : <Navigate to="/" replace />
+  if (!can) {
+    return <div style={{color:'#fff', padding:'2rem'}}>Forbidden: insufficient role</div>
+  }
+  return children
 }
 
 function MobileTopbar({ onMenuToggle, user }) {
@@ -35,12 +39,12 @@ function MobileTopbar({ onMenuToggle, user }) {
         >
           <Menu size={20} />
         </button>
-        <h1 className="text-lg font-bold text-[color:var(--ink-strong)]">
+        <h1 className="text-lg font-bold text-[color:var(--text-primary)]">
           Admin Dashboard
         </h1>
       </div>
       <div className="flex items-center gap-2">
-        <span className="hidden sm:block text-sm text-[color:var(--ink-muted)]">
+        <span className="hidden sm:block text-sm text-[color:var(--text-muted)]">
           {user?.name || user?.email}
         </span>
       </div>

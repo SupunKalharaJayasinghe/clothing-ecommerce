@@ -11,7 +11,16 @@
     <title>Admin Dashboard</title>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <div id="root" style="display:grid;place-items:center;min-height:100vh;color:#fff;font-family:Inter,system-ui,Arial,sans-serif;">Loading Admin…</div>
+    <script type="module">
+      import('/src/main.jsx')
+        .then(() => { window.__ADMIN_APP_BOOTED__ = true })
+        .catch((e) => {
+          const el = document.getElementById('root')
+          el.style.whiteSpace = 'pre-wrap'
+          el.textContent = 'Failed to load Admin app. Open DevTools → Console for details.\n' + (e?.message || e)
+          console.error('Admin app boot failed:', e)
+        })
+    </script>
   </body>
 </html>

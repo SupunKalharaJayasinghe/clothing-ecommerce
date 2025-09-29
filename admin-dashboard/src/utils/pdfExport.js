@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf'
-import { jsPDF } from 'jspdf'
 
 export const exportCustomersPDF = (customers) => {
   console.log('Starting PDF export for customers:', customers)
