@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { Users, Home, Package, ShoppingCart, CreditCard, RotateCcw, RefreshCw, Star, Truck } from 'lucide-react'
 import { useAuth } from '../state/auth'
-import ConfirmLogout from './ConfirmLogout'
 
 function Item({ to, icon: Icon, label, roles, onClick }) {
   const { user } = useAuth()
@@ -30,7 +29,6 @@ export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth()
   const initial = getInitial(user)
   const isAdmin = (user?.roles || []).includes('admin')
-  const [openLogout, setOpenLogout] = useState(false)
   
   const handleItemClick = () => {
     // Close sidebar on mobile when navigation item is clicked
@@ -72,9 +70,8 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <footer className="sidebar-bottom">
         <div className="copyright">© 2025 D&G</div>
-        <button className="btn-logout" onClick={() => setOpenLogout(true)}>Logout</button>
+        <button className="btn-logout" onClick={logout}>Logout</button>
       </footer>
-      <ConfirmLogout open={openLogout} onClose={() => setOpenLogout(false)} onConfirm={async () => { await logout(); setOpenLogout(false) }} />
     </aside>
   )
 }
