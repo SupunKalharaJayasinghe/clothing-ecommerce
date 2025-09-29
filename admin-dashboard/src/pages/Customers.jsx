@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
 import { useAuth } from '../state/auth'
+import { Search, Plus, X, Trash2 } from 'lucide-react'
+import ConfirmLogout from '../ui/ConfirmLogout'
 import { Search, Plus, X, Trash2, Download, FileText } from 'lucide-react'
 import ConfirmLogout from '../ui/ConfirmLogout'
 import { exportCustomersPDF, exportSingleCustomerPDF } from '../utils/pdfExport'
