@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import { useAuth } from '../state/auth'
-import { Search, Plus, X, Trash2, Package, Tag, DollarSign } from 'lucide-react'
+import { Search, Plus, X, Trash2, Package, Tag, DollarSign, Download, AlertTriangle } from 'lucide-react'
 
 const mainTagOptions = ['discount','new','limited','bestseller','featured']
 const categories = ['', 'men', 'women', 'kids']
@@ -32,6 +32,63 @@ export default function ProductsPage() {
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [reportGenerating, setReportGenerating] = useState(false)
+  const [reportGeneratedAt, setReportGeneratedAt] = useState('')
+
+  const reportSummary = useMemo(() => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return {
+        totalProducts: 0,
+        totalStock: 0,
+        totalInventoryValue: 0,
+        totalPrice: 0,
+        lowStockCount: 0,
+        discountedCount: 0
+      }
+    }
+
+    return items.reduce((acc, item) => {
+      const stock = Number(item?.stock || 0)
+      const price = Number(item?.price || 0)
+      const discount = Number(item?.discountPercent || 0)
+      const threshold = Number(item?.lowStockThreshold ?? 5)
+
+      acc.totalProducts += 1
+      acc.totalStock += stock
+      acc.totalInventoryValue += stock * price
+      acc.totalPrice += price
+      if (discount > 0) acc.discountedCount += 1
+      if (stock <= threshold) acc.lowStockCount += 1
+      return acc
+    }, {
+      totalProducts: 0,
+      totalStock: 0,
+      totalInventoryValue: 0,
+      totalPrice: 0,
+      lowStockCount: 0,
+      discountedCount: 0
+    })
+  }, [items])
+
+  const currencyFormatter = useMemo(() => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }), [])
+  const lastGeneratedLabel = useMemo(() => {
+    if (!reportGeneratedAt) return 'Not generated yet'
+    try {
+      return new Date(reportGeneratedAt).toLocaleString()
+    } catch (err) {
+      console.error('Invalid report timestamp', err)
+      return reportGeneratedAt
+    }
+  }, [reportGeneratedAt])
+
+  const lowStockProducts = useMemo(() => {
+    if (!Array.isArray(items) || !items.length) return []
+    return items.filter(item => {
+      const stock = Number(item?.stock ?? 0)
+      const threshold = Number(item?.lowStockThreshold ?? 5)
+      return stock <= threshold
+    })
+  }, [items])
 
   const load = async () => {
     setLoading(true)
@@ -100,6 +157,74 @@ export default function ProductsPage() {
     })
   }
 
+  const generateReport = () => {
+    if (!canManage) { alert('Only the primary admin or product manager can generate reports.'); return }
+    if (!items.length) { alert('No products available to generate a report.'); return }
+
+    setReportGenerating(true)
+
+    try {
+      const now = new Date()
+      const escapeCsvValue = (value) => {
+        if (value === null || value === undefined) return ''
+        const stringValue = String(value)
+        if (/[",\n]/.test(stringValue)) {
+          return `"${stringValue.replace(/"/g, '""')}"`
+        }
+        return stringValue
+      }
+
+      const headers = ['Product Name', 'Slug', 'Category', 'Price', 'Discount %', 'Stock', 'Low Stock Threshold', 'Tags', 'Main Tags']
+      const lines = [headers.map(escapeCsvValue).join(',')]
+
+      items.forEach(item => {
+        const dataRow = [
+          item?.name ?? '',
+          item?.slug ?? '',
+          item?.category ?? '',
+          Number(item?.price ?? 0).toFixed(2),
+          Number(item?.discountPercent ?? 0),
+          Number(item?.stock ?? 0),
+          Number(item?.lowStockThreshold ?? 5),
+          Array.isArray(item?.tags) ? item.tags.join(' | ') : '',
+          Array.isArray(item?.mainTags) ? item.mainTags.join(' | ') : ''
+        ]
+        lines.push(dataRow.map(escapeCsvValue).join(','))
+      })
+
+      lines.push('')
+      lines.push('Summary')
+      const summaryRows = [
+        ['Generated At', now.toISOString()],
+        ['Total Products', reportSummary.totalProducts],
+        ['Total Stock', reportSummary.totalStock],
+        ['Inventory Value', reportSummary.totalInventoryValue.toFixed(2)],
+        ['Average Price', reportSummary.totalProducts ? (reportSummary.totalPrice / reportSummary.totalProducts).toFixed(2) : '0.00'],
+        ['Low Stock Items', reportSummary.lowStockCount],
+        ['Discounted Products', reportSummary.discountedCount]
+      ]
+      summaryRows.forEach(row => lines.push(row.map(escapeCsvValue).join(',')))
+
+      const csvContent = lines.join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `product-report-${now.toISOString().slice(0, 10)}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      setReportGeneratedAt(now.toISOString())
+    } catch (err) {
+      console.error('Failed to generate product report', err)
+      alert('Failed to generate product report. Please try again.')
+    } finally {
+      setReportGenerating(false)
+    }
+  }
+
   const onEdit = (p) => {
     if (!canManage) return
     setEditingId(p.id)
@@ -155,6 +280,25 @@ export default function ProductsPage() {
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
           {canManage && (
             <button
+              onClick={generateReport}
+              disabled={reportGenerating}
+              className="btn btn-secondary whitespace-nowrap inline-flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {reportGenerating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download size={18} />
+                  Generate Report
+                </>
+              )}
+            </button>
+          )}
+          {canManage && (
+            <button
               onClick={openCreateModal}
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
             >
@@ -173,6 +317,87 @@ export default function ProductsPage() {
         </div>
       ) : (
         <div className="w-full">
+          <div className="grid gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="p-5 bg-[color:var(--surface)] border border-[color:var(--surface-border)] rounded-2xl shadow-sm flex items-center justify-between">
+              <div>
+                <div className="text-sm text-[color:var(--text-muted)]">Total Products</div>
+                <div className="text-2xl font-bold text-[color:var(--text-primary)]">{reportSummary.totalProducts}</div>
+                <div className="text-xs text-[color:var(--text-muted)] mt-1">Discounted items: {reportSummary.discountedCount}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-blue-500/15 text-blue-400">
+                <Package size={22} />
+              </div>
+            </div>
+
+            <div className="p-5 bg-[color:var(--surface)] border border-[color:var(--surface-border)] rounded-2xl shadow-sm flex items-center justify-between">
+              <div>
+                <div className="text-sm text-[color:var(--text-muted)]">Total Stock</div>
+                <div className="text-2xl font-bold text-[color:var(--text-primary)]">{reportSummary.totalStock}</div>
+                <div className="text-xs text-[color:var(--text-muted)] mt-1">Low stock items: {reportSummary.lowStockCount}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-amber-500/15 text-amber-400">
+                <AlertTriangle size={22} />
+              </div>
+            </div>
+
+            <div className="p-5 bg-[color:var(--surface)] border border-[color:var(--surface-border)] rounded-2xl shadow-sm flex items-center justify-between">
+              <div>
+                <div className="text-sm text-[color:var(--text-muted)]">Inventory Value</div>
+                <div className="text-2xl font-bold text-[color:var(--text-primary)]">{currencyFormatter.format(reportSummary.totalInventoryValue || 0)}</div>
+                <div className="text-xs text-[color:var(--text-muted)] mt-1">
+                  Average price: {currencyFormatter.format(reportSummary.totalProducts ? (reportSummary.totalPrice / reportSummary.totalProducts) : 0)}
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-500/15 text-emerald-400">
+                <DollarSign size={22} />
+              </div>
+            </div>
+          </div>
+
+          {lowStockProducts.length > 0 && (
+            <div className="mb-6 p-5 rounded-2xl border border-amber-500/40 bg-amber-500/10">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex gap-3">
+                  <div className="mt-1 p-2 rounded-xl bg-amber-500/30 text-amber-200">
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-amber-200">Low stock alert</div>
+                    <div className="text-sm text-amber-100/80">
+                      {lowStockProducts.length === 1
+                        ? '1 product is at or below its threshold.'
+                        : `${lowStockProducts.length} products are at or below their thresholds.`}
+                    </div>
+                    <ul className="mt-3 space-y-2 text-sm text-[color:var(--text-primary)]">
+                      {lowStockProducts.slice(0, 5).map(p => (
+                        <li key={p.id} className="flex items-center gap-3 p-2 rounded-xl bg-[color:var(--surface)]/60 border border-amber-500/30">
+                          <div className="p-2 rounded-lg bg-amber-500/20 text-amber-300">
+                            <Package size={16} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">{p.name}</div>
+                            <div className="text-xs text-[color:var(--text-muted)]">
+                              Stock: {p.stock ?? 0} • Threshold: {p.lowStockThreshold ?? 5}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    {lowStockProducts.length > 5 && (
+                      <div className="mt-2 text-xs text-amber-100/70">
+                        + {lowStockProducts.length - 5} more low stock {lowStockProducts.length - 5 === 1 ? 'item' : 'items'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mb-6 text-sm text-[color:var(--text-muted)]">
+            Report last generated: <span className="text-[color:var(--text-primary)]">{lastGeneratedLabel}</span>
+          </div>
+
           <div className="card">
             <div className="card-header">
               <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Product Inventory</h2>
