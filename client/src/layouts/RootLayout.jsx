@@ -98,6 +98,7 @@ export default function RootLayout() {
 
   return (
     <div className="min-h-dvh flex flex-col">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <header className="sticky top-0 z-50">
         <div className="container-app py-2">
           <div className="h-14 sm:h-16 px-3 sm:px-4 rounded-xl border border-[--color-border] bg-[--color-surface] backdrop-filter backdrop-blur-lg shadow-lg flex items-center justify-between gap-2 sm:gap-4">
@@ -249,7 +250,7 @@ export default function RootLayout() {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1">
         <Outlet />
       </main>
 

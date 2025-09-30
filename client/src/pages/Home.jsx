@@ -66,6 +66,7 @@ export default function Home() {
   const debouncedQ = useDebounce(query, 300)
   const [suggest, setSuggest] = useState([])
   const [showSuggest, setShowSuggest] = useState(false)
+  const [highlightIndex, setHighlightIndex] = useState(-1)
   const suggestBoxRef = useRef(null)
   const navigate = useNavigate()
 
@@ -151,6 +152,15 @@ export default function Home() {
     return () => document.removeEventListener('click', onDocClick)
   }, [])
 
+  // Reset or clamp highlighted index when suggestions change
+  useEffect(() => {
+    if (!showSuggest || !suggest?.length) {
+      setHighlightIndex(-1)
+    } else if (highlightIndex >= suggest.length) {
+      setHighlightIndex(suggest.length - 1)
+    }
+  }, [suggest, showSuggest])
+
   const hasAny = useMemo(
     () => (latest?.length || 0) + (topRated?.length || 0) + (popular?.length || 0) + (topRatedAll?.length || 0) > 0,
     [latest, topRated, popular, topRatedAll]
@@ -191,33 +201,69 @@ export default function Home() {
                 <input
                   type="search"
                   value={query}
-                  onChange={(e) => { setQuery(e.target.value); setShowSuggest(true) }}
+                  onChange={(e) => { setQuery(e.target.value); setShowSuggest(true); setHighlightIndex(-1) }}
                   onFocus={() => setShowSuggest(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.stopPropagation()
+                      setShowSuggest(false)
+                      setHighlightIndex(-1)
+                    } else if (e.key === 'ArrowDown' && suggest?.length) {
+                      e.preventDefault()
+                      setShowSuggest(true)
+                      setHighlightIndex((prev) => (prev + 1) % suggest.length)
+                    } else if (e.key === 'ArrowUp' && suggest?.length) {
+                      e.preventDefault()
+                      setShowSuggest(true)
+                      setHighlightIndex((prev) => (prev <= 0 ? suggest.length - 1 : prev - 1))
+                    } else if (e.key === 'Enter' && highlightIndex >= 0 && suggest?.[highlightIndex]) {
+                      e.preventDefault()
+                      navigate(`/products/${suggest[highlightIndex].slug}`)
+                      setShowSuggest(false)
+                      setHighlightIndex(-1)
+                    }
+                  }}
                   placeholder="Search products…"
                   className="input w-full glass-card text-base"
                   aria-label="Search products"
+                  autoComplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls="search-suggest"
+                  aria-expanded={showSuggest && (suggest?.length > 0)}
+                  aria-activedescendant={highlightIndex >= 0 && suggest?.[highlightIndex] ? `suggestion-${suggest[highlightIndex].id}` : undefined}
                 />
+                {showSuggest && (suggest?.length > 0) && (
+                  <div className="sr-only" aria-live="polite">{suggest.length} suggestions available</div>
+                )}
                 {/* Suggestions */}
                 {showSuggest && (suggest?.length > 0) && (
-                  <div className="absolute z-10 mt-2 w-full glass-card rounded-xl shadow-md overflow-hidden">
+                  <ul
+                    id="search-suggest"
+                    role="listbox"
+                    aria-label="Search suggestions"
+                    className="absolute z-10 mt-2 w-full glass-card rounded-xl shadow-md overflow-hidden"
+                  >
                     {suggest.map((item, index) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        className="w-full text-left px-3 py-2 hover:bg-[--color-bg-soft] flex items-center gap-3 transition-colors duration-150"
-                        onClick={() => navigate(`/products/${item.slug}`)}
-                        aria-label={`Go to ${item.name}`}
-                      >
-                        <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded" />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium line-clamp-1">{item.name}</div>
-                          <div className="text-xs text-[--color-muted]">
-                            Rs. {Number(item.finalPrice ?? item.price).toLocaleString()}
+                      <li id={`suggestion-${item.id}`} key={item.id} role="option" aria-selected={highlightIndex === index}>
+                        <button
+                          type="button"
+                          className={`w-full text-left px-3 py-2 flex items-center gap-3 transition-colors duration-150 ${highlightIndex === index ? 'bg-[--color-bg-soft]' : 'hover:bg-[--color-bg-soft]'}`}
+                          onClick={() => navigate(`/products/${item.slug}`)}
+                          aria-label={`Go to ${item.name}`}
+                          onMouseEnter={() => setHighlightIndex(index)}
+                        >
+                          <img src={item.images?.[0]} alt="" className="w-10 h-10 object-cover rounded" />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium line-clamp-1">{item.name}</div>
+                            <div className="text-xs text-[--color-muted]">
+                              Rs. {Number(item.finalPrice ?? item.price).toLocaleString()}
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                      </li>
                     ))}
-                    <div className="border-t border-[--color-border]">
+                    <li className="border-t border-[--color-border]">
                       <button
                         type="submit"
                         className="w-full text-left px-3 py-2 hover:bg-[--color-bg-soft] text-sm transition-colors duration-150"
@@ -225,8 +271,8 @@ export default function Home() {
                       >
                         See all results
                       </button>
-                    </div>
-                  </div>
+                    </li>
+                  </ul>
                 )}
               </form>
 
@@ -283,6 +329,7 @@ export default function Home() {
             <button
               key={t}
               className={`btn ${category === t ? 'btn-primary' : 'btn-outline'} px-8 py-3`}
+              aria-pressed={category === t}
               onClick={() => setCategory(t)}
             >
               {t[0].toUpperCase() + t.slice(1)}
