@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { api, fileUrl } from '../utils/http'
-import { Search, Plus, X, RotateCcw, Package, FileText, Eye, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react'
+import { Search, Plus, X, RotateCcw, Package, FileText, Eye, CheckCircle, XCircle, Clock, AlertTriangle, Download } from 'lucide-react'
+import { exportReturnsPDF, exportSingleReturnPDF } from '../utils/pdfExport'
 
 const statuses = ['', 'requested', 'approved', 'rejected', 'received', 'closed']
 
@@ -79,6 +80,25 @@ export default function RefundsPage() {
     }
   }
 
+  // PDF export functions
+  const handleExportAllPDF = () => {
+    const dataToExport = viewMode === 'orders' ? items : auditItems
+    if (dataToExport.length === 0) {
+      alert('No returns to export')
+      return
+    }
+    exportReturnsPDF(dataToExport, viewMode)
+  }
+
+  const handleExportSinglePDF = async (returnId) => {
+    try {
+      const res = await api.get(`/admin/returns/${returnId}/details`)
+      exportSingleReturnPDF(res.data.return)
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to export return details')
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
@@ -107,6 +127,15 @@ export default function RefundsPage() {
             {statuses.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
+          <button 
+            onClick={handleExportAllPDF}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+            disabled={(viewMode === 'orders' ? items.length : auditItems.length) === 0}
+            type="button"
+          >
+            <Download size={18} />
+            Export PDF
+          </button>
           {viewMode === 'orders' && (
             <button
               onClick={openCreateModal}
@@ -154,6 +183,7 @@ export default function RefundsPage() {
                       <th>Payment Method</th>
                       <th>Status</th>
                       <th>Amount</th>
+                      <th>Export</th>
                       <th>Last Updated</th>
                       <th>Details</th>
                     </tr>
@@ -161,13 +191,13 @@ export default function RefundsPage() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="5" className="text-center py-8">
+                        <td colSpan="7" className="text-center py-8">
                           <div className="text-[color:var(--text-muted)]">Loading...</div>
                         </td>
                       </tr>
                     ) : items.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="text-center py-8">
+                        <td colSpan="7" className="text-center py-8">
                           <div className="text-[color:var(--text-muted)]">No returns found</div>
                         </td>
                       </tr>
@@ -244,6 +274,16 @@ export default function RefundsPage() {
                             </div>
                           </td>
                           <td>
+                            <button 
+                              onClick={() => handleExportSinglePDF(o._id)}
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                              title="Download return details as PDF"
+                            >
+                              <FileText size={14} />
+                              PDF
+                            </button>
+                          </td>
+                          <td>
                             <div className="text-sm text-[color:var(--text-muted)]">—</div>
                           </td>
                           <td>
@@ -276,6 +316,7 @@ export default function RefundsPage() {
                       <th>Order ID</th>
                       <th>Status</th>
                       <th>Reason</th>
+                      <th>Export</th>
                       <th>Notes</th>
                       <th>Photos</th>
                       <th>Requested At</th>
@@ -285,13 +326,13 @@ export default function RefundsPage() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="6" className="text-center py-8">
+                        <td colSpan="8" className="text-center py-8">
                           <div className="text-[color:var(--text-muted)]">Loading...</div>
                         </td>
                       </tr>
                     ) : auditItems.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="text-center py-8">
+                        <td colSpan="8" className="text-center py-8">
                           <div className="text-[color:var(--text-muted)]">No audit records found</div>
                         </td>
                       </tr>
@@ -350,6 +391,16 @@ export default function RefundsPage() {
                             <div className="max-w-[200px] text-sm text-[color:var(--text-secondary)] truncate" title={r.reason}>
                               {r.reason || '—'}
                             </div>
+                          </td>
+                          <td>
+                            <button 
+                              onClick={() => handleExportSinglePDF(r._id)}
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                              title="Download return details as PDF"
+                            >
+                              <FileText size={14} />
+                              PDF
+                            </button>
                           </td>
                           <td>
                             <div className="max-w-[240px] text-sm text-[color:var(--text-secondary)] truncate" title={r.customerNotes}>

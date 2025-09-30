@@ -1,4 +1,5 @@
-﻿import catchAsync from '../../utils/catchAsync.js'
+import ApiError from '../../utils/ApiError.js'
+import catchAsync from '../../utils/catchAsync.js'
 import Order from '../models/Order.js'
 import Refund from '../models/Refund.js'
 
@@ -96,4 +97,34 @@ export const listRefundAudits = catchAsync(async (req, res) => {
   ])
 
   res.json({ ok: true, items, page: pageNum, limit: perPage, total, hasMore: skip + items.length < total })
+})
+
+export const getRefundDetails = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const refund = await Refund.findById(id)
+    .populate({
+      path: 'order',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email username'
+      }
+    })
+    .lean()
+  if (!refund) {
+    throw new ApiError(404, 'Refund not found')
+  }
+  
+  // Include additional details for detailed report
+  const refundDetails = {
+    ...refund,
+    customerName: refund.order?.user ? `${refund.order.user.firstName || ''} ${refund.order.user.lastName || ''}`.trim() : 'Guest',
+    customerEmail: refund.order?.user?.email || 'N/A',
+    orderId: refund.order?._id || 'N/A',
+    orderTotal: refund.order?.totals?.grandTotal || 0,
+    refundAmount: refund.amount || 0,
+    refundStatus: refund.status || 'N/A',
+    paymentMethod: refund.method || 'N/A'
+  }
+  
+  res.json({ ok: true, refund: refundDetails })
 })

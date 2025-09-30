@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
 import { requireAnyRole, ROLES } from '../../middlewares/roles.js'
-import { listReviews, deleteReview } from '../controllers/admin.reviews.controller.js'
+import { listReviews, deleteReview, getReviewDetails } from '../controllers/admin.reviews.controller.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -22,6 +22,7 @@ const listSchema = z.object({
 const idParam = z.object({ params: z.object({ id: z.string().min(8) }) })
 
 router.get('/', canModerateReviews, validate(listSchema), listReviews)
+router.get('/:id/details', canModerateReviews, validate(idParam), getReviewDetails)
 router.delete('/:id', canModerateReviews, validate(idParam), deleteReview)
 
 export default router

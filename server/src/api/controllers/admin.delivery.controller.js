@@ -48,6 +48,29 @@ export const getDelivery = catchAsync(async (req, res) => {
   res.json({ ok: true, delivery: sanitize(d) })
 })
 
+export const getDeliveryDetails = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const d = await Delivery.findById(id).lean()
+  if (!d) throw new ApiError(404, 'Delivery user not found')
+  
+  // Include additional details for detailed report
+  const deliveryDetails = {
+    ...d,
+    fullName: `${d.firstName || ''} ${d.lastName || ''}`.trim(),
+    addressLine1: d.address?.line1 || 'N/A',
+    addressLine2: d.address?.line2 || '',
+    city: d.address?.city || 'N/A',
+    region: d.address?.region || '',
+    postalCode: d.address?.postalCode || '',
+    country: d.address?.country || 'N/A',
+    vehicleType: d.vehicleInfo?.type || 'N/A',
+    isActive: d.active !== false,
+    totalRegions: d.regions?.length || 0
+  }
+  
+  res.json({ ok: true, delivery: deliveryDetails })
+})
+
 export const createDelivery = catchAsync(async (req, res) => {
   const b = req.body || {}
 

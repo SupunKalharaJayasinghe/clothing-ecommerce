@@ -80,6 +80,32 @@ export const getOrder = catchAsync(async (req, res) => {
   res.json({ ok: true, order: o })
 })
 
+export const getOrderDetails = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const o = await Order.findById(id)
+    .populate('assignedDelivery', 'firstName lastName phone email username')
+    .populate('user', 'firstName lastName email username')
+    .lean()
+  if (!o) throw new ApiError(404, 'Order not found')
+  
+  // Include additional details for detailed report
+  const orderDetails = {
+    ...o,
+    totalValue: o.totals?.grandTotal || 0,
+    subtotal: o.totals?.subtotal || 0,
+    shipping: o.totals?.shipping || 0,
+    tax: o.totals?.tax || 0,
+    discount: o.totals?.discount || 0,
+    itemCount: o.items?.length || 0,
+    customerName: o.user ? `${o.user.firstName || ''} ${o.user.lastName || ''}`.trim() : 'Guest',
+    customerEmail: o.user?.email || 'N/A',
+    paymentStatus: o.payment?.status || 'N/A',
+    paymentMethod: o.payment?.method || 'N/A'
+  }
+  
+  res.json({ ok: true, order: orderDetails })
+})
+
 export const updateStatus = catchAsync(async (req, res) => {
   const { id } = req.params
   const { status } = req.body || {}

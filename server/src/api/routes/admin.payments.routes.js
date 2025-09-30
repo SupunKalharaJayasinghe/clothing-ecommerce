@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
 import { requireAnyRole, ROLES } from '../../middlewares/roles.js'
-import { listPayments, verifyBankSlip, updatePaymentStatus, listTransactions } from '../controllers/admin.payments.controller.js'
+import { listPayments, verifyBankSlip, updatePaymentStatus, listTransactions, getPaymentDetails } from '../controllers/admin.payments.controller.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -29,6 +29,7 @@ const statusSchema = z.object({
 })
 
 router.get('/', canManagePayments, validate(listSchema), listPayments)
+router.get('/:id/details', canManagePayments, validate(idParam), getPaymentDetails)
 router.post('/bank/:id/verify', canManagePayments, validate(idParam), verifyBankSlip)
 router.patch('/:id/status', canManagePayments, validate(statusSchema), updatePaymentStatus)
 router.get('/:id/transactions', canManagePayments, validate(idParam.merge(pagedQuery)), listTransactions)

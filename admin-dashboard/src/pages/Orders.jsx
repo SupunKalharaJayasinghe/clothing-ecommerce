@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
-import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon } from 'lucide-react'
+import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon, Download, FileText } from 'lucide-react'
+import { exportOrdersPDF, exportSingleOrderPDF } from '../utils/pdfExport'
 
 // Clean status sets for Admin
 const filterStatuses = [
@@ -180,6 +181,24 @@ export default function OrdersPage() {
     }
   }
 
+  // PDF export functions
+  const handleExportAllPDF = () => {
+    if (items.length === 0) {
+      alert('No orders to export')
+      return
+    }
+    exportOrdersPDF(items)
+  }
+
+  const handleExportSinglePDF = async (orderId) => {
+    try {
+      const res = await api.get(`/admin/orders/${orderId}/details`)
+      exportSingleOrderPDF(res.data.order)
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to export order details')
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
@@ -201,6 +220,15 @@ export default function OrdersPage() {
             {filterStatuses.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
+          <button 
+            onClick={handleExportAllPDF}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+            disabled={items.length === 0}
+            type="button"
+          >
+            <Download size={18} />
+            Export PDF
+          </button>
           <button
             onClick={openCreateModal}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
@@ -229,19 +257,20 @@ export default function OrdersPage() {
                     <th>Status</th>
                     <th>Courier</th>
                     <th>Total</th>
+                    <th>Export</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-8">
+                      <td colSpan="7" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">Loading...</div>
                       </td>
                     </tr>
                   ) : items.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-8">
+                      <td colSpan="7" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">No orders found</div>
                       </td>
                     </tr>
@@ -330,6 +359,16 @@ export default function OrdersPage() {
 <div className="font-semibold text-lg text-[color:var(--text-primary)]">
                             {formatLKR(total, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
+                        </td>
+                        <td>
+                          <button 
+                            onClick={() => handleExportSinglePDF(o._id)}
+                            className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                            title="Download order details as PDF"
+                          >
+                            <FileText size={14} />
+                            PDF
+                          </button>
                         </td>
                         <td>
                           <button 

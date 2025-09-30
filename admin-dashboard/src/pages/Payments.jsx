@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
-import { ChevronDown, ChevronRight, Search, CreditCard, DollarSign, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search, CreditCard, DollarSign, CheckCircle, XCircle, Clock, RefreshCw, Download, FileText } from 'lucide-react'
+import { exportPaymentsPDF, exportSinglePaymentPDF } from '../utils/pdfExport'
 
 const methods = ['', 'BANK', 'CARD', 'COD']
 const statusesByMethod = {
@@ -79,6 +80,24 @@ export default function PaymentsPage() {
     }
   }
 
+  // PDF export functions
+  const handleExportAllPDF = () => {
+    if (items.length === 0) {
+      alert('No payments to export')
+      return
+    }
+    exportPaymentsPDF(items)
+  }
+
+  const handleExportSinglePDF = async (paymentId) => {
+    try {
+      const res = await api.get(`/admin/payments/${paymentId}/details`)
+      exportSinglePaymentPDF(res.data.payment)
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to export payment details')
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
@@ -103,6 +122,15 @@ export default function PaymentsPage() {
             {(statusesByMethod[method] || statusesByMethod['']).map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
+          <button 
+            onClick={handleExportAllPDF}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+            disabled={items.length === 0}
+            type="button"
+          >
+            <Download size={18} />
+            Export PDF
+          </button>
         </div>
       </div>
 
@@ -123,19 +151,20 @@ export default function PaymentsPage() {
                     <th>Order Details</th>
                     <th>Payment Method</th>
                     <th>Status</th>
+                    <th>Export</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="5" className="text-center py-8">
+                      <td colSpan="6" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">Loading...</div>
                       </td>
                     </tr>
                   ) : items.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="text-center py-8">
+                      <td colSpan="6" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">No payments found</div>
                       </td>
                     </tr>
@@ -213,8 +242,18 @@ export default function PaymentsPage() {
                             </div>
                           </td>
                           <td>
+                            <button 
+                              onClick={() => handleExportSinglePDF(o._id)}
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                              title="Download payment details as PDF"
+                            >
+                              <FileText size={14} />
+                              PDF
+                            </button>
+                          </td>
+                          <td>
                             {o.payment?.method === 'BANK' && (!o.payment?.bank?.verifiedAt) && (
-                              <button 
+                              <button
                                 onClick={() => verifyBank(o._id)} 
                                 className="btn btn-sm inline-flex items-center gap-2 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-all duration-200"
                               >
@@ -230,7 +269,7 @@ export default function PaymentsPage() {
                         </tr>
                         {expandedRows.has(o._id) && (
                           <tr>
-                            <td colSpan="5" className="bg-[color:var(--surface-elevated)] border-t border-[color:var(--surface-border)]">
+                            <td colSpan="6" className="bg-[color:var(--surface-elevated)] border-t border-[color:var(--surface-border)]">
                               <div className="p-6">
                                 <div className="flex items-center gap-3 mb-4">
                                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">

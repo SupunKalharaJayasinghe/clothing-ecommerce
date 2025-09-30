@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
-import { Search, Plus, X, Truck, User, Phone, Mail, MapPin, Calendar, CreditCard, Trash2, Bike, Car, Zap } from 'lucide-react'
+import { Search, Plus, X, Truck, User, Phone, Mail, MapPin, Calendar, CreditCard, Trash2, Bike, Car, Zap, Download, FileText } from 'lucide-react'
+import { exportDeliveriesPDF, exportSingleDeliveryPDF } from '../utils/pdfExport'
 
 export default function DeliveryPage() {
   const [items, setItems] = useState([])
@@ -124,6 +125,24 @@ export default function DeliveryPage() {
     }
   }
 
+  // PDF export functions
+  const handleExportAllPDF = () => {
+    if (items.length === 0) {
+      alert('No delivery personnel to export')
+      return
+    }
+    exportDeliveriesPDF(items)
+  }
+
+  const handleExportSinglePDF = async (deliveryId) => {
+    try {
+      const res = await api.get(`/admin/delivery/${deliveryId}/details`)
+      exportSingleDeliveryPDF(res.data.delivery)
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to export delivery details')
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
@@ -142,6 +161,15 @@ export default function DeliveryPage() {
             />
           </div>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
+          <button 
+            onClick={handleExportAllPDF}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+            disabled={items.length === 0}
+            type="button"
+          >
+            <Download size={18} />
+            Export PDF
+          </button>
           <button
             onClick={openCreateModal}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
@@ -174,19 +202,20 @@ export default function DeliveryPage() {
                     <th>Contact</th>
                     <th>Location</th>
                     <th>Vehicle</th>
+                    <th>Export</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="5" className="text-center py-8">
+                      <td colSpan="6" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">Loading...</div>
                       </td>
                     </tr>
                   ) : items.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="text-center py-8">
+                      <td colSpan="6" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">No delivery personnel found</div>
                       </td>
                     </tr>
@@ -252,6 +281,16 @@ export default function DeliveryPage() {
                               {d.vehicleType || 'Not specified'}
                             </span>
                           </div>
+                        </td>
+                        <td>
+                          <button 
+                            onClick={() => handleExportSinglePDF(d.id)}
+                            className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                            title="Download delivery details as PDF"
+                          >
+                            <FileText size={14} />
+                            PDF
+                          </button>
                         </td>
                         <td>
                           <div className="flex items-center gap-2">

@@ -50,6 +50,35 @@ export const listReviews = catchAsync(async (req, res) => {
   res.json({ ok: true, items: mapped, page: pageNum, limit: perPage, total, hasMore: skip + items.length < total })
 })
 
+export const getReviewDetails = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const review = await Review.findById(id)
+    .populate({ path: 'user', select: 'username firstName lastName email' })
+    .populate({ path: 'product', select: 'slug name price images' })
+    .lean()
+  if (!review) {
+    throw new ApiError(404, 'Review not found')
+  }
+  
+  // Include additional details for detailed report
+  const reviewDetails = {
+    ...review,
+    customerName: review.user ? (
+      review.user.firstName || review.user.lastName
+        ? `${review.user.firstName || ''} ${review.user.lastName || ''}`.trim()
+        : review.user.username
+    ) : 'Anonymous',
+    customerEmail: review.user?.email || 'N/A',
+    productName: review.product?.name || 'N/A',
+    productSlug: review.product?.slug || 'N/A',
+    productPrice: review.product?.price || 0,
+    rating: review.rating || 0,
+    comment: review.comment || 'No comment'
+  }
+  
+  res.json({ ok: true, review: reviewDetails })
+})
+
 export const deleteReview = catchAsync(async (req, res) => {
   const { id } = req.params
   const r = await Review.findById(id)

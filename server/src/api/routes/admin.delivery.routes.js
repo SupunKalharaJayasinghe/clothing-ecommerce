@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
 import { requireAnyRole, ROLES } from '../../middlewares/roles.js'
-import { listDelivery, getDelivery, createDelivery, updateDelivery, deleteDelivery } from '../controllers/admin.delivery.controller.js'
+import { listDelivery, getDelivery, getDeliveryDetails, createDelivery, updateDelivery, deleteDelivery } from '../controllers/admin.delivery.controller.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -50,6 +50,7 @@ const updateSchema = z.object({
 
 router.get('/', canManage, validate(listSchema), listDelivery)
 router.get('/:id', canManage, validate(idParam), getDelivery)
+router.get('/:id/details', canManage, validate(idParam), getDeliveryDetails)
 router.post('/', canManage, validate(createSchema), createDelivery)
 router.patch('/:id', canManage, validate(updateSchema), updateDelivery)
 router.delete('/:id', canManage, validate(idParam), deleteDelivery)

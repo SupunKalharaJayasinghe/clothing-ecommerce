@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
 import { requireAnyRole, ROLES } from '../../middlewares/roles.js'
-import { listOrders, getOrder, updateStatus, createOrder, deleteOrder } from '../controllers/admin.orders.controller.js'
+import { listOrders, getOrder, getOrderDetails, updateStatus, createOrder, deleteOrder } from '../controllers/admin.orders.controller.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -38,6 +38,7 @@ const statusSchema = z.object({
 
 router.get('/', canManageOrders, validate(listSchema), listOrders)
 router.get('/:id', canManageOrders, validate(idParam), getOrder)
+router.get('/:id/details', canManageOrders, validate(idParam), getOrderDetails)
 router.patch('/:id/status', canManageOrders, validate(statusSchema), updateStatus)
 
 // Create

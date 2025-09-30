@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
 import { requireAnyRole, ROLES } from '../../middlewares/roles.js'
-import { listReturns, initReturn, updateReturnStatus, listReturnAudits } from '../controllers/admin.returns.controller.js'
+import { listReturns, initReturn, updateReturnStatus, listReturnAudits, getReturnDetails } from '../controllers/admin.returns.controller.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -32,6 +32,7 @@ const auditListSchema = z.object({
 })
 
 router.get('/', canManageReturns, validate(listSchema), listReturns)
+router.get('/:id/details', canManageReturns, validate(idParam), getReturnDetails)
 router.post('/:id/init', canManageReturns, validate(initSchema), initReturn)
 router.patch('/:id/status', canManageReturns, validate(statusSchema), updateReturnStatus)
 router.get('/audits', canManageReturns, validate(auditListSchema), listReturnAudits)

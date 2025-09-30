@@ -110,3 +110,33 @@ export const updateReturnStatus = catchAsync(async (req, res) => {
   )
   res.json({ ok: true, order: o })
 })
+
+export const getReturnDetails = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const returnDoc = await Return.findById(id)
+    .populate({
+      path: 'order',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName email username'
+      }
+    })
+    .lean()
+  if (!returnDoc) {
+    throw new ApiError(404, 'Return not found')
+  }
+  
+  // Include additional details for detailed report
+  const returnDetails = {
+    ...returnDoc,
+    customerName: returnDoc.order?.user ? `${returnDoc.order.user.firstName || ''} ${returnDoc.order.user.lastName || ''}`.trim() : 'Guest',
+    customerEmail: returnDoc.order?.user?.email || 'N/A',
+    orderId: returnDoc.order?._id || 'N/A',
+    orderTotal: returnDoc.order?.totals?.grandTotal || 0,
+    returnStatus: returnDoc.status || 'N/A',
+    returnReason: returnDoc.reason || 'N/A',
+    itemsReturned: returnDoc.order?.items?.length || 0
+  }
+  
+  res.json({ ok: true, return: returnDetails })
+})

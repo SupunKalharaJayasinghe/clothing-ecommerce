@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
-import { Search, Star, MessageCircle, User, Package, Trash2, StarIcon } from 'lucide-react'
+import { Search, Star, MessageCircle, User, Package, Trash2, StarIcon, Download, FileText } from 'lucide-react'
+import { exportReviewsPDF, exportSingleReviewPDF } from '../utils/pdfExport'
 
 export default function ReviewsPage() {
   const [items, setItems] = useState([])
@@ -34,6 +35,24 @@ export default function ReviewsPage() {
     }
   }
 
+  // PDF export functions
+  const handleExportAllPDF = () => {
+    if (items.length === 0) {
+      alert('No reviews to export')
+      return
+    }
+    exportReviewsPDF(items)
+  }
+
+  const handleExportSinglePDF = async (reviewId) => {
+    try {
+      const res = await api.get(`/admin/reviews/${reviewId}/details`)
+      exportSingleReviewPDF(res.data.review)
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to export review details')
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
@@ -58,6 +77,15 @@ export default function ReviewsPage() {
             className="input min-w-[180px]"
           />
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
+          <button 
+            onClick={handleExportAllPDF}
+            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+            disabled={items.length === 0}
+            type="button"
+          >
+            <Download size={18} />
+            Export PDF
+          </button>
         </div>
       </div>
 
@@ -83,19 +111,20 @@ export default function ReviewsPage() {
                     <th>Customer</th>
                     <th>Rating</th>
                     <th>Review</th>
+                    <th>Export</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="5" className="text-center py-8">
+                      <td colSpan="6" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">Loading...</div>
                       </td>
                     </tr>
                   ) : items.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="text-center py-8">
+                      <td colSpan="6" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">No reviews found</div>
                       </td>
                     </tr>
@@ -146,6 +175,16 @@ export default function ReviewsPage() {
                         </td>
                         <td>
                           <button 
+                            onClick={() => handleExportSinglePDF(r.id)}
+                            className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                            title="Download review details as PDF"
+                          >
+                            <FileText size={14} />
+                            PDF
+                          </button>
+                        </td>
+                        <td>
+                          <button
                             onClick={() => onDelete(r.id)} 
                             className="btn btn-sm inline-flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all duration-200"
                           >
