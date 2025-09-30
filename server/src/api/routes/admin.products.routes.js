@@ -1,9 +1,9 @@
-﻿import { Router } from 'express'
+import { Router } from 'express'
 import { z } from 'zod'
 import { validate } from '../../middlewares/validate.js'
 import { requireAdminAuth } from '../../middlewares/adminAuth.js'
 import { requirePrimaryAdminOrAnyRole, ROLES } from '../../middlewares/roles.js'
-import { listProducts, getProduct, createProduct, updateProduct, deleteProduct } from '../controllers/admin.products.controller.js'
+import { listProducts, getProduct, createProduct, updateProduct, deleteProduct, getProductDetails } from '../controllers/admin.products.controller.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -63,6 +63,7 @@ const updateSchema = z.object({
 
 router.get('/', canManageProducts, validate(listSchema), listProducts)
 router.get('/:id', canManageProducts, validate(idParam), getProduct)
+router.get('/:id/details', canManageProducts, validate(idParam), getProductDetails)
 router.post('/', canManageProducts, validate(createSchema), createProduct)
 router.patch('/:id', canManageProducts, validate(updateSchema), updateProduct)
 router.delete('/:id', canManageProducts, validate(idParam), deleteProduct)

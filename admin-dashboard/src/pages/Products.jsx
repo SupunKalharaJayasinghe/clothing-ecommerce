@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import { useAuth } from '../state/auth'
-import { Search, Plus, X, Trash2, Package, Tag, DollarSign } from 'lucide-react'
+import { Search, Plus, X, Trash2, Package, Tag, DollarSign, Download, FileText } from 'lucide-react'
 import { formatLKR } from '../utils/currency'
+import { exportProductsPDF, exportSingleProductPDF } from '../utils/pdfExport'
 
 const mainTagOptions = ['discount','new','limited','bestseller','featured']
 const categories = ['', 'men', 'women', 'kids']
@@ -133,6 +134,28 @@ export default function ProductsPage() {
     setForm({ name: '', image: '', color: '', description: '', price: 0, discountPercent: 0, stock: 0, lowStockThreshold: 5, tags: '', mainTags: [], category: '' })
   }
 
+  // PDF export functions
+  const handleExportAllPDF = () => {
+    console.log('Export all products PDF clicked')
+    console.log('Products:', items)
+    
+    if (items.length === 0) {
+      alert('No products to export')
+      return
+    }
+    
+    exportProductsPDF(items)
+  }
+
+  const handleExportSinglePDF = async (productId) => {
+    try {
+      const res = await api.get(`/admin/products/${productId}/details`)
+      exportSingleProductPDF(res.data.product)
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to export product details')
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
@@ -154,6 +177,17 @@ export default function ProductsPage() {
             {categories.map(c => <option key={c} value={c}>{c || 'All categories'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
+          {canManage && (
+            <button 
+              onClick={handleExportAllPDF}
+              className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+              disabled={items.length === 0}
+              type="button"
+            >
+              <Download size={18} />
+              Export PDF
+            </button>
+          )}
           {canManage && (
             <button
               onClick={openCreateModal}
@@ -188,19 +222,20 @@ export default function ProductsPage() {
                       <th>Price</th>
                       <th>Stock</th>
                       <th>Category</th>
+                      <th>Export</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="5" className="text-center py-8">
+                        <td colSpan="6" className="text-center py-8">
                           <div className="text-[color:var(--text-muted)]">Loading...</div>
                         </td>
                       </tr>
                     ) : items.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="text-center py-8">
+                        <td colSpan="6" className="text-center py-8">
                           <div className="text-[color:var(--text-muted)]">No products found</div>
                         </td>
                       </tr>
@@ -223,6 +258,16 @@ export default function ProductsPage() {
                         </td>
                         <td>
                           <div className="text-[color:var(--text-secondary)]">{p.category || '-'}</div>
+                        </td>
+                        <td>
+                          <button 
+                            onClick={() => handleExportSinglePDF(p.id)}
+                            className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                            title="Download product details as PDF"
+                          >
+                            <FileText size={14} />
+                            PDF
+                          </button>
                         </td>
                         <td>
                           <div className="flex items-center gap-2">

@@ -123,6 +123,23 @@ export const updateProduct = catchAsync(async (req, res) => {
   res.json({ ok: true, product: mapProduct(p) })
 })
 
+export const getProductDetails = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const p = await Product.findById(id).lean()
+  if (!p) throw new ApiError(404, 'Product not found')
+  
+  // Include additional details for detailed report
+  const productDetails = {
+    ...mapProduct(p),
+    slug: p.slug,
+    metaTitle: p.metaTitle,
+    metaDescription: p.metaDescription,
+    finalPrice: p.discountPercent ? p.price * (1 - p.discountPercent / 100) : p.price
+  }
+  
+  res.json({ ok: true, product: productDetails })
+})
+
 export const deleteProduct = catchAsync(async (req, res) => {
   const { id } = req.params
   const p = await Product.findById(id)
