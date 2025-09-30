@@ -7,6 +7,7 @@ import crypto from 'crypto'
 import { env } from '../../config/env.js'
 import { PAYMENT_STATES, updateOrderStates, applyStateChanges, ORDER_STATES } from '../../utils/stateManager.js'
 import PaymentTransaction from '../models/PaymentTransaction.js'
+import { buildRequestHash, checkoutAction } from '../../services/payhere.js'
 
 // BANK: POST /api/payments/bank/:orderId/slip
 export const uploadBankSlip = catchAsync(async (req, res) => {
@@ -44,6 +45,37 @@ export const uploadBankSlip = catchAsync(async (req, res) => {
   })
 
   res.json({ ok: true, orderId: order._id, slipUrl: order.payment.bank.slipUrl, verifyBy })
+})
+
+// CARD: POST /api/payments/payhere/create
+// Generates PayHere hash and returns params for JS SDK. Safer alternative per your guideline.
+export const createPayherePayment = catchAsync(async (req, res) => {
+  const { orderId } = req.body || {}
+  if (!orderId) throw new ApiError(400, 'orderId required')
+  const order = await Order.findOne({ _id: orderId, user: req.user.sub })
+  if (!order) throw new ApiError(404, 'Order not found')
+  if (order.payment?.method !== 'CARD') throw new ApiError(400, 'Not a card payment order')
+
+  const merchantId = env.PAYHERE_MERCHANT_ID
+  const merchantSecret = env.PAYHERE_MERCHANT_SECRET
+  if (!merchantId || !merchantSecret) throw new ApiError(500, 'PayHere credentials not configured')
+
+  const currency = 'LKR'
+  const amount = Number(order.totals?.grandTotal || 0).toFixed(2)
+  const hash = buildRequestHash({ merchantId, merchantSecret, orderId: String(order._id), amount, currency })
+
+  res.json({
+    sandbox: env.NODE_ENV === 'production' ? false : true,
+    merchant_id: merchantId,
+    return_url: env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders',
+    cancel_url: env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout',
+    notify_url: env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook',
+    order_id: String(order._id),
+    items: `Order ${order._id}`,
+    amount,
+    currency,
+    hash
+  })
 })
 
   // CARD: POST /api/payments/payhere/webhook

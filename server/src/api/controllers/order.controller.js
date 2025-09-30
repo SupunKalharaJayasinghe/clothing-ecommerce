@@ -6,6 +6,7 @@ import mongoose from 'mongoose'
 import User from '../models/User.js'
 import { getInitialStates, PAYMENT_METHODS, updateOrderStates, applyStateChanges } from '../../utils/stateManager.js'
 import PaymentTransaction from '../models/PaymentTransaction.js'
+import { checkoutAction, buildRequestHash } from '../../services/payhere.js'
 
 function calcTotals(items) {
   const subtotal = items.reduce((s, it) => s + (it.price * it.quantity), 0)
@@ -43,17 +44,22 @@ export const placeOrder = catchAsync(async (req, res) => {
 
   // Resolve address: prefer explicit snapshot; else use saved address by id; else use user's default
   let addr = address
+  let currentUser = null
   if (!addr) {
-    const user = await User.findById(req.user.sub)
+    currentUser = await User.findById(req.user.sub)
+    if (!currentUser) throw new ApiError(400, 'User not found')
     if (addressId) {
-      const found = user.addresses.id(addressId)
+      const found = currentUser.addresses.id(addressId)
       if (!found) throw new ApiError(400, 'Saved address not found')
       addr = found.toObject()
     } else {
-      const def = user.addresses.find(a => a.isDefault) || user.addresses[0]
+      const def = currentUser.addresses.find(a => a.isDefault) || currentUser.addresses[0]
       if (!def) throw new ApiError(400, 'No address provided and no saved address found')
       addr = def.toObject()
     }
+  } else {
+    // If address is directly provided, still fetch the user minimal info for PayHere fields
+    currentUser = await User.findById(req.user.sub)
   }
 
   // If CARD and not yet confirmed, return a preview and require confirmation (two-step)
@@ -147,73 +153,42 @@ export const placeOrder = catchAsync(async (req, res) => {
     })
   }
 
-  // For CARD: return minimal payload you can use to build a PayHere form client-side (sandbox)
+  // For CARD: return payload to be used by PayHere JS SDK popup (or fallback form)
   let payhere = null
   if (method === 'CARD') {
-    // NOTE: To really charge, fill these from env and generate md5sig in a dedicated service.
-    /*payhere = {
-      sandbox: true,
-      action: 'https://sandbox.payhere.lk/pay/checkout',
+    // Build PayHere request (sandbox/live) with required hash strictly from env
+    const merchantId = process.env.PAYHERE_MERCHANT_ID
+    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET
+    if (!merchantId || !merchantSecret) {
+      throw new ApiError(500, 'PayHere credentials are not configured')
+    }
+    const orderId = String(order._id)
+    const currency = 'LKR'
+    const amount = Number(totals.grandTotal).toFixed(2)
+
+    payhere = {
+      sandbox: process.env.NODE_ENV === 'production' ? false : true,
+      action: checkoutAction(process.env.NODE_ENV === 'production'), // for potential fallback form
       params: {
-        merchant_id: process.env.PAYHERE_MERCHANT_ID || 'YOUR_MERCHANT_ID',
+        merchant_id: merchantId,
         return_url: process.env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders',
         cancel_url: process.env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout',
         notify_url: process.env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook',
-        order_id: String(order._id),
-        items: `Order ${order._id}`,
-        currency: 'LKR',
-        amount: String(order.totals.grandTotal.toFixed(2)),
-        first_name: 'Customer',
-        last_name: 'User',
-        email: 'email@example.com',
+        order_id: orderId,
+        items: `Order ${orderId}`,
+        currency,
+        amount,
+        first_name: currentUser?.firstName || 'Customer',
+        last_name: currentUser?.lastName || '',
+        email: currentUser?.email || 'no-reply@example.com',
         phone: addr.phone || '',
         address: `${addr.line1} ${addr.line2 || ''}`.trim(),
         city: addr.city,
-        country: addr.country
-        // md5sig should be added here after hashing (left to your PayHere service)
+        country: addr.country,
+        // signature required by PayHere
+        hash: buildRequestHash({ merchantId, merchantSecret, orderId, amount, currency })
       }
-    }*/
-
-                    // Build PayHere request (sandbox/live) with required hash
-              const merchantId = process.env.PAYHERE_MERCHANT_ID || '1232195'
-              const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || 'MjczODU2MTUzMzM1MDIxMDcxMjkzNDIzOTI2NDQ2Njc0ODAwOTMx'
-              const orderId = String(order._id)
-              const currency = 'LKR'
-              const amount = Number(totals.grandTotal).toFixed(2)
-
-            payhere = {
-              sandbox: process.env.NODE_ENV === 'production' ? false : true,
-              action: checkoutAction(process.env.NODE_ENV === 'production'),
-              params: {
-                merchant_id: merchantId,
-                return_url: process.env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders',
-                cancel_url: process.env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout',
-                notify_url: process.env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook',
-                order_id: orderId,
-                items: `Order ${orderId}`,
-                currency,
-                amount,
-                first_name: user.firstName || 'Customer',
-                last_name: user.lastName || '',
-                email: user.email || 'no-reply@example.com',
-                phone: addr.phone || '',
-                address: `${addr.line1} ${addr.line2 || ''}`.trim(),
-                city: addr.city,
-                country: addr.country,
-                // ✨ required signature
-                hash: buildRequestHash({
-                  merchantId,
-                  merchantSecret,
-                  orderId,
-                  amount,
-                  currency
-                })
-              }
-            }
-
-
-
-
+    }
   }
 
   res.status(201).json({ ok: true, orderId: order._id, payhere })
