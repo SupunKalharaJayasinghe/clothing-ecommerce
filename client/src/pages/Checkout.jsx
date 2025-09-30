@@ -79,23 +79,29 @@ export default function Checkout() {
         await api.post(`/payments/bank/${orderId}/slip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
       }
 
-      // CARD: if backend returned PayHere form params (sandbox), auto-submit a form
-      if (method === 'CARD' && data.payhere?.action) {
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = data.payhere.action
-        for (const [k, v] of Object.entries(data.payhere.params || {})) {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = k
-          input.value = v
-          form.appendChild(input)
+      // CARD: onsite popup via payhere.js using server-generated payload & hash
+      if (method === 'CARD' && orderId) {
+        // Setup simple handlers
+        if (window.payhere) {
+          window.payhere.onCompleted = function (oid) {
+            // Optionally fetch status from backend
+            console.log('Payment completed:', oid)
+          }
+          window.payhere.onDismissed = function () {
+            console.log('Payment dismissed')
+          }
+          window.payhere.onError = function (err) {
+            console.log('Payment error:', err)
+          }
         }
-        document.body.appendChild(form)
-        form.submit()
-        // we still clear the cart; PayHere will redirect back to /orders in your return_url
-        dispatch(clearCart())
-        return
+
+        const resp = await api.post('/payments/payhere/create', { orderId })
+        const payment = resp.data?.payment
+        if (payment && window.payhere?.startPayment) {
+          window.payhere.startPayment({ sandbox: true, ...payment })
+          dispatch(clearCart())
+          return
+        }
       }
 
       dispatch(clearCart())
@@ -123,21 +129,20 @@ export default function Checkout() {
       const { data } = await api.post('/orders', payload)
       const orderId = data.orderId
 
-      if (method === 'CARD' && data.payhere?.action) {
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = data.payhere.action
-        for (const [k, v] of Object.entries(data.payhere.params || {})) {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = k
-          input.value = v
-          form.appendChild(input)
+      // CARD: onsite popup via payhere.js using server-generated payload & hash
+      if (method === 'CARD' && orderId) {
+        if (window.payhere) {
+          window.payhere.onCompleted = function (oid) { console.log('Payment completed:', oid) }
+          window.payhere.onDismissed = function () { console.log('Payment dismissed') }
+          window.payhere.onError = function (err) { console.log('Payment error:', err) }
         }
-        document.body.appendChild(form)
-        form.submit()
-        dispatch(clearCart())
-        return
+        const resp = await api.post('/payments/payhere/create', { orderId })
+        const payment = resp.data?.payment
+        if (payment && window.payhere?.startPayment) {
+          window.payhere.startPayment({ sandbox: true, ...payment })
+          dispatch(clearCart())
+          return
+        }
       }
 
       // BANK: upload slip immediately if provided

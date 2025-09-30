@@ -48,6 +48,72 @@ export const uploadBankSlip = catchAsync(async (req, res) => {
   res.json({ ok: true, orderId: order._id, slipUrl: order.payment.bank.slipUrl, verifyBy })
 })
 
+// CARD: POST /api/payments/payhere/create
+// Generates server-side hash and returns the payload required by payhere.js onsite checkout
+export const payhereCreate = catchAsync(async (req, res) => {
+  const { orderId } = req.body || {}
+  if (!orderId) throw new ApiError(400, 'orderId is required')
+
+  if (!env.PAYHERE_MERCHANT_ID || !env.PAYHERE_MERCHANT_SECRET) {
+    throw new ApiError(500, 'PayHere is not configured on the server')
+  }
+
+  const order = await Order.findById(orderId)
+  if (!order) throw new ApiError(404, 'Order not found')
+  // Allow only CARD flow and only for not-yet-paid orders
+  if (String(order.payment?.method) !== 'CARD') throw new ApiError(400, 'Order is not a card payment')
+
+  // Amount and currency must be determined by the server to prevent tampering
+  const amount = Number(order.totals?.grandTotal || 0)
+  if (!(amount > 0)) throw new ApiError(400, 'Invalid order amount')
+  const currency = 'LKR'
+
+  // Prepare fields
+  const merchant_id = env.PAYHERE_MERCHANT_ID
+  const return_url = env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders'
+  const cancel_url = env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout'
+  const notify_url = env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook'
+
+  const formattedAmount = amount.toFixed(2)
+  const merchantSecretHash = crypto.createHash('md5').update(env.PAYHERE_MERCHANT_SECRET).digest('hex').toUpperCase()
+  const raw = `${merchant_id}${order._id}${formattedAmount}${currency}${merchantSecretHash}`
+  const hash = crypto.createHash('md5').update(raw).digest('hex').toUpperCase()
+
+  const payload = {
+    merchant_id,
+    return_url,
+    cancel_url,
+    notify_url,
+    order_id: String(order._id),
+    items: `Order ${order._id}`,
+    currency,
+    amount: formattedAmount,
+    first_name: 'Customer',
+    last_name: 'User',
+    email: 'email@example.com',
+    phone: order.address?.phone || '',
+    address: `${order.address?.line1 || ''} ${order.address?.line2 || ''}`.trim(),
+    city: order.address?.city || '',
+    country: order.address?.country || 'Sri Lanka',
+    hash
+  }
+
+  // Optionally log an intent transaction
+  await PaymentTransaction.create({
+    order: order._id,
+    method: 'CARD',
+    action: 'INTENT',
+    status: order.payment?.status,
+    amount,
+    currency,
+    gateway: 'PAYHERE',
+    notes: 'PayHere onsite payload generated',
+    meta: { return_url, cancel_url, notify_url }
+  })
+
+  res.json({ ok: true, payment: payload })
+})
+
 // CARD: POST /api/payments/payhere/webhook
 // NOTE: In production verify md5sig and merchant_id properly.
 export const payhereWebhook = catchAsync(async (req, res) => {
