@@ -155,3 +155,39 @@ export const payhereWebhook = catchAsync(async (req, res) => {
 
   res.json({ ok: true, paid: true })
 })
+
+const  payhreCreatepayment = catchAsync(async (req, res) => {
+  //const { order_id, amount, currency } = req.body;
+
+  //const hash = generateHash(order_id, amount, currency);
+
+//   res.json({
+//     merchant_id: MERCHANT_ID,
+//     order_id,
+//     amount,
+//     currency,
+//     hash,
+//  });
+  res.json({ok:true});
+  
+});
+
+export { payhreCreatepayment };
+
+const MERCHANT_ID = "1232195";
+const MERCHANT_SECRET = "MjczODU2MTUzMzM1MDIxMDcxMjkzNDIzOTI2NDQ2Njc0ODAwOTMx";
+
+// Generate Hash Function
+function generateHash(order_id, amount, currency) {
+  const formattedAmount = parseFloat(amount).toFixed(2); // same as PHP number_format
+  const md5MerchantSecret = crypto
+    .createHash("md5")
+    .update(MERCHANT_SECRET)
+    .digest("hex")
+    .toUpperCase();
+
+  const raw =
+    MERCHANT_ID + order_id + formattedAmount + currency + md5MerchantSecret;
+
+  return crypto.createHash("md5").update(raw).digest("hex").toUpperCase();
+}
