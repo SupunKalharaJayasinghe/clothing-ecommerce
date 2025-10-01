@@ -8,6 +8,7 @@ import { getInitialStates, PAYMENT_METHODS, updateOrderStates, applyStateChanges
 import PaymentTransaction from '../models/PaymentTransaction.js'
 import { env } from '../../config/env.js'
 import { sendMail } from '../../utils/mailer.js'
+import { buildPayHereCheckout } from '../../utils/payhere.js'
 
 function calcTotals(items) {
   const subtotal = items.reduce((s, it) => s + (it.price * it.quantity), 0)
@@ -152,29 +153,8 @@ export const placeOrder = catchAsync(async (req, res) => {
   // For CARD: return minimal payload you can use to build a PayHere form client-side (sandbox)
   let payhere = null
   if (method === 'CARD') {
-    // NOTE: To really charge, fill these from env and generate md5sig in a dedicated service.
-    payhere = {
-      sandbox: true,
-      action: 'https://sandbox.payhere.lk/pay/checkout',
-      params: {
-        merchant_id: process.env.PAYHERE_MERCHANT_ID || 'YOUR_MERCHANT_ID',
-        return_url: process.env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders',
-        cancel_url: process.env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout',
-        notify_url: process.env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook',
-        order_id: String(order._id),
-        items: `Order ${order._id}`,
-        currency: 'LKR',
-        amount: String(order.totals.grandTotal.toFixed(2)),
-        first_name: 'Customer',
-        last_name: 'User',
-        email: 'email@example.com',
-        phone: addr.phone || '',
-        address: `${addr.line1} ${addr.line2 || ''}`.trim(),
-        city: addr.city,
-        country: addr.country
-        // md5sig should be added here after hashing (left to your PayHere service)
-      }
-    }
+    const userDoc = await User.findById(req.user.sub).select('email name').lean()
+    payhere = buildPayHereCheckout({ order, address: addr, user: userDoc })
   }
 
   res.status(201).json({ ok: true, orderId: order._id, payhere })

@@ -7,6 +7,9 @@ import { env } from '../config/env.js'
 
 const CSRF_COOKIE = 'csrf_token'
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+const CSRF_EXEMPT_PATHS = new Set([
+  '/api/payments/payhere/webhook'
+])
 
 export function csrfProtection(req, res, next) {
   const method = (req.method || 'GET').toUpperCase()
@@ -23,6 +26,11 @@ export function csrfProtection(req, res, next) {
         maxAge: 7 * 24 * 60 * 60 * 1000
       })
     }
+    return next()
+  }
+
+  // For unsafe methods, allowlist webhook and other machine-to-machine endpoints
+  if (CSRF_EXEMPT_PATHS.has(req.path)) {
     return next()
   }
 

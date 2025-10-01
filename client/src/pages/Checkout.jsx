@@ -98,6 +98,13 @@ export default function Checkout() {
         return
       }
 
+      // If we expected CARD redirect but didn't receive gateway params, show an error (do not navigate)
+      if (method === 'CARD') {
+        setError('Unable to initiate card payment. Please try again.')
+        setLoading(false)
+        return
+      }
+
       dispatch(clearCart())
       navigate('/orders')
     } catch (e) {
@@ -137,6 +144,13 @@ export default function Checkout() {
         document.body.appendChild(form)
         form.submit()
         dispatch(clearCart())
+        return
+      }
+
+      // If we expected CARD redirect but didn't receive gateway params, show an error (do not navigate)
+      if (method === 'CARD') {
+        setError('Unable to initiate card payment. Please try again.')
+        setLoading(false)
         return
       }
 

@@ -13,18 +13,30 @@ const AddressSchema = z.object({
 })
 
 export const placeOrderSchema = z.object({
-  body: z.object({
-    method: z.enum(['COD','CARD','BANK']),
-    items: z.array(z.object({
-      slug: z.string().min(1),
-      quantity: z.number().int().min(1).max(99)
-    })).min(1)
-  }).and(
-    z.union([
-      z.object({ address: AddressSchema }),
-      z.object({ addressId: z.string().min(8) })
-    ]).optional()
-  )
+  body: z
+    .object({
+      method: z.enum(['COD','CARD','BANK']),
+      items: z
+        .array(
+          z.object({
+            slug: z.string().min(1),
+            quantity: z.number().int().min(1).max(99)
+          })
+        )
+        .min(1),
+      // Allow two-step card confirmation flag to pass through validation
+      confirm: z.boolean().optional()
+    })
+    // Preserve any additional body keys (e.g., address, addressId)
+    .passthrough()
+    .and(
+      z
+        .union([
+          z.object({ address: AddressSchema }),
+          z.object({ addressId: z.string().min(8) })
+        ])
+        .optional()
+    )
 })
 
 export const getOrderSchema = z.object({
