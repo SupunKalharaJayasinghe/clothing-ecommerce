@@ -60,14 +60,14 @@ export default function ReviewsPage() {
           <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Reviews</h1>
           <p className="text-[color:var(--text-muted)] text-sm">Monitor and manage customer reviews</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="filters-compact">
           <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
             <input
               placeholder="Search reviews..."
               value={q}
               onChange={e=>setQ(e.target.value)}
-              className="input pl-10 min-w-[200px]"
+              className="input min-w-[200px]"
             />
           </div>
           <input

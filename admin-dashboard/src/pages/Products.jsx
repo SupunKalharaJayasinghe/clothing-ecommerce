@@ -163,17 +163,17 @@ export default function ProductsPage() {
           <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Products</h1>
           <p className="text-[color:var(--text-muted)] text-sm">Manage store products and inventory</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="filters-compact">
           <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
             <input
               placeholder="Search products..."
               value={q}
               onChange={e=>setQ(e.target.value)}
-              className="input pl-10 min-w-[200px]"
+              className="input min-w-[200px]"
             />
           </div>
-          <select value={category} onChange={e=>setCategory(e.target.value)} className="input min-w-[150px]">
+          <select value={category} onChange={e=>setCategory(e.target.value)} className="input">
             {categories.map(c => <option key={c} value={c}>{c || 'All categories'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>

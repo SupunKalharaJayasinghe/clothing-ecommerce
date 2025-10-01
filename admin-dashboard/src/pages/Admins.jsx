@@ -159,26 +159,26 @@ export default function AdminsPage() {
           <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Admins</h1>
           <p className="text-[color:var(--text-muted)] text-sm">Manage admin users and their permissions</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="filters-compact">
           <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
             <input 
               placeholder="Search admins..." 
               value={q} 
               onChange={e=>setQ(e.target.value)} 
-              className="input pl-10 min-w-[200px]"
+              className="input min-w-[200px]"
             />
           </div>
-          <select value={role} onChange={e=>setRole(e.target.value)} className="input min-w-[150px]">
+          <select value={role} onChange={e=>setRole(e.target.value)} className="input">
             <option value="">All roles</option>
             {allRoles.map(r => <option key={r} value={r}>{roleLabels[r]}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
           <button 
             onClick={openCreateModal} 
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+            className="btn btn-primary inline-flex items-center gap-2 whitespace-nowrap"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             Create Admin
           </button>
         </div>

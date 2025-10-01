@@ -19,6 +19,7 @@ import Privacy from '../pages/Privacy'
 import Terms from '../pages/Terms'
 import Contact from '../pages/Contact'
 import NotFound from '../pages/NotFound'
+import Returns from '../pages/Returns'
 
 function Protected({ children }) {
   const { user, status, hydrated } = useAppSelector(s => s.auth)
@@ -42,6 +43,7 @@ export default function AppRoutes() {
         <Route path="/orders" element={<Protected><Orders /></Protected>} />
         <Route path="/favorites" element={<Protected><Favorites /></Protected>} />
         <Route path="/account" element={<Protected><Account /></Protected>} />
+        <Route path="/returns" element={<Protected><Returns /></Protected>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/about" element={<About />} />

@@ -7,13 +7,13 @@ const statuses = ['', 'requested', 'approved', 'rejected', 'received', 'closed']
 
 export default function RefundsPage() {
   const [items, setItems] = useState([])
-  const [auditItems, setAuditItems] = useState([])
+  // Removed auditItems - now only shows orders view
   const [q, setQ] = useState('')
   const [method, setMethod] = useState('')
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [viewMode, setViewMode] = useState('orders') // 'orders' or 'audits'
+  // Removed viewMode - now only shows orders view
   const [detailOpen, setDetailOpen] = useState(false)
   const [detail, setDetail] = useState(null) // Return doc
   // init form and modal
@@ -26,13 +26,8 @@ export default function RefundsPage() {
     setLoading(true)
     setError('')
     try {
-      if (viewMode === 'audits') {
-        const res = await api.get('/admin/returns/audits', { params: { q, status: status || undefined } })
-        setAuditItems(res.data.items)
-      } else {
-        const res = await api.get('/admin/returns', { params: { q, status: status || undefined } })
-        setItems(res.data.items)
-      }
+      const res = await api.get('/admin/returns', { params: { q, status: status || undefined } })
+      setItems(res.data.items)
     } catch (e) {
       setError(e.response?.data?.message || e.message)
     } finally {
@@ -40,7 +35,7 @@ export default function RefundsPage() {
     }
   }
 
-  useEffect(() => { load() }, [viewMode])
+  useEffect(() => { load() }, [])
 
   const openCreateModal = () => {
     setNewOrderId('')
@@ -106,45 +101,36 @@ export default function RefundsPage() {
           <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Returns</h1>
           <p className="text-[color:var(--text-muted)] text-sm">Manage product returns and exchanges</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-[color:var(--surface-elevated)] rounded-xl border border-[color:var(--surface-border)]">
-            <Eye size={16} className="text-[color:var(--text-muted)]" />
-            <select value={viewMode} onChange={e=>setViewMode(e.target.value)} className="bg-transparent border-none outline-none text-[color:var(--text-primary)] text-sm font-medium">
-              <option value="orders">Orders View</option>
-              <option value="audits">Audit Records</option>
-            </select>
-          </div>
+        <div className="filters-compact">
           <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
             <input
               placeholder="Search returns..."
               value={q}
               onChange={e=>setQ(e.target.value)}
-              className="input pl-10 min-w-[200px]"
+              className="input min-w-[200px]"
             />
           </div>
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="input min-w-[140px]">
+          <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
             {statuses.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
           <button 
             onClick={handleExportAllPDF}
             className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
-            disabled={(viewMode === 'orders' ? items.length : auditItems.length) === 0}
+            disabled={items.length === 0}
             type="button"
           >
             <Download size={18} />
             Export PDF
           </button>
-          {viewMode === 'orders' && (
-            <button
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
-            >
-              <Plus size={20} />
-              Init Return
-            </button>
-          )}
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+          >
+            <Plus size={20} />
+            Init Return
+          </button>
         </div>
       </div>
 
@@ -154,50 +140,36 @@ export default function RefundsPage() {
         <div className="card">
           <div className="card-header">
             <div className="flex items-center gap-3">
-              {viewMode === 'orders' ? (
-                <>
-                  <RotateCcw size={20} className="text-[color:var(--text-primary)]" />
-                  <div>
-                    <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Return Requests</h2>
-                    <p className="text-sm text-[color:var(--text-muted)] mt-1">Orders with return requests</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <FileText size={20} className="text-[color:var(--text-primary)]" />
-                  <div>
-                    <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Return Audit Trail</h2>
-                    <p className="text-sm text-[color:var(--text-muted)] mt-1">Detailed return transaction records</p>
-                  </div>
-                </>
-              )}
+              <RotateCcw size={20} className="text-[color:var(--text-primary)]" />
+              <div>
+                <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Return Requests</h2>
+                <p className="text-sm text-[color:var(--text-muted)] mt-1">Orders with return requests</p>
+              </div>
             </div>
           </div>
           <div className="card-body p-0">
             <div className="overflow-x-auto">
-              {viewMode === 'orders' ? (
-                <table className="modern-table">
+              <table className="modern-table">
                   <thead>
                     <tr>
                       <th>Order Details</th>
-                      <th>Payment Method</th>
                       <th>Status</th>
-                      <th>Amount</th>
-                      <th>Export</th>
+                      <th>Reason</th>
                       <th>Last Updated</th>
+                      <th>Export</th>
                       <th>Details</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan="7" className="text-center py-8">
+                        <td colSpan="6" className="text-center py-8">
                           <div className="text-[color:var(--text-muted)]">Loading...</div>
                         </td>
                       </tr>
                     ) : items.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="text-center py-8">
+                        <td colSpan="6" className="text-center py-8">
                           <div className="text-[color:var(--text-muted)]">No returns found</div>
                         </td>
                       </tr>
@@ -284,9 +256,6 @@ export default function RefundsPage() {
                             </button>
                           </td>
                           <td>
-                            <div className="text-sm text-[color:var(--text-muted)]">—</div>
-                          </td>
-                          <td>
                             <button
                               className="btn btn-sm inline-flex items-center gap-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-all duration-200"
                               onClick={async () => {
@@ -308,141 +277,6 @@ export default function RefundsPage() {
                     })}
                   </tbody>
                 </table>
-              ) : (
-                <table className="modern-table">
-                  <thead>
-                    <tr>
-                      <th>Return ID</th>
-                      <th>Order ID</th>
-                      <th>Status</th>
-                      <th>Reason</th>
-                      <th>Export</th>
-                      <th>Notes</th>
-                      <th>Photos</th>
-                      <th>Requested At</th>
-                      <th>Updated At</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan="8" className="text-center py-8">
-                          <div className="text-[color:var(--text-muted)]">Loading...</div>
-                        </td>
-                      </tr>
-                    ) : auditItems.length === 0 ? (
-                      <tr>
-                        <td colSpan="8" className="text-center py-8">
-                          <div className="text-[color:var(--text-muted)]">No audit records found</div>
-                        </td>
-                      </tr>
-                    ) : auditItems.map(r => {
-                      const getAuditStatusColor = (status) => {
-                        switch(status?.toLowerCase()) {
-                          case 'closed': 
-                            return 'text-green-400 bg-green-500/10 border-green-500/20'
-                          case 'approved': 
-                          case 'received': 
-                            return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
-                          case 'rejected': 
-                            return 'text-red-400 bg-red-500/10 border-red-500/20'
-                          case 'requested': 
-                            return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
-                          default: 
-                            return 'text-[color:var(--text-muted)] bg-[color:var(--surface-elevated)] border-[color:var(--surface-border)]'
-                        }
-                      }
-                      
-                      const getAuditStatusIcon = (status) => {
-                        switch(status?.toLowerCase()) {
-                          case 'closed': 
-                            return <CheckCircle size={14} />
-                          case 'approved': 
-                          case 'received': 
-                            return <Package size={14} />
-                          case 'rejected': 
-                            return <XCircle size={14} />
-                          case 'requested': 
-                            return <Clock size={14} />
-                          default: 
-                            return <AlertTriangle size={14} />
-                        }
-                      }
-                      
-                      return (
-                        <tr key={r._id}>
-                          <td>
-                            <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-                              {r._id?.slice(-8)}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="font-mono text-sm text-[color:var(--text-secondary)]">
-                              #{(r.order?._id || r.order)?.slice(-8)}
-                            </div>
-                          </td>
-                          <td>
-                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getAuditStatusColor(r.status)}`}>
-                              {getAuditStatusIcon(r.status)}
-                              {r.status?.toUpperCase() || 'UNKNOWN'}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="max-w-[200px] text-sm text-[color:var(--text-secondary)] truncate" title={r.reason}>
-                              {r.reason || '—'}
-                            </div>
-                          </td>
-                          <td>
-                            <button 
-                              onClick={() => handleExportSinglePDF(r._id)}
-                              className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-                              title="Download return details as PDF"
-                            >
-                              <FileText size={14} />
-                              PDF
-                            </button>
-                          </td>
-                          <td>
-                            <div className="max-w-[240px] text-sm text-[color:var(--text-secondary)] truncate" title={r.customerNotes}>
-                              {r.customerNotes || '—'}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="flex gap-1">
-                              {(r.photos || []).slice(0,3).map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noreferrer">
-                                  <img src={url} alt="return" className="w-10 h-10 object-cover rounded border" />
-                                </a>
-                              ))}
-                              {Array.isArray(r.photos) && r.photos.length > 3 && (
-                                <span className="text-xs opacity-70">+{r.photos.length - 3} more</span>
-                              )}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="text-sm text-[color:var(--text-secondary)]">
-                              {r.requestedAt ? (
-                                <>
-                                  {new Date(r.requestedAt).toLocaleDateString()} {new Date(r.requestedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </>
-                              ) : '—'}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="text-sm text-[color:var(--text-secondary)]">
-                              {r.updatedAt ? (
-                                <>
-                                  {new Date(r.updatedAt).toLocaleDateString()} {new Date(r.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </>
-                              ) : '—'}
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              )}
             </div>
           </div>
         </div>

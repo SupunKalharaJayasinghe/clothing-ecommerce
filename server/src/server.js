@@ -19,6 +19,7 @@ import accountRoutes from './api/routes/account.routes.js'
 import favoriteRoutes from './api/routes/favorite.routes.js'
 import orderRoutes from './api/routes/order.routes.js'
 import paymentRoutes from './api/routes/payment.routes.js'
+import refundRoutes from './api/routes/refund.routes.js'
 import adminAuthRoutes from './api/routes/admin.auth.routes.js'
 import adminAdminsRoutes from './api/routes/admin.admins.routes.js'
 import adminCustomersRoutes from './api/routes/admin.customers.routes.js'
@@ -85,6 +86,7 @@ export function createServer() {
   app.use('/api/favorites', favoriteRoutes)
   app.use('/api/orders', orderRoutes)
   app.use('/api/payments', paymentRoutes)
+  app.use('/api/refunds', refundRoutes)
   // Admin dashboard APIs
   app.use('/api/admin/auth', adminAuthRoutes)
   app.use('/api/admin/admins', adminAdminsRoutes)

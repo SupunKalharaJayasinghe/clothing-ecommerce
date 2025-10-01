@@ -104,14 +104,61 @@
   --shadow-glow-orange: 0 0 30px rgba(245, 158, 11, 0.4), 0 0 60px rgba(245, 158, 11, 0.2);
 }
 
+/* Additional Layout Utilities */
+.overflow-hidden { overflow: hidden; }
+.overflow-x-hidden { overflow-x: hidden; }
+.overflow-y-hidden { overflow-y: hidden; }
+.overflow-x-auto { overflow-x: auto; }
+.overflow-y-auto { overflow-y: auto; }
+.break-words { word-wrap: break-word; overflow-wrap: break-word; }
+.break-all { word-break: break-all; }
+.truncate { 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  white-space: nowrap; 
+}
+
+/* Container Query Support for Modern Browsers */
+@supports (container-type: inline-size) {
+  .responsive-grid {
+    container-type: inline-size;
+  }
+  
+  @container (min-width: 768px) {
+    .responsive-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  
+  @container (min-width: 1024px) {
+    .responsive-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+}
+
 /* Base Styles */
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
-html, body, #root { 
-  height: 100%; 
+html { 
+  height: auto; /* allow natural height expansion */
+  min-height: 100%; 
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-y: auto; /* ensure scrolling is always available */
+}
+
+body { 
+  height: auto; /* allow natural height expansion */
+  min-height: 100vh;
+}
+
+#root { 
+  height: auto; /* allow natural height expansion */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 body { 
@@ -121,8 +168,11 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: hidden; /* prevent horizontal scroll only */
+  overflow-y: auto; /* allow natural vertical scrolling */
   line-height: 1.6;
+  height: auto; /* remove any height constraints */
+  min-height: 100vh; /* minimum full viewport height */
 }
 
 /* Ultra Modern Button System */
@@ -278,8 +328,10 @@ body {
   border: 1px solid var(--surface-border);
   box-shadow: var(--shadow-dark-md);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* allow content to be fully visible */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: auto; /* allow natural height */
+  max-height: none; /* remove height restrictions */
 }
 
 .card::before {
@@ -333,10 +385,10 @@ body {
   z-index: 1;
 }
 
-.table { width: 100%; font-size: 0.875rem; }
-.table th { text-align: left; background: var(--surface-elevated); color: var(--text-primary); font-weight: 600; }
-.table th, .table td { border: 1px solid var(--surface-border); padding: 0.75rem; }
-.table td { color: var(--text-secondary); }
+.table { width: 100%; font-size: 0.8rem; } /* Reduced font size */
+.table th { text-align: left; background: var(--surface-elevated); color: var(--text-primary); font-weight: 600; font-size: 0.75rem; white-space: nowrap; }
+.table th, .table td { border: 1px solid var(--surface-border); padding: 0.625rem 0.875rem; } /* Reduced padding */
+.table td { color: var(--text-secondary); font-size: 0.8rem; line-height: 1.4; }
 
 /* Enhanced placeholder contrast */
 .input::placeholder { color: var(--text-muted); opacity: 0.8; }
@@ -516,30 +568,261 @@ body {
 .input-with-icon input { border: 0; outline: none; background: transparent; height: 100%; color: var(--text-primary); font-size: 0.875rem; }
 .input-with-icon input::placeholder { color: var(--text-muted); }
 
+/* Enhanced Compact Filter Controls */
+.filters-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.filters-compact .input,
+.filters-compact select,
+.filters-compact .btn {
+  min-height: 40px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+/* Reduce dropdown width specifically */
+.filters-compact select {
+  min-width: 120px;
+  max-width: 150px;
+}
+
+/* Fix search input with icon positioning */
+.filters-compact .relative {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.filters-compact .relative .input {
+  padding-left: 2.75rem; /* Increased padding for better icon spacing */
+  padding-right: 1rem;
+}
+
+.filters-compact .relative svg {
+  position: absolute;
+  left: 0.875rem; /* Slightly more left padding */
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 2;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Enhanced search input styling */
+.filters-compact .relative .input:focus {
+  padding-left: 2.75rem; /* Maintain padding on focus */
+}
+
+.filters-compact .relative .input:focus + svg,
+.filters-compact .relative:focus-within svg {
+  color: var(--primary-400);
+  opacity: 1;
+}
+
+.filters-compact .btn svg,
+.filters-compact .input + svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Ensure consistent icon sizing for search */
+.filters-compact .relative svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Enhanced filter controls for better single-row layout */
+@media (min-width: 641px) {
+  .filters-compact {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+  
+  .filters-compact .input,
+  .filters-compact select {
+    flex-shrink: 0;
+  }
+}
+
+/* Ensure filter inputs don't grow too wide on mobile */
+@media (max-width: 640px) {
+  .filters-compact {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .filters-compact .input,
+  .filters-compact select,
+  .filters-compact .btn {
+    width: 100%;
+    min-width: auto;
+  }
+}
+
+/* Enhanced Layout Fixes for Right-Side Issues */
+/* Ensure flex containers don't overflow */
+.flex {
+  min-width: 0;
+}
+
+/* Ensure buttons in flex layouts don't grow too wide */
+.btn {
+  flex-shrink: 0;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+/* Fix text overflow in tables and lists */
+.list-row .font-medium {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0;
+  flex: 1;
+}
+
+/* Enhanced table content handling */
+.modern-table td {
+  max-width: 200px; /* Set reasonable max width */
+  overflow: visible; /* Allow content to be visible */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Specific handling for different content types in tables */
+.modern-table td.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+.modern-table td.compact {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+/* Badge styling in tables */
+.modern-table .badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+}
+
+/* Prevent horizontal overflow while allowing vertical scrolling */
+body, html {
+  overflow-x: hidden; /* prevent horizontal scroll only */
+  overflow-y: auto; /* ensure vertical scrolling works */
+  height: auto; /* allow natural height */
+  max-height: none; /* remove any height limits */
+}
+
+/* Fix button groups that might overflow */
+.flex.gap-3,
+.flex.gap-2 {
+  flex-wrap: wrap;
+}
+
+/* Enhanced card width constraints */
+.card {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  /* Ensure cards don't restrict content height */
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* Ensure all major containers allow natural scrolling */
+.dashboard-grid,
+.responsive-grid,
+.card-body,
+.main-content,
+.content-container {
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
+}
+
+/* Fix header layout on mobile */
+@media (max-width: 640px) {
+  .flex.flex-col.sm\:flex-row {
+    gap: 1rem;
+  }
+  
+  .flex.flex-col.sm\:flex-row .flex {
+    width: 100%;
+  }
+}
+
 /* Modern Table System */
+/* Keep wide tables from pushing layout; the wrapper should scroll, not the page */
+.card-body > .overflow-x-auto {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  margin: -1.25rem -1.5rem;
+  padding: 1.25rem 1.5rem;
+}
+
+/* Ensure table containers don't break layout */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-border);
+}
+
 .modern-table {
   width: 100%;
+  min-width: 500px; /* Reduced minimum width for better fit */
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: auto;
+  font-size: 0.8rem; /* Smaller font size for more compact content */
 }
 
 .modern-table thead th {
   background: var(--surface-elevated);
   color: var(--text-primary);
   font-weight: 600;
-  font-size: 0.875rem;
-  padding: 1rem 1.5rem;
+  font-size: 0.75rem; /* Smaller header font */
+  padding: 0.75rem 1rem; /* Reduced padding */
   text-align: left;
   border-bottom: 1px solid var(--surface-border);
   position: sticky;
   top: 0;
   z-index: 10;
+  word-break: break-word;
+  white-space: nowrap; /* Prevent header text wrapping */
 }
 
 .modern-table tbody td {
-  padding: 1.25rem 1.5rem;
+  padding: 0.875rem 1rem; /* Reduced padding for more compact rows */
   border-bottom: 1px solid var(--surface-border);
   vertical-align: top;
+  word-break: break-word;
+  font-size: 0.8rem; /* Consistent smaller font size */
+  line-height: 1.4; /* Tighter line height */
 }
 
 .modern-table tbody tr {
@@ -757,6 +1040,8 @@ body {
   margin-top: 1rem;
   margin-bottom: 1rem;
   position: relative;
+  /* Ensure sidebar navigation can scroll independently */
+  max-height: calc(100vh - 200px);
 }
 
 
@@ -931,24 +1216,32 @@ body {
 
 /* Responsive Layout System */
 .main-layout {
-  /* Remove height constraints to allow natural scrolling */
+  /* Allow natural content flow and scrolling */
   box-sizing: border-box;
   transition: padding-left 0.3s ease;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  height: auto; /* Allow natural height expansion */
+  overflow-x: hidden; /* prevent horizontal scroll only */
+  overflow-y: visible; /* ensure vertical content is always visible */
 }
 
 @media (min-width: 768px) {
   .main-layout {
     padding-left: 320px; /* reserve space for fixed sidebar */
-    width: 100%; /* with border-box, total width stays within viewport */
   }
 }
 
 .main-content {
   padding: 1rem;
   max-width: 100%;
-  overflow-x: hidden;
-  /* Allow natural content height and scrolling */
-  min-height: calc(100vh - 2rem);
+  width: 100%;
+  overflow-x: hidden; /* prevent horizontal scroll only */
+  overflow-y: visible; /* ensure all content is visible */
+  /* Remove height constraints - let content determine height */
+  height: auto;
+  min-height: auto;
 }
 
 @media (min-width: 640px) {
@@ -967,8 +1260,12 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
-  /* Ensure content can expand naturally */
+  /* Allow unlimited vertical expansion */
+  height: auto;
   min-height: auto;
+  max-height: none;
+  overflow-x: hidden; /* contain wide children horizontally */
+  overflow-y: visible; /* never hide vertical content */
 }
 
 /* Modern Topbar for Mobile */
@@ -1018,6 +1315,9 @@ body {
   gap: 1rem;
   grid-template-columns: 1fr;
   animation: fadeIn 0.6s ease-out;
+  width: 100%;
+  max-width: 100%;
+  container-type: inline-size;
 }
 
 @media (min-width: 768px) {
@@ -1032,6 +1332,20 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.5rem;
   }
+}
+
+/* Prevent grid items from overflowing */
+.responsive-grid .card {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Ensure grid items don't overflow */
+.responsive-grid > * {
+  min-width: 0;
+  max-width: 100%;
+  word-wrap: break-word;
 }
 
 /* Staggered animation for grid items */
@@ -1967,10 +2281,29 @@ body {
   margin-bottom: 1.5rem;
 }
 
-.confirm.kpi-icon { 
-  width: 64px; 
-  height: 64px; 
-  border-radius: var(--radius-2xl);
+/* Modern Confirm Modal Components */
+.confirm-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-xl);
+  background: var(--surface-elevated);
+  border: 1px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.confirm-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.confirm-title {
+  font-size: 1.125rem;
+  font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
   line-height: 1.3;
@@ -2019,20 +2352,35 @@ body {
 @media (max-width: 767px) {
   .main-content {
     padding: 1rem 0.75rem;
+    /* Ensure mobile content is fully scrollable */
+    height: auto;
+    min-height: auto;
+    overflow-y: visible;
   }
   
   .card {
     border-radius: var(--radius-lg);
     margin: 0;
+    max-width: 100%;
+    overflow: hidden;
+    word-wrap: break-word;
   }
   
   .card-header {
     padding: 1rem;
     font-size: 1rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
   
   .card-body {
     padding: 1rem;
+    overflow-x: hidden;
+    overflow-y: visible; /* never hide card content vertically */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    height: auto;
+    max-height: none;
   }
   
   .kpi {
@@ -2055,7 +2403,7 @@ body {
   
   .dashboard-grid {
     gap: 1rem;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   
   .segmented {
@@ -2088,11 +2436,21 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
   
   .list-row .text-right {
     text-align: left;
     align-self: flex-end;
+    word-wrap: break-word;
+  }
+  
+  .list-row .font-medium {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    max-width: none;
   }
   
   .nav-tile {

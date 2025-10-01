@@ -105,20 +105,20 @@ export default function PaymentsPage() {
           <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Payments</h1>
           <p className="text-[color:var(--text-muted)] text-sm">Monitor and manage payment transactions</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="filters-compact">
           <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
             <input
               placeholder="Search payments..."
               value={q}
               onChange={e=>setQ(e.target.value)}
-              className="input pl-10 min-w-[200px]"
+              className="input min-w-[200px]"
             />
           </div>
-          <select value={method} onChange={e=>setMethod(e.target.value)} className="input min-w-[120px]">
+          <select value={method} onChange={e=>setMethod(e.target.value)} className="input">
             {methods.map(m => <option key={m} value={m}>{m || 'All methods'}</option>)}
           </select>
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="input min-w-[140px]">
+          <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
             {(statusesByMethod[method] || statusesByMethod['']).map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>

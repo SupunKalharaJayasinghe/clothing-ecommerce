@@ -164,6 +164,7 @@ export default function RootLayout() {
                 ) : (
                   <div className="flex items-center gap-4">
                     <NavLink to="/orders" className={({isActive}) => `px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover] hover:backdrop-blur-sm'}`}>Orders</NavLink>
+                    <NavLink to="/returns" className={({isActive}) => `px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover] hover:backdrop-blur-sm'}`}>Returns</NavLink>
                     <NavLink to="/account" className={({isActive}) => `px-3 py-2 rounded-lg transition-all duration-150 text-sm font-medium ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover] hover:backdrop-blur-sm'}`}>Account</NavLink>
                     <button className="btn btn-outline btn-sm" onClick={openLogoutConfirm}>
                       Logout
@@ -233,6 +234,7 @@ export default function RootLayout() {
                     ) : (
                       <>
                         <NavLink to="/orders" className={({isActive}) => `px-5 py-3 rounded-lg text-sm font-medium transition-all duration-150 ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover]'}`} onClick={() => setOpen(false)}>Orders</NavLink>
+                        <NavLink to="/returns" className={({isActive}) => `px-5 py-3 rounded-lg text-sm font-medium transition-all duration-150 ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover]'}`} onClick={() => setOpen(false)}>Returns</NavLink>
                         <NavLink to="/account" className={({isActive}) => `px-5 py-3 rounded-lg text-sm font-medium transition-all duration-150 ${isActive ? 'bg-gradient-to-r from-[--color-brand-600] to-[--color-brand-500] text-white shadow-glow' : 'text-[--color-text-high] hover:bg-[--color-surface-hover]'}`} onClick={() => setOpen(false)}>Account</NavLink>
                         <button
                           className="btn btn-outline btn-sm w-max ml-2 mt-4"
@@ -376,6 +378,7 @@ export default function RootLayout() {
                   <>
                     <li><Link to="/account" className="text-sm text-[--color-text-medium] hover:text-[--color-brand-400] hover:translate-x-1 transition-all duration-200 block">My Account</Link></li>
                     <li><Link to="/orders" className="text-sm text-[--color-text-medium] hover:text-[--color-brand-400] hover:translate-x-1 transition-all duration-200 block">Order History</Link></li>
+                    <li><Link to="/returns" className="text-sm text-[--color-text-medium] hover:text-[--color-brand-400] hover:translate-x-1 transition-all duration-200 block">Returns & Refunds</Link></li>
                     <li><Link to="/favorites" className="text-sm text-[--color-text-medium] hover:text-[--color-brand-400] hover:translate-x-1 transition-all duration-200 block">Favorites</Link></li>
                   </>
                 ) : (

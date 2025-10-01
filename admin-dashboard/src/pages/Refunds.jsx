@@ -1,50 +1,64 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
-import { Search, RefreshCw, DollarSign, CreditCard, Clock, CheckCircle, XCircle, AlertCircle, Eye, FileText, Download } from 'lucide-react'
+import { Search, RefreshCw, DollarSign, CreditCard, Clock, CheckCircle, FileText, Download, TrendingUp } from 'lucide-react'
 import { exportRefundsPDF, exportSingleRefundPDF } from '../utils/pdfExport'
 
 const methods = ['', 'BANK', 'CARD', 'COD']
-const statuses = ['', 'refunded', 'paid', 'failed', 'pending', 'initiated']
+const statuses = ['', 'REQUESTED', 'APPROVED', 'PROCESSING', 'PROCESSED', 'FAILED', 'CANCELLED']
 
 export default function RefundsPage() {
   const [items, setItems] = useState([])
-  const [auditItems, setAuditItems] = useState([])
   const [q, setQ] = useState('')
   const [method, setMethod] = useState('')
-  const [status, setStatus] = useState('refunded')
+  const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [viewMode, setViewMode] = useState('orders') // 'orders' or 'audits'
+  const [stats, setStats] = useState(null)
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      if (viewMode === 'audits') {
-        const res = await api.get('/admin/refunds/audits', { params: { q, method: method || undefined, status: status || undefined } })
-        setAuditItems(res.data.items)
-      } else {
-        const res = await api.get('/admin/refunds', { params: { q, method: method || undefined, status: status || undefined } })
-        setItems(res.data.items)
-      }
+      const res = await api.get('/admin/refunds', { params: { q, method: method || undefined, status: status || undefined } })
+      setItems(res.data.items)
     } catch (e) {
-      setError(e.response?.data?.message || e.message)
+      // Treat 404/204-like empty responses as "no data" instead of an error banner
+      const statusCode = e?.response?.status
+      if (statusCode === 404 || statusCode === 204) {
+        setItems([])
+        setError('')
+      } else {
+        setError(e.response?.data?.message || e.message)
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { load() }, [viewMode])
+  const loadStats = async () => {
+    try {
+      const res = await api.get('/admin/refunds/stats')
+      setStats(res.data.stats)
+    } catch (e) {
+      console.error('Failed to load stats:', e)
+    }
+  }
+
+  useEffect(() => { 
+    load()
+    loadStats()
+  }, [])
+
+
 
   // PDF export functions
   const handleExportAllPDF = () => {
-    const dataToExport = viewMode === 'orders' ? items : auditItems
-    if (dataToExport.length === 0) {
+    if (items.length === 0) {
       alert('No refunds to export')
       return
     }
-    exportRefundsPDF(dataToExport, viewMode)
+    exportRefundsPDF(items, 'orders')
   }
 
   const handleExportSinglePDF = async (refundId) => {
@@ -57,47 +71,90 @@ export default function RefundsPage() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in refunds-page">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-[color:var(--text-primary)] mb-2">Refunds</h1>
           <p className="text-[color:var(--text-muted)] text-sm">Process and track customer refunds</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-[color:var(--surface-elevated)] rounded-xl border border-[color:var(--surface-border)]">
-            <Eye size={16} className="text-[color:var(--text-muted)]" />
-            <select value={viewMode} onChange={e=>setViewMode(e.target.value)} className="bg-transparent border-none outline-none text-[color:var(--text-primary)] text-sm font-medium">
-              <option value="orders">Orders View</option>
-              <option value="audits">Audit Records</option>
-            </select>
-          </div>
+        <div className="filters-compact">
           <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
             <input
               placeholder="Search refunds..."
               value={q}
               onChange={e=>setQ(e.target.value)}
-              className="input pl-10 min-w-[200px]"
+              className="input min-w-[200px]"
             />
           </div>
-          <select value={method} onChange={e=>setMethod(e.target.value)} className="input min-w-[120px]">
+          <select value={method} onChange={e=>setMethod(e.target.value)} className="input">
             {methods.map(m => <option key={m} value={m}>{m || 'All methods'}</option>)}
           </select>
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="input min-w-[140px]">
+          <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
             {statuses.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
           <button 
             onClick={handleExportAllPDF}
-            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
-            disabled={(viewMode === 'orders' ? items.length : auditItems.length) === 0}
+            className="btn btn-secondary inline-flex items-center gap-2 whitespace-nowrap"
+            disabled={items.length === 0}
             type="button"
           >
-            <Download size={18} />
+            <Download size={16} />
             Export PDF
           </button>
         </div>
       </div>
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="card card-body">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                <RefreshCw size={24} className="text-blue-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-[color:var(--text-primary)]">{stats.totalRefunds}</div>
+                <div className="text-sm text-[color:var(--text-muted)]">Total Refunds</div>
+              </div>
+            </div>
+          </div>
+          <div className="card card-body">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+                <Clock size={24} className="text-yellow-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-[color:var(--text-primary)]">{stats.pendingRefunds}</div>
+                <div className="text-sm text-[color:var(--text-muted)]">Pending</div>
+              </div>
+            </div>
+          </div>
+          <div className="card card-body">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
+                <CheckCircle size={24} className="text-green-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-[color:var(--text-primary)]">{stats.processedRefunds}</div>
+                <div className="text-sm text-[color:var(--text-muted)]">Processed</div>
+              </div>
+            </div>
+          </div>
+          <div className="card card-body">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                <TrendingUp size={24} className="text-purple-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-[color:var(--text-primary)]">{formatLKR(stats.totalAmount)}</div>
+                <div className="text-sm text-[color:var(--text-muted)]">Total Amount</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && <div className="card card-body text-red-400 text-sm mb-6 border-red-500/20 bg-red-500/5">{error}</div>}
 
@@ -105,29 +162,16 @@ export default function RefundsPage() {
         <div className="card">
           <div className="card-header">
             <div className="flex items-center gap-3">
-              {viewMode === 'orders' ? (
-                <>
-                  <RefreshCw size={20} className="text-[color:var(--text-primary)]" />
-                  <div>
-                    <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Refunded Orders</h2>
-                    <p className="text-sm text-[color:var(--text-muted)] mt-1">Orders with refund status</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <FileText size={20} className="text-[color:var(--text-primary)]" />
-                  <div>
-                    <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Refund Audit Trail</h2>
-                    <p className="text-sm text-[color:var(--text-muted)] mt-1">Detailed refund transaction records</p>
-                  </div>
-                </>
-              )}
+              <RefreshCw size={20} className="text-[color:var(--text-primary)]" />
+              <div>
+                <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Refunded Orders</h2>
+                <p className="text-sm text-[color:var(--text-muted)] mt-1">Orders with refund status</p>
+              </div>
             </div>
           </div>
           <div className="card-body p-0">
             <div className="overflow-x-auto">
-              {viewMode === 'orders' ? (
-                <table className="modern-table">
+              <table className="modern-table">
                   <thead>
                     <tr>
                       <th>Order Details</th>
@@ -224,122 +268,11 @@ export default function RefundsPage() {
                     })}
                   </tbody>
                 </table>
-              ) : (
-                <table className="modern-table">
-                  <thead>
-                    <tr>
-                      <th>Refund ID</th>
-                      <th>Order ID</th>
-                      <th>Method</th>
-                      <th>Status</th>
-                      <th>Amount</th>
-                      <th>Export</th>
-                      <th>Notes</th>
-                      <th>Processed At</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan="8" className="text-center py-8">
-                          <div className="text-[color:var(--text-muted)]">Loading...</div>
-                        </td>
-                      </tr>
-                    ) : auditItems.length === 0 ? (
-                      <tr>
-                        <td colSpan="8" className="text-center py-8">
-                          <div className="text-[color:var(--text-muted)]">No audit records found</div>
-                        </td>
-                      </tr>
-                    ) : auditItems.map(r => {
-                      const getPaymentMethodIcon = (method) => {
-                        switch(method?.toUpperCase()) {
-                          case 'CARD': return <CreditCard size={16} className="text-blue-400" />
-                          case 'BANK': return <DollarSign size={16} className="text-green-400" />
-                          case 'COD': return <Clock size={16} className="text-orange-400" />
-                          default: return <DollarSign size={16} className="text-[color:var(--text-muted)]" />
-                        }
-                      }
-                      
-                      const getAuditStatusColor = (status) => {
-                        switch(status?.toLowerCase()) {
-                          case 'processed': 
-                            return 'text-green-400 bg-green-500/10 border-green-500/20'
-                          case 'failed': 
-                            return 'text-red-400 bg-red-500/10 border-red-500/20'
-                          case 'pending': 
-                            return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
-                          case 'initiated': 
-                            return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
-                          default: 
-                            return 'text-[color:var(--text-muted)] bg-[color:var(--surface-elevated)] border-[color:var(--surface-border)]'
-                        }
-                      }
-                      
-                      return (
-                        <tr key={r._id}>
-                          <td>
-                            <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-                              {r._id?.slice(-8)}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="font-mono text-sm text-[color:var(--text-secondary)]">
-                              #{(r.order?._id || r.order)?.slice(-8)}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="flex items-center gap-2">
-                              {getPaymentMethodIcon(r.method)}
-                              <span className="text-sm font-medium text-[color:var(--text-primary)]">
-                                {String(r.method||'N/A').toUpperCase()}
-                              </span>
-                            </div>
-                          </td>
-                          <td>
-                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getAuditStatusColor(r.status)}`}>
-                              {r.status?.toUpperCase() || 'UNKNOWN'}
-                            </div>
-                          </td>
-                          <td>
-<div className="font-semibold text-lg text-[color:var(--text-primary)]">
-                              {formatLKR(r.amount || 0)}
-                            </div>
-                          </td>
-                          <td>
-                            <button 
-                              onClick={() => handleExportSinglePDF(r._id)}
-                              className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-                              title="Download refund details as PDF"
-                            >
-                              <FileText size={14} />
-                              PDF
-                            </button>
-                          </td>
-                          <td>
-                            <div className="max-w-[200px] text-sm text-[color:var(--text-secondary)] truncate" title={r.notes}>
-                              {r.notes || '—'}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="text-sm text-[color:var(--text-secondary)]">
-                              {r.processedAt ? (
-                                <>
-                                  {new Date(r.processedAt).toLocaleDateString()} {new Date(r.processedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </>
-                              ) : '—'}
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              )}
             </div>
           </div>
         </div>
       </div>
+
     </div>
   )
 }
