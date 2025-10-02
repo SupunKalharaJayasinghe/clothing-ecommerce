@@ -93,8 +93,7 @@ export default function Checkout() {
         }
         document.body.appendChild(form)
         form.submit()
-        // we still clear the cart; PayHere will redirect back to /orders in your return_url
-        dispatch(clearCart())
+        // Do not clear the cart here for CARD; only clear after confirmed payment
         return
       }
 
@@ -143,7 +142,7 @@ export default function Checkout() {
         }
         document.body.appendChild(form)
         form.submit()
-        dispatch(clearCart())
+        // Do not clear the cart here for CARD; only clear after confirmed payment
         return
       }
 
