@@ -95,18 +95,19 @@ status: 'REQUESTED',
 export const updateReturnStatus = catchAsync(async (req, res) => {
   const { id } = req.params
   const { status } = req.body || {}
-  if (!RETURN_STATUSES.includes(String(status))) {
+  const sLower = String(status || '').toLowerCase()
+  if (!RETURN_STATUSES_LOWER.includes(sLower)) {
     throw new ApiError(400, 'Invalid return status')
   }
   const o = await Order.findById(id)
   if (!o || !o.returnRequest?.status) throw new ApiError(404, 'Return not found on order')
-  o.returnRequest.status = status
+  o.returnRequest.status = sLower
   o.returnRequest.updatedAt = new Date()
-  if (status === 'closed') o.returnRequest.closedAt = new Date()
+  if (sLower === 'closed') o.returnRequest.closedAt = new Date()
   await o.save()
   // Reflect in Return collection
-const update = { status: String(status).toUpperCase(), updatedAt: o.returnRequest.updatedAt }
-  if (status === 'closed') update.closedAt = o.returnRequest.closedAt
+  const update = { status: sLower.toUpperCase(), updatedAt: o.returnRequest.updatedAt }
+  if (sLower === 'closed') update.closedAt = o.returnRequest.closedAt
   await Return.findOneAndUpdate(
     { order: o._id },
     { $set: update, $setOnInsert: { order: o._id, requestedAt: o.returnRequest.requestedAt, reason: o.returnRequest.reason, createdBy: 'admin' } },
