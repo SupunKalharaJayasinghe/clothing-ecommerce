@@ -11,17 +11,14 @@ export function buildPayHereCheckout({ order, address, user }) {
     ? 'https://www.payhere.lk/pay/checkout'
     : 'https://sandbox.payhere.lk/pay/checkout'
 
-  const merchant_id = env.PAYHERE_MERCHANT_ID || 'YOUR_MERCHANT_ID'
+  const merchant_id = env.PAYHERE_MERCHANT_ID 
   const amount = Number(order?.totals?.grandTotal || 0).toFixed(2)
   const currency = 'LKR'
   const order_id = String(order?._id || '')
 
   // Build md5sig if we have merchant secret configured
-  let md5sig
-  if (env.PAYHERE_MERCHANT_SECRET) {
-    const secretHash = md5Upper(env.PAYHERE_MERCHANT_SECRET)
-    md5sig = md5Upper(`${merchant_id}${order_id}${amount}${currency}${secretHash}`)
-  }
+  const secretHashed = md5Upper(env.PAYHERE_MERCHANT_SECRET)
+  const hash = md5Upper(`${merchant_id}${order_id}${amount}${currency}${secretHashed}`)
 
   const fullName = (user?.name || '').trim()
   const [first_name = 'Customer', ...rest] = fullName.split(' ').filter(Boolean)
@@ -57,7 +54,7 @@ export function buildPayHereCheckout({ order, address, user }) {
     country: address?.country || ''
   }
 
-  if (md5sig) params.md5sig = md5sig
+
 
   return { action, params, sandbox: !isProd }
 }
