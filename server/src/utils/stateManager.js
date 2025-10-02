@@ -247,6 +247,15 @@ export function getLegacyStatus(orderState, deliveryState, paymentMethod, paymen
   if (orderState === ORDER_STATES.CANCELLED) return 'CANCELLED'
   if (orderState === ORDER_STATES.RETURNED) return 'RETURNED'
 
+  // If not dispatched and payment is successful for online methods, surface as "placed"
+  if (deliveryState === DELIVERY_STATES.NOT_DISPATCHED) {
+    const pm = String(paymentMethod || '')
+    const ps = String(paymentStatus || '')
+    if ((pm === PAYMENT_METHODS.CARD || pm === PAYMENT_METHODS.BANK) && ps === PAYMENT_STATES.PAID) {
+      return 'placed'
+    }
+  }
+
   // If shipped/out, prefer delivery state for summary
   switch (deliveryState) {
     case DELIVERY_STATES.NOT_DISPATCHED:

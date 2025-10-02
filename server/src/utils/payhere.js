@@ -27,10 +27,22 @@ export function buildPayHereCheckout({ order, address, user }) {
   const [first_name = 'Customer', ...rest] = fullName.split(' ').filter(Boolean)
   const last_name = rest.join(' ') || 'User'
 
+  // Helper to append orderId to return/cancel URLs robustly
+  function withOrderId(url) {
+    try {
+      const u = new URL(url)
+      u.searchParams.set('orderId', order_id)
+      return u.toString()
+    } catch {
+      const sep = (url || '').includes('?') ? '&' : '?'
+      return `${url}${sep}orderId=${order_id}`
+    }
+  }
+
   const params = {
     merchant_id,
-    return_url: env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders',
-    cancel_url: env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout',
+    return_url: withOrderId(env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders'),
+    cancel_url: withOrderId(env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout'),
     notify_url: env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook',
     order_id,
     items: `Order ${order_id}`,

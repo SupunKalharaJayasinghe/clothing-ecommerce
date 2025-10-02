@@ -4,6 +4,7 @@ import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import mongoose from 'mongoose'
 import User from '../models/User.js'
+import PaymentIntent from '../models/PaymentIntent.js'
 import { getInitialStates, PAYMENT_METHODS, updateOrderStates, applyStateChanges } from '../../utils/stateManager.js'
 import PaymentTransaction from '../models/PaymentTransaction.js'
 import { env } from '../../config/env.js'
@@ -84,30 +85,26 @@ export const placeOrder = catchAsync(async (req, res) => {
 
   let order
   if (method === 'CARD') {
-    // Do NOT decrement stock yet; create a pre-order awaiting payment
-    order = await Order.create({
+    // For CARD: do not create an Order yet. Create a PaymentIntent snapshot and redirect to gateway.
+    const intent = await PaymentIntent.create({
       user: req.user.sub,
+      method: 'CARD',
+      gateway: 'PAYHERE',
+      status: 'PENDING',
       items: orderItems,
       address: addr,
-      totals,
-      status: legacyStatus, // proper legacy status
-      orderState,
-      deliveryState,
-      statusHistory: [{ status: legacyStatus }],
-      payment
+      totals
     })
-    // Log initial transaction
-    await PaymentTransaction.create({
-      order: order._id,
-      method: 'CARD',
-      action: 'CREATED',
-      status: payment.status,
-      amount: totals.grandTotal,
-      currency: 'LKR',
-      gateway: 'PAYHERE',
-      notes: 'Order created awaiting card payment',
-      createdBy: 'user'
+
+    // Build PayHere checkout using intent id as order_id
+    const userDoc = await User.findById(req.user.sub).select('email name').lean()
+    const payhere = buildPayHereCheckout({
+      order: { _id: intent._id, totals: { grandTotal: totals.grandTotal } },
+      address: addr,
+      user: userDoc
     })
+
+    return res.status(201).json({ ok: true, payhere })
   } else {
     // Atomically reserve stock for non-card methods
     const session = await mongoose.startSession()
