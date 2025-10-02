@@ -25,8 +25,14 @@ export const listRefunds = catchAsync(async (req, res) => {
   if (method && ['COD','CARD','BANK'].includes(String(method))) {
     refundFilters.push({ method })
   }
-  if (status && statusMap[String(status)]) {
-    refundFilters.push({ status: statusMap[String(status)] })
+if (status) {
+    const sUpper = String(status).toUpperCase()
+    const allowed = ['REQUESTED','APPROVED','PROCESSING','PROCESSED','FAILED','CANCELLED']
+    if (allowed.includes(sUpper)) {
+      refundFilters.push({ status: sUpper })
+    } else if (statusMap[String(status)]) {
+      refundFilters.push({ status: statusMap[String(status)] })
+    }
   }
 
   if (q && String(q).trim()) {

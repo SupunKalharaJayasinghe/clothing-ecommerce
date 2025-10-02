@@ -256,11 +256,11 @@ export const forgotPassword = catchAsync(async (req, res) => {
 
   // TODO: send email with link containing `raw` token
   // For dev, return token so you can test
-  res.json({
-    ok: true,
-    message: 'If the account exists, a reset link has been sent.',
-    devToken: raw
-  })
+const response = { ok: true, message: 'If the account exists, a reset link has been sent.' }
+  if (process.env.NODE_ENV !== 'production') {
+    response.devToken = raw
+  }
+  res.json(response)
 })
 
 export const resetPassword = catchAsync(async (req, res) => {

@@ -6,7 +6,6 @@ import { exportReviewsPDF, exportSingleReviewPDF } from '../utils/pdfExport'
 export default function ReviewsPage() {
   const [items, setItems] = useState([])
   const [q, setQ] = useState('')
-  const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -14,7 +13,7 @@ export default function ReviewsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get('/admin/reviews', { params: { q, slug: slug || undefined } })
+      const res = await api.get('/admin/reviews', { params: { q: q || undefined } })
       setItems(res.data.items)
     } catch (e) {
       setError(e.response?.data?.message || e.message)
@@ -67,19 +66,13 @@ export default function ReviewsPage() {
               placeholder="Search reviews..."
               value={q}
               onChange={e=>setQ(e.target.value)}
-              className="input min-w-[200px]"
+              className="input min-w-[120px]"
             />
           </div>
-          <input
-            placeholder="Filter by product slug"
-            value={slug}
-            onChange={e=>setSlug(e.target.value)}
-            className="input min-w-[180px]"
-          />
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
           <button 
             onClick={handleExportAllPDF}
-            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
+            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 whitespace-nowrap disabled:opacity-50"
             disabled={items.length === 0}
             type="button"
           >

@@ -3,6 +3,7 @@ import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
 import { Search, RefreshCw, DollarSign, CreditCard, Clock, CheckCircle, FileText, Download, TrendingUp } from 'lucide-react'
 import { exportRefundsPDF, exportSingleRefundPDF } from '../utils/pdfExport'
+import { refundStatusClass } from '../utils/status'
 
 const methods = ['', 'BANK', 'CARD', 'COD']
 const statuses = ['', 'REQUESTED', 'APPROVED', 'PROCESSING', 'PROCESSED', 'FAILED', 'CANCELLED']
@@ -20,7 +21,7 @@ export default function RefundsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get('/admin/refunds', { params: { q, method: method || undefined, status: status || undefined } })
+      const res = await api.get('/admin/refunds/audits', { params: { q, method: method || undefined, status: status || undefined } })
       setItems(res.data.items)
     } catch (e) {
       // Treat 404/204-like empty responses as "no data" instead of an error banner
@@ -58,7 +59,7 @@ export default function RefundsPage() {
       alert('No refunds to export')
       return
     }
-    exportRefundsPDF(items, 'orders')
+exportRefundsPDF(items, 'refunds')
   }
 
   const handleExportSinglePDF = async (refundId) => {
@@ -205,26 +206,12 @@ export default function RefundsPage() {
                         }
                       }
                       
-                      const getStatusColor = (status) => {
-                        switch(status?.toLowerCase()) {
-                          case 'refunded': 
-                            return 'text-green-400 bg-green-500/10 border-green-500/20'
-                          case 'pending': 
-                            return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
-                          case 'failed': 
-                            return 'text-red-400 bg-red-500/10 border-red-500/20'
-                          case 'initiated': 
-                            return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
-                          default: 
-                            return 'text-[color:var(--text-muted)] bg-[color:var(--surface-elevated)] border-[color:var(--surface-border)]'
-                        }
-                      }
-                      
+const getStatusColor = (status) => refundStatusClass(status)
                       return (
                         <tr key={o._id}>
                           <td>
                             <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-                              #{o._id?.slice(-8)}
+#{(o.order?._id || o._id)?.toString().slice(-8)}
                             </div>
                             <div className="text-xs text-[color:var(--text-muted)] mt-1">
                               {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -232,20 +219,20 @@ export default function RefundsPage() {
                           </td>
                           <td>
                             <div className="flex items-center gap-2">
-                              {getPaymentMethodIcon(o.payment?.method)}
+{getPaymentMethodIcon(o.method)}
                               <span className="text-sm font-medium text-[color:var(--text-primary)]">
-                                {String(o.payment?.method||'N/A').toUpperCase()}
+{String(o.method||'N/A').toUpperCase()}
                               </span>
                             </div>
                           </td>
                           <td>
-                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(o.payment?.status)}`}>
-                              {o.payment?.status?.toUpperCase() || 'UNKNOWN'}
+                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(o.status)}`}>
+{o.status?.toUpperCase() || 'UNKNOWN'}
                             </div>
                           </td>
                           <td>
 <div className="font-semibold text-lg text-[color:var(--text-primary)]">
-                              {formatLKR(o.totals?.grandTotal || 0)}
+{formatLKR(o.amount || 0)}
                             </div>
                           </td>
                           <td>
@@ -260,7 +247,7 @@ export default function RefundsPage() {
                           </td>
                           <td>
                             <div className="text-sm text-[color:var(--text-secondary)]">
-                              {new Date(o.updatedAt).toLocaleDateString()} {new Date(o.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+{new Date(o.updatedAt || o.processedAt || o.createdAt).toLocaleDateString()} {new Date(o.updatedAt || o.processedAt || o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </div>
                           </td>
                         </tr>

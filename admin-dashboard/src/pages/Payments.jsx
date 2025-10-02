@@ -3,14 +3,11 @@ import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
 import { ChevronDown, ChevronRight, Search, CreditCard, DollarSign, CheckCircle, XCircle, Clock, RefreshCw, Download, FileText } from 'lucide-react'
 import { exportPaymentsPDF, exportSinglePaymentPDF } from '../utils/pdfExport'
+import { paymentStatusClass } from '../utils/status'
 
 const methods = ['', 'BANK', 'CARD', 'COD']
-const statusesByMethod = {
-  '': ['', 'pending','authorized','paid','failed','refunded','cod_pending','cod_collected'],
-  COD: ['', 'cod_pending','cod_collected','refunded','failed'],
-  CARD: ['', 'pending','authorized','paid','refunded','failed'],
-  BANK: ['', 'pending','paid','refunded','failed']
-}
+// Align with API enum
+const STATUSES = ['', 'UNPAID','PENDING','AUTHORIZED','PAID','FAILED','REFUND_PENDING','REFUNDED']
 
 export default function PaymentsPage() {
   const [items, setItems] = useState([])
@@ -118,8 +115,8 @@ export default function PaymentsPage() {
           <select value={method} onChange={e=>setMethod(e.target.value)} className="input">
             {methods.map(m => <option key={m} value={m}>{m || 'All methods'}</option>)}
           </select>
-          <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
-            {(statusesByMethod[method] || statusesByMethod['']).map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
+<select value={status} onChange={e=>setStatus(e.target.value)} className="input">
+            {STATUSES.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
           <button 
@@ -178,25 +175,7 @@ export default function PaymentsPage() {
                       }
                     }
                     
-                    const getStatusColor = (status) => {
-                      switch(status?.toLowerCase()) {
-                        case 'paid': 
-                        case 'cod_collected': 
-                          return 'text-green-400 bg-green-500/10 border-green-500/20'
-                        case 'pending': 
-                        case 'cod_pending': 
-                          return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
-                        case 'failed': 
-                          return 'text-red-400 bg-red-500/10 border-red-500/20'
-                        case 'refunded': 
-                          return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
-                        case 'authorized': 
-                          return 'text-purple-400 bg-purple-500/10 border-purple-500/20'
-                        default: 
-                          return 'text-[color:var(--text-muted)] bg-[color:var(--surface-elevated)] border-[color:var(--surface-border)]'
-                      }
-                    }
-                    
+const getStatusColor = (status) => paymentStatusClass(status)
                     return (
                       <React.Fragment key={o._id}>
                         <tr>
@@ -233,7 +212,7 @@ export default function PaymentsPage() {
                               onChange={e => setPaymentStatus(o._id, e.target.value)} 
                               className="text-sm px-3 py-2 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-primary)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 min-w-[120px]"
                             >
-                              {(statusesByMethod[o.payment?.method] || statusesByMethod['']).slice(1).map(s => (
+{STATUSES.slice(1).map(s => (
                                 <option key={s} value={s}>{s.replace('_', ' ').toUpperCase()}</option>
                               ))}
                             </select>

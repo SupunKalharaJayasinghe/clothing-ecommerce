@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { api, fileUrl } from '../utils/http'
 import { Search, Plus, X, RotateCcw, Package, FileText, Eye, CheckCircle, XCircle, Clock, AlertTriangle, Download } from 'lucide-react'
 import { exportReturnsPDF, exportSingleReturnPDF } from '../utils/pdfExport'
+import { returnStatusClass } from '../utils/status'
 
 const statuses = ['', 'requested', 'approved', 'rejected', 'received', 'closed']
 
@@ -26,7 +27,7 @@ export default function RefundsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get('/admin/returns', { params: { q, status: status || undefined } })
+const res = await api.get('/admin/returns/audits', { params: { q, status: status || undefined } })
       setItems(res.data.items)
     } catch (e) {
       setError(e.response?.data?.message || e.message)
@@ -77,12 +78,11 @@ export default function RefundsPage() {
 
   // PDF export functions
   const handleExportAllPDF = () => {
-    const dataToExport = viewMode === 'orders' ? items : auditItems
-    if (dataToExport.length === 0) {
+if (items.length === 0) {
       alert('No returns to export')
       return
     }
-    exportReturnsPDF(dataToExport, viewMode)
+    exportReturnsPDF(items, 'returns')
   }
 
   const handleExportSinglePDF = async (returnId) => {
@@ -174,20 +174,7 @@ export default function RefundsPage() {
                         </td>
                       </tr>
                     ) : items.map(o => {
-                      const getStatusColor = (status) => {
-                        switch(status?.toLowerCase()) {
-                          case 'approved': 
-                          case 'received':
-                          case 'closed':
-                            return 'text-green-400 bg-green-500/10 border-green-500/20'
-                          case 'requested': 
-                            return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
-                          case 'rejected': 
-                            return 'text-red-400 bg-red-500/10 border-red-500/20'
-                          default: 
-                            return 'text-[color:var(--text-muted)] bg-[color:var(--surface-elevated)] border-[color:var(--surface-border)]'
-                        }
-                      }
+const getStatusColor = (status) => returnStatusClass(status)
                       
                       const getStatusIcon = (status) => {
                         switch(status?.toLowerCase()) {
@@ -208,7 +195,7 @@ export default function RefundsPage() {
                         <tr key={o._id}>
                           <td>
                             <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-                              #{o._id?.slice(-8)}
+#{(o.order?._id || o._id)?.toString().slice(-8)}
                             </div>
                             <div className="text-xs text-[color:var(--text-muted)] mt-1">
                               {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -217,30 +204,30 @@ export default function RefundsPage() {
                           <td>
                             <div className="space-y-2">
                               <select 
-                                value={o.returnRequest?.status || ''} 
-                                onChange={e=>updateStatus(o._id, e.target.value)} 
+value={String(o.status || '').toLowerCase() || ''} 
+onChange={e=>updateStatus(o.order?._id || o.order, e.target.value)}
                                 className="text-sm px-3 py-2 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-primary)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 min-w-[120px]"
                               >
                                 {statuses.slice(1).map(s => (
                                   <option key={s} value={s}>{s.toUpperCase()}</option>
                                 ))}
                               </select>
-                              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(o.returnRequest?.status)}`}>
-                                {getStatusIcon(o.returnRequest?.status)}
-                                {o.returnRequest?.status?.toUpperCase() || 'UNKNOWN'}
+                              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(o.status)}`}>
+{getStatusIcon(o.status)}
+{String(o.status || '').toUpperCase() || 'UNKNOWN'}
                               </div>
                             </div>
                           </td>
                           <td>
-                            <div className="max-w-[300px] text-sm text-[color:var(--text-secondary)] truncate" title={o.returnRequest?.reason}>
-                              {o.returnRequest?.reason || '—'}
+                            <div className="max-w-[300px] text-sm text-[color:var(--text-secondary)] truncate" title={o.reason}>
+                              {o.reason || '—'}
                             </div>
                           </td>
                           <td>
                             <div className="text-sm text-[color:var(--text-secondary)]">
-                              {o.returnRequest?.updatedAt ? (
+                              {o.updatedAt ? (
                                 <>
-                                  {new Date(o.returnRequest.updatedAt).toLocaleDateString()} {new Date(o.returnRequest.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                  {new Date(o.updatedAt).toLocaleDateString()} {new Date(o.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                 </>
                               ) : '—'}
                             </div>
@@ -260,8 +247,8 @@ export default function RefundsPage() {
                               className="btn btn-sm inline-flex items-center gap-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-all duration-200"
                               onClick={async () => {
                                 try {
-                                  const res = await api.get('/admin/returns/audits', { params: { q: o._id, limit: 1 } })
-                                  setDetail((res.data.items || [])[0] || null)
+                                  const res = await api.get(`/admin/returns/${o._id}/details`)
+                                  setDetail(res.data.return || null)
                                   setDetailOpen(true)
                                 } catch (e) {
                                   alert(e.response?.data?.message || e.message)

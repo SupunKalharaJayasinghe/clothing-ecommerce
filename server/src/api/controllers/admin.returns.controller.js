@@ -3,14 +3,18 @@ import catchAsync from '../../utils/catchAsync.js'
 import Order from '../models/Order.js'
 import Return from '../models/Return.js'
 
-const RETURN_STATUSES = ['requested','approved','rejected','received','closed']
+const RETURN_STATUSES_LOWER = ['requested','approved','rejected','received','closed']
+const RETURN_STATUSES = ['REQUESTED','APPROVED','REJECTED','RECEIVED','CLOSED']
 
 export const listReturnAudits = catchAsync(async (req, res) => {
   const { q = '', status, page = 1, limit = 20 } = req.query
 
   const filters = []
-  if (status && RETURN_STATUSES.includes(String(status))) {
-    filters.push({ status })
+if (status) {
+    const s = String(status).toUpperCase()
+    if (RETURN_STATUSES.includes(s)) {
+      filters.push({ status: s })
+    }
   }
   if (q && String(q).trim()) {
     const ql = String(q).trim()
@@ -34,7 +38,7 @@ export const listReturns = catchAsync(async (req, res) => {
   const { q = '', status, page = 1, limit = 20 } = req.query
 
   const filters = [{ 'returnRequest.status': { $exists: true } }]
-  if (status && RETURN_STATUSES.includes(String(status))) {
+if (status && RETURN_STATUSES_LOWER.includes(String(status))) {
     filters.push({ 'returnRequest.status': status })
   }
 
@@ -77,7 +81,7 @@ export const initReturn = catchAsync(async (req, res) => {
     { order: o._id },
     {
       order: o._id,
-      status: 'requested',
+status: 'REQUESTED',
       reason: String(reason || '').trim() || undefined,
       requestedAt: o.returnRequest.requestedAt,
       updatedAt: o.returnRequest.updatedAt,
@@ -101,7 +105,7 @@ export const updateReturnStatus = catchAsync(async (req, res) => {
   if (status === 'closed') o.returnRequest.closedAt = new Date()
   await o.save()
   // Reflect in Return collection
-  const update = { status, updatedAt: o.returnRequest.updatedAt }
+const update = { status: String(status).toUpperCase(), updatedAt: o.returnRequest.updatedAt }
   if (status === 'closed') update.closedAt = o.returnRequest.closedAt
   await Return.findOneAndUpdate(
     { order: o._id },
