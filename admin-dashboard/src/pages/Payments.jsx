@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { api } from '../utils/http'
+import { api, fileUrl } from '../utils/http'
 import { formatLKR } from '../utils/currency'
 import { ChevronDown, ChevronRight, Search, CreditCard, DollarSign, CheckCircle, XCircle, Clock, RefreshCw, Download, FileText } from 'lucide-react'
 import { exportPaymentsPDF, exportSinglePaymentPDF } from '../utils/pdfExport'
@@ -252,6 +252,15 @@ export default function PaymentsPage() {
                             </button>
                           </td>
                           <td>
+                            {o.payment?.method === 'BANK' && o.payment?.bank?.slipUrl && (
+                              <a
+                                href={fileUrl(o.payment.bank.slipUrl)}
+                                target="_blank" rel="noreferrer"
+                                className="btn btn-sm inline-flex items-center gap-2 bg-slate-500/20 text-slate-300 border border-slate-500/30 hover:bg-slate-500/30 transition-all duration-200 mr-2"
+                              >
+                                View Bank Slip
+                              </a>
+                            )}
                             {o.payment?.method === 'BANK' && (!o.payment?.bank?.verifiedAt) && (
                               <button
                                 onClick={() => verifyBank(o._id)} 
@@ -302,9 +311,7 @@ export default function PaymentsPage() {
                                                   {tx.status?.toUpperCase()}
                                                 </div>
                                               </td>
-                                              <td className="p-4 text-sm font-semibold text-[color:var(--text-primary)]">
-{tx.amount ? formatLKR(tx.amount) : '—'}
-                                              </td>
+                                              <td className="p-4 text-sm font-semibold text-[color:var(--text-primary)]">{tx.amount ? formatLKR(tx.amount) : '—'}</td>
                                               <td className="p-4 text-sm text-[color:var(--text-secondary)]">{tx.notes || tx.createdBy || '—'}</td>
                                             </tr>
                                           ))}

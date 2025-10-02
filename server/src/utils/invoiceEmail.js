@@ -1,4 +1,5 @@
 import User from '../api/models/User.js'
+import { buildInvoicePDFBuffer } from './invoicePdf.js'
 
 function formatLKR(v) {
   return `Rs. ${Number(v || 0).toLocaleString('en-LK')}`
@@ -97,5 +98,19 @@ export async function sendInvoiceEmail({ order, fetchUserIfMissing = true, user 
   if (!u?.email) return
   const { sendMail } = await import('./mailer.js')
   const { subject, text, html } = buildInvoiceEmail({ order, user: u })
-  await sendMail({ to: u.email, subject, text, html })
+
+  // Generate PDF invoice buffer and attach
+  let attachments
+  try {
+    const pdf = await buildInvoicePDFBuffer({ order, user: u, store: {
+      name: process.env.STORE_NAME,
+      email: process.env.STORE_SUPPORT_EMAIL,
+      phone: process.env.STORE_PHONE,
+      address: process.env.STORE_ADDRESS
+    } })
+    const idShort = String(order?._id || '').slice(-8)
+    attachments = [{ filename: `Invoice-${idShort}.pdf`, content: pdf, contentType: 'application/pdf' }]
+  } catch {}
+
+  await sendMail({ to: u.email, subject, text, html, attachments })
 }
