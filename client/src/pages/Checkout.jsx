@@ -4,7 +4,9 @@ import { useAppDispatch, useAppSelector } from '../app/hooks'
 import api from '../lib/axios'
 import { clearCart } from '../features/cart/cartSlice'
 
-function Price({ v }) { return <span>Rs. {Number(v || 0).toLocaleString()}</span> }
+function Price({ v }) {
+  return <span>Rs. {Number(v || 0).toLocaleString()}</span>
+}
 
 export default function Checkout() {
   const { items } = useAppSelector(s => s.cart)
@@ -13,7 +15,15 @@ export default function Checkout() {
   const navigate = useNavigate()
 
   const [method, setMethod] = useState('COD') // 'COD' | 'CARD' | 'BANK'
-  const [addr, setAddr] = useState({ line1: '', line2: '', city: '', region: '', postalCode: '', country: 'Sri Lanka', phone: '' })
+  const [addr, setAddr] = useState({
+    line1: '',
+    line2: '',
+    city: '',
+    region: '',
+    postalCode: '',
+    country: 'Sri Lanka',
+    phone: '',
+  })
   const [addresses, setAddresses] = useState([])
   const [addressId, setAddressId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -36,7 +46,7 @@ export default function Checkout() {
         const { data } = await api.get('/account/addresses')
         const list = Array.isArray(data.items) ? data.items.slice() : []
         // Sort with default first, then by created order
-        list.sort((a,b) => (b.isDefault === true) - (a.isDefault === true))
+        list.sort((a, b) => (b.isDefault === true) - (a.isDefault === true))
         setAddresses(list)
         const def = list.find(a => a.isDefault) || list[0]
         if (def) setAddressId(def._id)
@@ -52,53 +62,83 @@ export default function Checkout() {
     )
   }
 
+  // --- helper: create & auto-submit a form to PayHere ---
+  function submitGatewayForm(action, fields) {
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = action
+    Object.entries(fields || {}).forEach(([k, v]) => {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = k
+      input.value = String(v ?? '')
+      form.appendChild(input)
+    })
+    document.body.appendChild(form)
+    form.submit()
+  }
+
+  function hasTypedAddressFn(a) {
+    return a.line1.trim() && a.city.trim() && a.country.trim() && a.phone.trim()
+  }
+
   async function place() {
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
     try {
-      const hasTypedAddress = addr.line1.trim() && addr.city.trim() && addr.country.trim() && addr.phone.trim()
+      const hasTypedAddress = hasTypedAddressFn(addr)
+
+      // --- CHANGE: hard guard if neither typed address nor saved one selected ---
+      if (!hasTypedAddress && !addressId) {
+        setError('Please enter a delivery address or select a saved one.')
+        setLoading(false)
+        return
+      }
+
       const payload = {
         method,
         ...(hasTypedAddress
-          ? { address: { ...addr, line1: addr.line1.trim(), city: addr.city.trim(), country: addr.country.trim(), phone: addr.phone.trim() } }
-          : { addressId: addressId || undefined }),
-        items: items.map(i => ({ slug: i.slug, quantity: i.quantity }))
+          ? {
+              address: {
+                ...addr,
+                line1: addr.line1.trim(),
+                city: addr.city.trim(),
+                country: addr.country.trim(),
+                phone: addr.phone.trim(),
+              },
+            }
+          : { addressId }),
+        items: items.map(i => ({ slug: i.slug, quantity: i.quantity })),
       }
+
       // For CARD: request preview first; backend may return requiresConfirmation
       const { data } = await api.post('/orders', payload)
+
       if (method === 'CARD' && data?.requiresConfirmation && data.preview) {
         setPreview(data.preview)
         setLoading(false)
         return
       }
+
       const orderId = data.orderId
 
       // BANK: upload slip immediately if provided
       if (method === 'BANK' && slip) {
         const form = new FormData()
         form.append('slip', slip)
-        await api.post(`/payments/bank/${orderId}/slip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+        await api.post(`/payments/bank/${orderId}/slip`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
       }
 
-      // CARD: if backend returned PayHere form params (sandbox), auto-submit a form
-      if (method === 'CARD' && data.payhere?.action) {
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = data.payhere.action
-        for (const [k, v] of Object.entries(data.payhere.params || {})) {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = k
-          input.value = v
-          form.appendChild(input)
-        }
-        document.body.appendChild(form)
-        form.submit()
-        // we still clear the cart; PayHere will redirect back to /orders in your return_url
+      // --- CHANGE: use backend shape { action, fields } instead of data.payhere.* ---
+      if (method === 'CARD' && data?.action && data?.fields) {
+        submitGatewayForm(data.action, data.fields)
         dispatch(clearCart())
         return
       }
 
-      // If we expected CARD redirect but didn't receive gateway params, show an error (do not navigate)
+      // If we expected CARD redirect but didn't receive gateway params, show an error
       if (method === 'CARD') {
         setError('Unable to initiate card payment. Please try again.')
         setLoading(false)
@@ -116,49 +156,59 @@ export default function Checkout() {
 
   async function confirmPlace() {
     if (!preview) return
-    setLoading(true); setError('')
+    setLoading(true)
+    setError('')
     try {
-      const hasTypedAddress = addr.line1.trim() && addr.city.trim() && addr.country.trim() && addr.phone.trim()
+      const hasTypedAddress = hasTypedAddressFn(addr)
+
+      // --- CHANGE: same guard on confirm path ---
+      if (!hasTypedAddress && !addressId) {
+        setError('Please enter a delivery address or select a saved one.')
+        setLoading(false)
+        return
+      }
+
       const payload = {
         method,
-        confirm: true,
+        confirm: true, // two-step confirm for CARD
         ...(hasTypedAddress
-          ? { address: { ...addr, line1: addr.line1.trim(), city: addr.city.trim(), country: addr.country.trim(), phone: addr.phone.trim() } }
-          : { addressId: addressId || undefined }),
-        items: items.map(i => ({ slug: i.slug, quantity: i.quantity }))
+          ? {
+              address: {
+                ...addr,
+                line1: addr.line1.trim(),
+                city: addr.city.trim(),
+                country: addr.country.trim(),
+                phone: addr.phone.trim(),
+              },
+            }
+          : { addressId }),
+        items: items.map(i => ({ slug: i.slug, quantity: i.quantity })),
       }
+
       const { data } = await api.post('/orders', payload)
       const orderId = data.orderId
 
-      if (method === 'CARD' && data.payhere?.action) {
-        const form = document.createElement('form')
-        form.method = 'POST'
-        form.action = data.payhere.action
-        for (const [k, v] of Object.entries(data.payhere.params || {})) {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = k
-          input.value = v
-          form.appendChild(input)
-        }
-        document.body.appendChild(form)
-        form.submit()
+      // --- CHANGE: use { action, fields } from backend ---
+      if (method === 'CARD' && data?.action && data?.fields) {
+        submitGatewayForm(data.action, data.fields)
         dispatch(clearCart())
         return
       }
 
-      // If we expected CARD redirect but didn't receive gateway params, show an error (do not navigate)
+      // If we expected CARD redirect but didn't receive gateway params, show an error
       if (method === 'CARD') {
         setError('Unable to initiate card payment. Please try again.')
         setLoading(false)
         return
       }
 
-      // BANK: upload slip immediately if provided
+      // BANK: upload slip immediately if provided (confirm path)
       if (method === 'BANK' && slip) {
         const form = new FormData()
         form.append('slip', slip)
-        await api.post(`/payments/bank/${orderId}/slip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+        await api.post(`/payments/bank/${orderId}/slip`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
       }
 
       dispatch(clearCart())
@@ -180,44 +230,90 @@ export default function Checkout() {
         <section className="md:col-span-2 space-y-3">
           <div className="card">
             <div className="card-body">
-            <h2 className="font-semibold mb-2">Delivery address</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className="input" placeholder="Line 1 *" value={addr.line1} onChange={e => setAddr(a => ({ ...a, line1: e.target.value }))} />
-              <input className="input" placeholder="Line 2" value={addr.line2} onChange={e => setAddr(a => ({ ...a, line2: e.target.value }))} />
-              <input className="input" placeholder="City *" value={addr.city} onChange={e => setAddr(a => ({ ...a, city: e.target.value }))} />
-              <input className="input" placeholder="Region" value={addr.region} onChange={e => setAddr(a => ({ ...a, region: e.target.value }))} />
-              <input className="input" placeholder="Postal Code" value={addr.postalCode} onChange={e => setAddr(a => ({ ...a, postalCode: e.target.value }))} />
-              <input className="input" placeholder="Country *" value={addr.country} onChange={e => setAddr(a => ({ ...a, country: e.target.value }))} />
-              <input className="input" placeholder="Phone *" value={addr.phone} onChange={e => setAddr(a => ({ ...a, phone: e.target.value }))} />
-            </div>
+              <h2 className="font-semibold mb-2">Delivery address</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  className="input"
+                  placeholder="Line 1 *"
+                  value={addr.line1}
+                  onChange={e => setAddr(a => ({ ...a, line1: e.target.value }))}
+                />
+                <input
+                  className="input"
+                  placeholder="Line 2"
+                  value={addr.line2}
+                  onChange={e => setAddr(a => ({ ...a, line2: e.target.value }))}
+                />
+                <input
+                  className="input"
+                  placeholder="City *"
+                  value={addr.city}
+                  onChange={e => setAddr(a => ({ ...a, city: e.target.value }))}
+                />
+                <input
+                  className="input"
+                  placeholder="Region"
+                  value={addr.region}
+                  onChange={e => setAddr(a => ({ ...a, region: e.target.value }))}
+                />
+                <input
+                  className="input"
+                  placeholder="Postal Code"
+                  value={addr.postalCode}
+                  onChange={e => setAddr(a => ({ ...a, postalCode: e.target.value }))}
+                />
+                <input
+                  className="input"
+                  placeholder="Country *"
+                  value={addr.country}
+                  onChange={e => setAddr(a => ({ ...a, country: e.target.value }))}
+                />
+                <input
+                  className="input"
+                  placeholder="Phone *"
+                  value={addr.phone}
+                  onChange={e => setAddr(a => ({ ...a, phone: e.target.value }))}
+                />
+              </div>
             </div>
           </div>
 
           <div className="card">
             <div className="card-body">
-            <h2 className="font-semibold mb-2">Payment method</h2>
-            <div className="flex gap-3">
-              {['COD','CARD','BANK'].map(m => (
-                <button
-                  key={m}
-                  className={`btn ${method === m ? 'btn-primary' : 'btn-outline'} px-3 py-1`}
-                  onClick={() => setMethod(m)}
-                >{m}</button>
-              ))}
-            </div>
-
-            {method === 'BANK' && (
-              <div className="mt-3">
-                <label className="text-sm block mb-1">Upload bank slip (image)</label>
-                <input type="file" accept="image/*,application/pdf" onChange={e => setSlip(e.target.files?.[0] || null)} />
-                <p className="text-xs opacity-70 mt-1">You can also upload later from your orders page.</p>
+              <h2 className="font-semibold mb-2">Payment method</h2>
+              <div className="flex gap-3">
+                {['COD', 'CARD', 'BANK'].map(m => (
+                  <button
+                    key={m}
+                    className={`btn ${method === m ? 'btn-primary' : 'btn-outline'} px-3 py-1`}
+                    onClick={() => setMethod(m)}
+                  >
+                    {m}
+                  </button>
+                ))}
               </div>
-            )}
-            {method === 'CARD' && (
-              <p className="text-sm opacity-80 mt-2">
-                You’ll be redirected to the PayHere (sandbox) checkout. Be sure to set your PayHere env values for real payments.
-              </p>
-            )}
+
+              {method === 'BANK' && (
+                <div className="mt-3">
+                  <label className="text-sm block mb-1">Upload bank slip (image or PDF)</label>
+                  {/* CHANGE: label now matches accept list */}
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={e => setSlip(e.target.files?.[0] || null)}
+                  />
+                  <p className="text-xs opacity-70 mt-1">
+                    You can also upload later from your orders page.
+                  </p>
+                </div>
+              )}
+
+              {method === 'CARD' && (
+                <p className="text-sm opacity-80 mt-2">
+                  You’ll be redirected to PayHere (sandbox). Make sure your PayHere env values and
+                  sandbox domains are configured.
+                </p>
+              )}
             </div>
           </div>
 
@@ -234,8 +330,12 @@ export default function Checkout() {
                     <div className="space-y-1">
                       {(preview.items || []).map((it, idx) => (
                         <div key={idx} className="flex justify-between">
-                          <div className="truncate mr-2">{it.name} × {it.quantity}</div>
-                          <div><Price v={(it.price || 0) * (it.quantity || 0)} /></div>
+                          <div className="truncate mr-2">
+                            {it.name} × {it.quantity}
+                          </div>
+                          <div>
+                            <Price v={(it.price || 0) * (it.quantity || 0)} />
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -247,9 +347,22 @@ export default function Checkout() {
                       {preview.address?.phone ? ` — ${preview.address?.phone}` : ''}
                     </div>
                     <div className="mt-3">
-                      <div className="flex justify-between"><span>Subtotal</span><span><Price v={preview.totals?.subtotal} /></span></div>
-                      <div className="flex justify-between"><span>Shipping</span><span>Free</span></div>
-                      <div className="flex justify-between font-semibold mt-1"><span>Total</span><span><Price v={preview.totals?.grandTotal ?? preview.totals?.grand} /></span></div>
+                      <div className="flex justify-between">
+                        <span>Subtotal</span>
+                        <span>
+                          <Price v={preview.totals?.subtotal} />
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Shipping</span>
+                        <span>Free</span>
+                      </div>
+                      <div className="flex justify-between font-semibold mt-1">
+                        <span>Total</span>
+                        <span>
+                          <Price v={preview.totals?.grandTotal ?? preview.totals?.grand} />
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -257,7 +370,11 @@ export default function Checkout() {
                   <button className="btn btn-primary" onClick={confirmPlace} disabled={loading}>
                     {loading ? 'Processing…' : 'Confirm & Pay'}
                   </button>
-                  <button className="btn btn-outline" onClick={() => setPreview(null)} disabled={loading}>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => setPreview(null)}
+                    disabled={loading}
+                  >
                     Cancel
                   </button>
                 </div>
@@ -273,37 +390,59 @@ export default function Checkout() {
         {/* Summary */}
         <aside className="card h-max">
           <div className="card-body">
-          <h2 className="font-semibold mb-3">Order summary</h2>
-          {/* Saved addresses selector */}
-          <div className="mb-3">
-            <label className="text-sm font-medium">Use saved address</label>
-            <select
-              className="mt-1 w-full select"
-              value={addressId}
-              onChange={e => setAddressId(e.target.value)}
-            >
-              <option value="">— None — (fill the form)</option>
-              {addresses.map(a => (
-                <option key={a._id} value={a._id}>
-                  {(a.label || 'Address') + ' — ' + a.line1 + ', ' + a.city}
-                  {a.isDefault ? ' (default)' : ''}
-                </option>
+            <h2 className="font-semibold mb-3">Order summary</h2>
+
+            {/* Saved addresses selector */}
+            <div className="mb-3">
+              <label className="text-sm font-medium">Use saved address</label>
+              <select
+                className="mt-1 w-full select"
+                value={addressId}
+                onChange={e => setAddressId(e.target.value)}
+              >
+                <option value="">— None — (fill the form)</option>
+                {addresses.map(a => (
+                  <option key={a._id} value={a._id}>
+                    {(a.label || 'Address') + ' — ' + a.line1 + ', ' + a.city}
+                    {a.isDefault ? ' (default)' : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs opacity-70 mt-1">
+                If you leave the form empty, we'll use the selected saved address.
+              </p>
+            </div>
+
+            <div className="space-y-2 max-h-[18rem] overflow-auto">
+              {items.map(it => (
+                <div key={it.slug} className="flex justify-between text-sm">
+                  <div className="truncate mr-2">
+                    {it.name} × {it.quantity}
+                  </div>
+                  <div>
+                    <Price v={it.price * it.quantity} />
+                  </div>
+                </div>
               ))}
-            </select>
-            <p className="text-xs opacity-70 mt-1">If you leave the form empty, we'll use the selected saved address.</p>
-          </div>
-          <div className="space-y-2 max-h-[18rem] overflow-auto">
-            {items.map(it => (
-              <div key={it.slug} className="flex justify-between text-sm">
-                <div className="truncate mr-2">{it.name} × {it.quantity}</div>
-                <div><Price v={it.price * it.quantity} /></div>
-              </div>
-            ))}
-          </div>
-          <hr className="my-3" />
-          <div className="flex justify-between text-sm"><span>Subtotal</span><span><Price v={totals.subtotal} /></span></div>
-          <div className="flex justify-between text-sm"><span>Shipping</span><span>Free</span></div>
-          <div className="flex justify-between font-semibold mt-2"><span>Total</span><span><Price v={totals.grand} /></span></div>
+            </div>
+
+            <hr className="my-3" />
+            <div className="flex justify-between text-sm">
+              <span>Subtotal</span>
+              <span>
+                <Price v={totals.subtotal} />
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Shipping</span>
+              <span>Free</span>
+            </div>
+            <div className="flex justify-between font-semibold mt-2">
+              <span>Total</span>
+              <span>
+                <Price v={totals.grand} />
+              </span>
+            </div>
           </div>
         </aside>
       </div>

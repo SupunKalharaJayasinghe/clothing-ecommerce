@@ -1,14 +1,15 @@
 import { Router } from 'express'
-import { requireAuth } from '../../middlewares/auth.js'
-import { uploadReceipt } from '../../middlewares/upload.js'
-import { uploadBankSlip, payhereWebhook } from '../controllers/payment.controller.js'
+import { initPayHere, payHereWebhook, retrievePayment } from '../controllers/payments.controller.js'
 
 const router = Router()
 
-// bank transfer slip upload
-router.post('/bank/:orderId/slip', requireAuth, uploadReceipt.single('slip'), uploadBankSlip)
+// Client calls this to get a ready-to-submit PayHere form
+router.post('/payhere/init', initPayHere)
 
-// PayHere webhook to finalize card payments
-router.post('/payhere/webhook', payhereWebhook)
+// PayHere IPN (Instant Payment Notification) hits this
+router.post('/payhere/webhook', payHereWebhook)
+
+// Optional: Admin/back-office lookup via Payment Retrieval API
+router.post('/payhere/retrieve', retrievePayment)
 
 export default router
