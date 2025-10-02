@@ -203,5 +203,28 @@ export const payhereWebhook = catchAsync(async (req, res) => {
     meta: { raw: req.body, intentId: intent ? String(intent._id) : undefined }
   })
 
-  res.json({ ok: true, paid: true })
+res.json({ ok: true, paid: true })
+})
+
+// GET /api/payments/payhere/status/:id
+// Returns whether a given id corresponds to a paid Order (CARD) or a consumed PaymentIntent
+export const payhereStatus = catchAsync(async (req, res) => {
+  const { id } = req.params
+  if (!id) throw new ApiError(400, 'id required')
+
+  // Try Order first (backward compatibility)
+  let order = await Order.findOne({ _id: id, user: req.user.sub })
+  if (order) {
+    const method = order.payment?.method
+    const paid = String(order.payment?.status || '').toUpperCase() === 'PAID'
+    if (method !== 'CARD') return res.status(400).json({ ok: false, message: 'Not a card order' })
+    return res.json({ ok: true, scope: 'order', paid, orderId: order._id })
+  }
+
+  // Else, check PaymentIntent
+  const intent = await PaymentIntent.findOne({ _id: id, user: req.user.sub })
+  if (!intent) throw new ApiError(404, 'Not found')
+
+  const paid = String(intent.status || '').toUpperCase() === 'PAID'
+  return res.json({ ok: true, scope: 'intent', paid, orderId: intent.order || undefined })
 })

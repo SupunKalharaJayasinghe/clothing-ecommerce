@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useAppSelector } from '../app/hooks'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAppDispatch, useAppSelector } from '../app/hooks'
 import api from '../lib/axios'
 import Price from '../components/ui/Price'
 import Badge from '../components/ui/Badge'
 import Loader from '../components/ui/Loader'
 import { ChevronDown, ChevronUp, Copy } from '../lib/icons'
+import { clearCart } from '../features/cart/cartSlice'
 
 export default function Orders() {
   const { user } = useAppSelector(s => s.auth)
+  const dispatch = useAppDispatch()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [orders, setOrders] = useState([])
@@ -35,6 +39,33 @@ export default function Orders() {
       }
     })()
   }, [])
+
+  // If redirected back from PayHere with ?orderId, verify payment success and clear cart
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const id = params.get('orderId')
+    if (!id) return
+    (async () => {
+      try {
+        const { data } = await api.get(`/payments/payhere/status/${encodeURIComponent(id)}`)
+        if (data?.ok && data.paid) {
+          dispatch(clearCart())
+          // Refresh orders to include the newly created order
+          try {
+            const { data: d2 } = await api.get('/orders/me')
+            setOrders(d2.items || [])
+          } catch {}
+        }
+      } catch (e) {
+        // Silent: if status check fails, leave cart as-is
+      } finally {
+        // Clean the URL to remove the query param
+        const url = new URL(window.location.href)
+        url.searchParams.delete('orderId')
+        navigate(url.pathname + url.search, { replace: true })
+      }
+    })()
+  }, [location.search, dispatch, navigate])
 
   // Handy formatter for date/time
   const formatDate = useMemo(() => (iso) => {
