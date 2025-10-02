@@ -30,10 +30,10 @@ export function getTransporter() {
   return transporter
 }
 
-export async function sendMail({ to, subject, text, html }) {
+export async function sendMail({ to, subject, text, html, attachments }) {
   const t = getTransporter()
   const from = FROM_EMAIL || SMTP_USER
-  const info = await t.sendMail({ from, to, subject, text, html })
+  const info = await t.sendMail({ from, to, subject, text, html, attachments })
   // In dev fallback (jsonTransport), print a helpful log so you can copy the OTP
   if (t.options && (t.options.jsonTransport || t.options.streamTransport)) {
     const raw = typeof info.message === 'string' ? info.message : info.message?.toString?.()

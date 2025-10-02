@@ -8,6 +8,7 @@ import { env } from '../../config/env.js'
 import { PAYMENT_STATES, updateOrderStates, applyStateChanges, ORDER_STATES, getInitialStates } from '../../utils/stateManager.js'
 import PaymentTransaction from '../models/PaymentTransaction.js'
 import PaymentIntent from '../models/PaymentIntent.js'
+import { sendInvoiceEmail } from '../../utils/invoiceEmail.js'
 
 // BANK: POST /api/payments/bank/:orderId/slip
 export const uploadBankSlip = catchAsync(async (req, res) => {
@@ -202,6 +203,9 @@ export const payhereWebhook = catchAsync(async (req, res) => {
     notes: intent ? 'Card payment captured via webhook (intent)' : 'Card payment captured via webhook',
     meta: { raw: req.body, intentId: intent ? String(intent._id) : undefined }
   })
+
+  // Email invoice to customer after successful card payment
+  try { await sendInvoiceEmail({ order }) } catch (e) { /* non-blocking */ }
 
 res.json({ ok: true, paid: true })
 })

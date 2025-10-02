@@ -10,6 +10,7 @@ import PaymentTransaction from '../models/PaymentTransaction.js'
 import { env } from '../../config/env.js'
 import { sendMail } from '../../utils/mailer.js'
 import { buildPayHereCheckout } from '../../utils/payhere.js'
+import { sendInvoiceEmail } from '../../utils/invoiceEmail.js'
 
 function calcTotals(items) {
   const subtotal = items.reduce((s, it) => s + (it.price * it.quantity), 0)
@@ -145,6 +146,10 @@ export const placeOrder = catchAsync(async (req, res) => {
       notes: method === 'COD' ? 'Order created (COD)' : 'Order created awaiting bank slip',
       createdBy: 'user'
     })
+    // Send invoice to user email for COD orders immediately
+    if (method === 'COD') {
+      try { await sendInvoiceEmail({ order }) } catch (e) { /* non-blocking */ }
+    }
   }
 
   // For CARD: return minimal payload you can use to build a PayHere form client-side (sandbox)

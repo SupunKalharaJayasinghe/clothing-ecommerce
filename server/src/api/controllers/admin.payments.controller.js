@@ -4,6 +4,7 @@ import Order from '../models/Order.js'
 import { PAYMENT_STATES, updateOrderStates, applyStateChanges } from '../../utils/stateManager.js'
 import PaymentTransaction from '../models/PaymentTransaction.js'
 import Refund from '../models/Refund.js'
+import { sendInvoiceEmail } from '../../utils/invoiceEmail.js'
 
 const PAYMENT_STATUSES = ['UNPAID','PENDING','AUTHORIZED','PAID','FAILED','REFUND_PENDING','REFUNDED']
 
@@ -62,6 +63,9 @@ export const verifyBankSlip = catchAsync(async (req, res) => {
     notes: 'Bank slip verified by admin',
     createdBy: 'admin'
   })
+
+  // Email invoice to customer after bank payment verification
+  try { await sendInvoiceEmail({ order: o }) } catch (e) { /* non-blocking */ }
 
   res.json({ ok: true, order: o })
 })
