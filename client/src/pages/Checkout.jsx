@@ -87,7 +87,8 @@ export default function Checkout() {
         for (const [k, v] of Object.entries(data.payhere.params || {})) {
           const input = document.createElement('input')
           input.type = 'hidden'
-          input.name = k
+    
+          input.name = k === 'md5sig' ? 'hash' : k
           input.value = v
           form.appendChild(input)
         }
@@ -136,7 +137,7 @@ export default function Checkout() {
         for (const [k, v] of Object.entries(data.payhere.params || {})) {
           const input = document.createElement('input')
           input.type = 'hidden'
-          input.name = k
+          input.name = k === 'md5sig' ? 'hash' : k
           input.value = v
           form.appendChild(input)
         }
