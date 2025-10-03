@@ -385,7 +385,7 @@ export default function OrdersPage() {
                         <td>
                           <button 
                             onClick={() => handleExportSinglePDF(o._id)}
-                            className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                            className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 whitespace-nowrap"
                             title="Download order details as PDF"
                           >
                             <FileText size={14} />
@@ -394,7 +394,7 @@ export default function OrdersPage() {
                         </td>
                         <td>
                           <button 
-                            className="btn btn-sm inline-flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all duration-200" 
+                            className="btn btn-sm inline-flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all duration-200 whitespace-nowrap" 
                             title="Delete order" 
                             onClick={() => deleteOrder(o._id)}
                           >

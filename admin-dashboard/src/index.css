@@ -723,6 +723,12 @@ body {
   padding: 0.2rem 0.5rem;
 }
 
+/* Prevent button labels from wrapping in tables */
+.modern-table button,
+.modern-table .btn {
+  white-space: nowrap;
+}
+
 /* Prevent horizontal overflow while allowing vertical scrolling */
 body, html {
   overflow-x: hidden; /* prevent horizontal scroll only */
