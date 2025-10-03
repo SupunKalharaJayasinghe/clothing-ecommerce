@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
 import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon, Download, FileText } from 'lucide-react'
@@ -279,8 +279,6 @@ export default function OrdersPage() {
                     const pay = String(o.payment?.status || '').toUpperCase()
                     const state = String(o.orderState || o.status || '').toUpperCase()
                     const total = Number(o.totals?.grandTotal ?? 0)
-                    const canChangeStatus = (method === 'COD') || (pay === 'PAID')
-                    const lockedSelect = state === 'CANCELLED' || state === 'DELIVERED' || state === 'RETURNED'
                     
                     const getPaymentStatusColor = (status) => {
                       switch(status) {
@@ -318,44 +316,24 @@ export default function OrdersPage() {
                         <td>
                           <div className="space-y-2">
                             <select 
-                              className="text-sm px-3 py-2 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-primary)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 min-w-[120px] disabled:opacity-60 disabled:cursor-not-allowed"
+                              className="text-sm px-3 py-2 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-primary)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 min-w-[120px]" 
                               value={state === 'PACKING' ? 'packed' : state === 'SHIPPED' ? 'dispatched' : 'placed'} 
-                              onChange={e=> canChangeStatus ? setStatusInline(o._id, e.target.value) : null}
-                              disabled={!canChangeStatus || lockedSelect}
-                              title={!canChangeStatus ? 'Only PAID orders can be updated (COD exempt)' : lockedSelect ? 'Status locked for delivered/cancelled orders' : 'Change order status'}
+                              onChange={e=>setStatusInline(o._id, e.target.value)}
                             >
                               <option value="placed">Placed</option>
                               <option value="packed">Packed</option>
                               <option value="dispatched">Handover</option>
                             </select>
-                            {!canChangeStatus && (
-                              <div className="text-[11px] text-[color:var(--text-muted)]">Status changes allowed only for <span className="font-medium">PAID</span> orders. COD is exempt.</div>
-                            )}
                             <div className="flex items-center gap-1">
-                              {state === 'CANCELLED' ? (
-                                <>
-                                  <X size={14} className="text-red-400" />
-                                  <span className="text-xs text-red-400 font-medium">CANCELLED</span>
-                                </>
-                              ) : state === 'DELIVERED' ? (
-                                <>
-                                  <PackageCheck size={14} className="text-green-400" />
-                                  <span className="text-xs text-green-400 font-medium">DELIVERED</span>
-                                </>
-                              ) : state === 'RETURNED' ? (
-                                <>
-                                  <Trash2 size={14} className="text-red-400" />
-                                  <span className="text-xs text-red-400 font-medium">RETURNED</span>
-                                </>
-                              ) : state === 'PACKING' ? (
+                              {state === 'PACKING' || state === 'packed' ? (
                                 <>
                                   <PackageCheck size={14} className="text-yellow-400" />
                                   <span className="text-xs text-yellow-400 font-medium">PACKED</span>
                                 </>
-                              ) : state === 'SHIPPED' || state === 'OUT_FOR_DELIVERY' ? (
+                              ) : state === 'SHIPPED' || state === 'dispatched' ? (
                                 <>
                                   <TruckIcon size={14} className="text-blue-400" />
-                                  <span className="text-xs text-blue-400 font-medium">{state === 'OUT_FOR_DELIVERY' ? 'OUT FOR DELIVERY' : 'DISPATCHED'}</span>
+                                  <span className="text-xs text-blue-400 font-medium">DISPATCHED</span>
                                 </>
                               ) : (
                                 <>
@@ -551,7 +529,7 @@ export default function OrdersPage() {
               <div>
                 <label className="label">Delivery person</label>
                 <select className="input w-full" value={assignAgent} onChange={e=>setAssignAgent(e.target.value)}>
-                  <option value="">â€” Select delivery person â€”</option>
+                  <option value="">— Select delivery person —</option>
                   {agents.map(a => (
                     <option key={a.id} value={a.id}>{a.fullName || a.phone || a.email || a.id}</option>
                   ))}
@@ -568,5 +546,3 @@ export default function OrdersPage() {
     </div>
   )
 }
-
-

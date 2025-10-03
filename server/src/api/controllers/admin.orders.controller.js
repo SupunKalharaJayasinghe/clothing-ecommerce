@@ -175,6 +175,16 @@ export const updateStatus = catchAsync(async (req, res) => {
     if (normPayVal && String(o.payment.status || '') !== normPayVal) o.payment.status = normPayVal
   }
   
+  // Guard: Only allow status changes for PAID orders (non-COD). COD is exempt.
+  {
+    const methodNow = String(o.payment?.method || '').toUpperCase()
+    const paidNow = String(o.payment?.status || '').toUpperCase() === 'PAID'
+    const isCOD = methodNow === 'COD'
+    if (!isCOD && !paidNow) {
+      throw new ApiError(400, 'Status updates are allowed only for paid orders. COD orders are exempt.')
+    }
+  }
+  
   // Map admin-friendly aliases to canonical states for the requested change
   const aliasMap = new Map([
     ['placed', ORDER_STATES.CONFIRMED],

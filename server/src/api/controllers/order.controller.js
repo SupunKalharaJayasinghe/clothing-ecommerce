@@ -180,9 +180,16 @@ export const cancelMyOrder = catchAsync(async (req, res) => {
   const o = await Order.findOne({ _id: id, user: req.user.sub })
   if (!o) throw new ApiError(404, 'Order not found')
 
-  // Allow cancellation only before dispatch
+  // Enforce: only before handover/dispatch
   if (String(o.deliveryState) !== 'NOT_DISPATCHED') {
     throw new ApiError(400, 'Cannot cancel after dispatch; request return process')
+  }
+
+  // Enforce: within 2 days of placing
+  const placedAt = new Date(o.createdAt || Date.now())
+  const hoursSince = Math.floor((Date.now() - placedAt.getTime()) / (3600 * 1000))
+  if (hoursSince > 48) {
+    throw new ApiError(400, 'Orders can be cancelled within 2 days of placing')
   }
 
   // Use state manager for consistent state updates
@@ -194,6 +201,34 @@ export const cancelMyOrder = catchAsync(async (req, res) => {
   o.deliveryMeta.reasons = o.deliveryMeta.reasons || {}
   if (reason) o.deliveryMeta.reasons.cancelled = { code: undefined, detail: String(reason) }
   await o.save()
+
+  // Restock items (they were reserved on order placement for non-card methods)
+  try {
+    const ops = (o.items || []).map(it => ({
+      updateOne: {
+        filter: { _id: it.product },
+        update: { $inc: { stock: it.quantity } }
+      }
+    }))
+    if (ops.length) {
+      const { default: ProductModel } = await import('../models/Product.js')
+      await ProductModel.bulkWrite(ops)
+    }
+  } catch {}
+
+  // Log payment transaction for auditing
+  try {
+    await PaymentTransaction.create({
+      order: o._id,
+      method: o.payment?.method || 'COD',
+      action: 'CANCELLED',
+      status: 'CANCELLED',
+      amount: o.totals?.grandTotal || 0,
+      currency: 'LKR',
+      notes: reason ? `User cancelled: ${reason}` : 'User cancelled',
+      createdBy: 'user'
+    })
+  } catch {}
 
   res.json({ ok: true, orderId: o._id, orderState: o.orderState })
 })

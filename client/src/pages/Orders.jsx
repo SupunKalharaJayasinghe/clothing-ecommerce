@@ -24,6 +24,11 @@ export default function Orders() {
   const [retSel, setRetSel] = useState([]) // [slug]
   const [retSubmitting, setRetSubmitting] = useState(false)
   const [retFiles, setRetFiles] = useState([])
+  // Cancel order modal
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelFor, setCancelFor] = useState(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelSubmitting, setCancelSubmitting] = useState(false)
 
   // route-level protection handles redirects; no page-level redirects needed
 
@@ -42,6 +47,42 @@ export default function Orders() {
       }
     })()
   }, [])
+
+  function eligibleForCancel(o) {
+    const notDispatched = (String(o.deliveryState || '').toUpperCase() === 'NOT_DISPATCHED')
+    const notCancelled = (String(o.orderState || o.status || '').toUpperCase() !== 'CANCELLED')
+    let within48h = false
+    try {
+      const placed = new Date(o.createdAt)
+      within48h = (Date.now() - placed.getTime()) <= (48 * 3600 * 1000)
+    } catch { within48h = false }
+    return notDispatched && within48h && notCancelled
+  }
+
+  function openCancelModal(o) {
+    setCancelFor(o)
+    setCancelReason('')
+    setCancelOpen(true)
+  }
+
+  async function submitCancel() {
+    if (!cancelFor) return
+    try {
+      setCancelSubmitting(true)
+      await api.patch(`/orders/${cancelFor._id}/cancel`, { reason: cancelReason || undefined })
+      setCancelOpen(false)
+      setCancelFor(null)
+      // Refresh orders and keep filtering out return-requested orders
+      const { data } = await api.get('/orders/me')
+      const items = data.items || []
+      const filtered = items.filter(o => !o?.returnRequest?.status)
+      setOrders(filtered)
+    } catch (e) {
+      alert(e.response?.data?.message || e.message)
+    } finally {
+      setCancelSubmitting(false)
+    }
+  }
 
   // If redirected back from PayHere with ?orderId, verify payment success and clear cart
   useEffect(() => {
@@ -196,6 +237,35 @@ export default function Orders() {
       {orders.length > 0 && (
         <p className="text-sm text-[--color-muted] mt-1">Status guide: <span className="font-medium">Confirmed</span> → <span className="font-medium">Packing</span> → <span className="font-medium">Shipped</span> → <span className="font-medium">Out for delivery</span> → <span className="font-medium">Delivered</span>. Payment badges show the latest payment state.</p>
       )}
+
+      {/* Cancel Order Modal */}
+      {cancelOpen && cancelFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80" onClick={() => setCancelOpen(false)}></div>
+          <div className="relative modal-solid rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-[--color-border]">
+            <div className="px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold">Cancel Order</h2>
+              <div className="text-xs opacity-70">Order #{cancelFor._id}</div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="text-sm opacity-80">
+                <div><span className="font-medium">Placed:</span> {formatDate(cancelFor.createdAt)}</div>
+                <div className="mt-1"><span className="font-medium">Rule:</span> Cancel within 2 days and before dispatch.</div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Reason (optional)</label>
+                <textarea rows={3} className="textarea w-full" value={cancelReason} onChange={e=>setCancelReason(e.target.value)} placeholder="Tell us why you're cancelling" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button className="btn btn-ghost" onClick={() => setCancelOpen(false)} disabled={cancelSubmitting}>Keep Order</button>
+              <button className="btn btn-primary" onClick={submitCancel} disabled={cancelSubmitting}>
+                {cancelSubmitting ? 'Cancelling…' : 'Confirm Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {orders.length === 0 && (
         <div className="mt-4 max-w-md">
           <div className="card card-body space-y-2 text-center">
@@ -325,6 +395,13 @@ export default function Orders() {
                   </div>
                 </div>
 
+                {eligibleForCancel(o) && (
+                  <div>
+                    <button className="btn btn-outline w-full" onClick={() => openCancelModal(o)}>Cancel Order</button>
+                    <div className="text-[11px] opacity-70 mt-1">You can cancel within 2 days and before dispatch.</div>
+                  </div>
+                )}
+
                 {o.returnRequest?.status && (
                   <div>
                     <h3 className="font-semibold mb-1">Return</h3>
@@ -385,6 +462,12 @@ export default function Orders() {
                     <div className="flex justify-between font-semibold"><span>Total</span><span className="whitespace-nowrap"><Price price={o.totals?.grandTotal} /></span></div>
                   </div>
                 </div>
+                {eligibleForCancel(o) && (
+                  <div>
+                    <button className="btn btn-outline w-full" onClick={() => openCancelModal(o)}>Cancel Order</button>
+                    <div className="text-[11px] opacity-70 mt-1">You can cancel within 2 days and before dispatch.</div>
+                  </div>
+                )}
                 {o.returnRequest?.status && (
                   <div>
                     <h3 className="font-semibold mb-1">Return</h3>
