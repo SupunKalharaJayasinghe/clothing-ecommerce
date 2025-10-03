@@ -4,12 +4,11 @@ import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import mongoose from 'mongoose'
 import crypto from 'crypto'
+import { env } from '../../config/env.js'
 import { PAYMENT_STATES, updateOrderStates, applyStateChanges, ORDER_STATES, getInitialStates } from '../../utils/stateManager.js'
 import PaymentTransaction from '../models/PaymentTransaction.js'
 import PaymentIntent from '../models/PaymentIntent.js'
 import { sendInvoiceEmail } from '../../utils/invoiceEmail.js'
-import { sendMail } from '../../utils/mailer.js'
-import User from '../models/User.js'
 
 // BANK: POST /api/payments/bank/:orderId/slip
 export const uploadBankSlip = catchAsync(async (req, res) => {
@@ -47,57 +46,6 @@ export const uploadBankSlip = catchAsync(async (req, res) => {
     notes: 'Bank slip uploaded',
     meta: { filename: req.file.filename, slipUrl: order.payment.bank.slipUrl, verifyBy }
   })
-
-  // Send acknowledgment email to customer
-  try {
-    const u = await User.findById(order.user).select('email firstName lastName name').lean()
-    if (u?.email) {
-      const firstName = u.firstName || (u.name ? String(u.name).split(' ')[0] : 'Customer')
-      const orderNumber = String(order._id)
-      const idShort = orderNumber.slice(-8)
-      const storeName = process.env.STORE_NAME || 'D&G Clothing'
-      const storePhone = process.env.STORE_PHONE || ''
-      const storeSupportEmail = process.env.STORE_SUPPORT_EMAIL || ''
-      const appUrl = process.env.CORS_ORIGIN || 'http://localhost:5173'
-      const viewOrderUrl = `${appUrl}/orders`
-      const paymentRef = order.payment.bank.slipUrl
-
-      const subject = `Bank Slip Received — Awaiting Approval (Order #${idShort})`
-      const text = [
-        `Hello ${firstName},`,
-        `We have received your bank payment slip for Order #${idShort}.`,
-        `Our admin team is currently reviewing and verifying your payment details.`,
-        `Status: Waiting for Admin Approval`,
-        `Estimated Time: within 24 hours`,
-        `You will receive another update once the payment is confirmed and your order moves into Preparing status.`,
-        `Uploaded Reference: ${paymentRef}`,
-        `Order Total: LKR ${Number(order.totals?.grandTotal||0).toLocaleString('en-LK')}`,
-        `View Your Order: ${viewOrderUrl}`,
-        `Thank you for shopping with ${storeName}`,
-        `${storeName} Team`,
-        `Hotline: ${storePhone} | ${storeSupportEmail}`
-      ].join('\n')
-
-      const html = `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
-          <h2 style="margin:0 0 6px">Bank Slip Received — Awaiting Approval (Order #${idShort})</h2>
-          <p>Hello ${firstName},</p>
-          <p>📄 We have received your bank payment slip for Order #${idShort}.<br/>
-          Our admin team is currently reviewing and verifying your payment details.</p>
-          <p><strong>🔎 Status:</strong> Waiting for Admin Approval<br/>
-          <strong>⏱ Estimated Time:</strong> within 24 hours</p>
-          <p>You will receive another update once the payment is confirmed and your order moves into <em>Preparing</em> status.</p>
-          <p><strong>Uploaded Reference:</strong> ${paymentRef}<br/>
-          <strong>Order Total:</strong> LKR ${Number(order.totals?.grandTotal||0).toLocaleString('en-LK')}</p>
-          <p><a href="${viewOrderUrl}" style="display:inline-block;padding:8px 12px;background:#111;color:#fff;text-decoration:none;border-radius:4px">👉 View Your Order</a></p>
-          <p>Thank you for shopping with ${storeName} ❤️</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
-          <p style="color:#555">—<br/>${storeName} Team<br/>Hotline: ${storePhone} | ${storeSupportEmail}</p>
-        </div>
-      `
-      await sendMail({ to: u.email, subject, text, html })
-    }
-  } catch {}
 
   res.json({ ok: true, orderId: order._id, slipUrl: order.payment.bank.slipUrl, verifyBy })
 })

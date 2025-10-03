@@ -62,15 +62,9 @@ function fileFilter(_req, file, cb) {
   cb(ok ? null : new Error('Unsupported file type'), ok)
 }
 
-// For bank receipts, only allow images as requested (no PDFs)
-function imageOnlyFilter(_req, file, cb) {
-  const ok = /^(image\/(png|jpe?g|webp|gif))$/i.test(file.mimetype)
-  cb(ok ? null : new Error('Only image files are allowed'), ok)
-}
-
 export const uploadReceipt = multer({
   storage: storageReceipts,
-  fileFilter: imageOnlyFilter,
+  fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 })
 

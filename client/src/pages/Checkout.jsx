@@ -207,22 +207,10 @@ export default function Checkout() {
             </div>
 
             {method === 'BANK' && (
-              <div className="mt-3 space-y-3">
-                <div className="p-3 rounded border bg-[--color-surface]">
-                  <div className="font-medium mb-2">Bank Account Details for Direct Transfer</div>
-                  <div className="text-sm space-y-1">
-                    <div><strong>Bank Name:</strong> People’s Bank</div>
-                    <div><strong>Branch:</strong> Colombo Main</div>
-                    <div><strong>Account Name:</strong> D&G Chothig Enterprises (Pvt) Ltd</div>
-                    <div><strong>Account Number:</strong> 8005024137</div>
-                    <div><strong>Reference:</strong> Use your Order Number (e.g., #12345) as the payment reference</div>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm block mb-1">Upload bank slip (image only)</label>
-                  <input type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} />
-                  <p className="text-xs opacity-70 mt-1">Supported: JPG, PNG, WEBP, GIF. Max 5MB. You can also upload later from your orders page.</p>
-                </div>
+              <div className="mt-3">
+                <label className="text-sm block mb-1">Upload bank slip (image)</label>
+                <input type="file" accept="image/*,application/pdf" onChange={e => setSlip(e.target.files?.[0] || null)} />
+                <p className="text-xs opacity-70 mt-1">You can also upload later from your orders page.</p>
               </div>
             )}
             {method === 'CARD' && (
