@@ -33,19 +33,26 @@ export default function Returns() {
   const loadData = async () => {
     try {
       setLoading(true)
-      // Load orders with return requests
+      // Load orders and refunds
       const ordersRes = await api.get('/orders/me')
-      const ordersWithReturns = ordersRes.data.items.filter(order => order.returnRequest?.status)
-      setOrders(ordersWithReturns)
-      
-      // Load refund information (if available)
+      const allOrders = ordersRes.data.items || []
+      let refundItems = []
       try {
         const refundsRes = await api.get('/refunds/me')
-        setRefunds(refundsRes.data.items || [])
+        refundItems = refundsRes.data.items || []
       } catch (e) {
         // Refunds endpoint might not exist for customers
+        refundItems = []
         console.log('Refunds endpoint not available for customers')
       }
+
+      // Build Returns list excluding orders that already have a refund
+      const refundedOrderIds = new Set(refundItems.map(r => String(r.order?._id || r.order || '')))
+      const ordersWithReturns = allOrders.filter(o => o.returnRequest?.status)
+      const returnsWithoutRefund = ordersWithReturns.filter(o => !refundedOrderIds.has(String(o._id)))
+      
+      setOrders(returnsWithoutRefund)
+      setRefunds(refundItems)
     } catch (e) {
       setError(e.response?.data?.message || e.message)
     } finally {

@@ -31,7 +31,10 @@ export default function Orders() {
     (async () => {
       try {
         const { data } = await api.get('/orders/me')
-        setOrders(data.items || [])
+        const items = data.items || []
+        // Hide orders that already have a return request; they will be shown under Returns page
+        const filtered = items.filter(o => !o?.returnRequest?.status)
+        setOrders(filtered)
       } catch (e) {
         setError(e.response?.data?.message || e.message)
       } finally {
@@ -53,7 +56,9 @@ export default function Orders() {
           // Refresh orders to include the newly created order
           try {
             const { data: d2 } = await api.get('/orders/me')
-            setOrders(d2.items || [])
+            const items2 = d2.items || []
+            const filtered2 = items2.filter(o => !o?.returnRequest?.status)
+            setOrders(filtered2)
           } catch {}
         }
       } catch (e) {
@@ -80,7 +85,9 @@ export default function Orders() {
       form.append('slip', file)
       await api.post(`/payments/bank/${orderId}/slip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
       const { data } = await api.get('/orders/me')
-      setOrders(data.items || [])
+      const items = data.items || []
+      const filtered = items.filter(o => !o?.returnRequest?.status)
+      setOrders(filtered)
     } catch (e) {
       setError(e.response?.data?.message || e.message)
     } finally {
@@ -170,7 +177,9 @@ export default function Orders() {
       setRetReason('')
       setRetFiles([])
       const { data } = await api.get('/orders/me')
-      setOrders(data.items || [])
+      const items = data.items || []
+      const filtered = items.filter(o => !o?.returnRequest?.status)
+      setOrders(filtered)
     } catch (e) {
       alert(e.response?.data?.message || e.message)
     } finally {
