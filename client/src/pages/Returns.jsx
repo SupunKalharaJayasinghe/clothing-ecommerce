@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppSelector } from '../app/hooks'
 import api from '../lib/axios'
 import Price from '../components/ui/Price'
@@ -14,6 +14,17 @@ export default function Returns() {
   const [orders, setOrders] = useState([])
   const [refunds, setRefunds] = useState([])
   const [activeTab, setActiveTab] = useState('returns')
+  // Refund request modal state
+  const [refundModalOpen, setRefundModalOpen] = useState(false)
+  const [refundOrder, setRefundOrder] = useState(null)
+  const [refundAmount, setRefundAmount] = useState('')
+  const [refundReason, setRefundReason] = useState('')
+  const [refundMethod, setRefundMethod] = useState('ORIGINAL_PAYMENT')
+  const [submittingRefund, setSubmittingRefund] = useState(false)
+  const [bankAccountName, setBankAccountName] = useState('')
+  const [bankAccountNumber, setBankAccountNumber] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [bankRouting, setBankRouting] = useState('')
 
   useEffect(() => {
     loadData()
@@ -39,6 +50,71 @@ export default function Returns() {
       setError(e.response?.data?.message || e.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Map of orderId -> refund (to avoid duplicate requests)
+  const refundByOrderId = useMemo(() => {
+    const map = new Map()
+    for (const r of refunds) {
+      const key = String(r.order?._id || r.order || '')
+      if (key) map.set(key, r)
+    }
+    return map
+  }, [refunds])
+
+  const canRequestRefund = (order) => {
+    if (!order) return false
+    const status = String(order.returnRequest?.status || '').toLowerCase()
+    const approved = ['approved', 'received', 'closed'].includes(status)
+    const paid = String(order.payment?.status || '').toUpperCase() === 'PAID'
+    const exists = refundByOrderId.has(String(order._id))
+    return approved && paid && !exists
+  }
+
+  const openRefundModal = (order) => {
+    const max = Number(order?.totals?.grandTotal || 0)
+    setRefundOrder(order)
+    setRefundAmount(String(max))
+    setRefundReason(order?.returnRequest?.reason || '')
+    setRefundMethod('ORIGINAL_PAYMENT')
+    setBankAccountName('')
+    setBankAccountNumber('')
+    setBankName('')
+    setBankRouting('')
+    setRefundModalOpen(true)
+  }
+
+  const submitRefundRequest = async (e) => {
+    e?.preventDefault?.()
+    if (!refundOrder) return
+    const amountNum = Number(refundAmount)
+    if (!Number.isFinite(amountNum) || amountNum < 0) {
+      alert('Please enter a valid amount')
+      return
+    }
+    setSubmittingRefund(true)
+    try {
+      await api.post('/refunds/request', {
+        orderId: refundOrder._id,
+        amount: amountNum,
+        reason: refundReason,
+        refundMethod,
+        bankDetails: refundMethod === 'BANK_TRANSFER' ? {
+          accountName: bankAccountName || undefined,
+          accountNumber: bankAccountNumber || undefined,
+          bankName: bankName || undefined,
+          routingNumber: bankRouting || undefined
+        } : undefined
+      })
+      setRefundModalOpen(false)
+      setRefundOrder(null)
+      await loadData()
+      setActiveTab('refunds')
+    } catch (err) {
+      alert(err?.response?.data?.message || err?.message || 'Failed to request refund')
+    } finally {
+      setSubmittingRefund(false)
     }
   }
 
@@ -93,6 +169,7 @@ export default function Returns() {
   if (error) return <div className="container-app section text-red-600">{error}</div>
 
   return (
+    <>
     <div className="container-app section">
       <div className="flex items-center gap-4 mb-6">
         <Link to="/orders" className="btn btn-ghost btn-sm">
@@ -233,6 +310,17 @@ export default function Returns() {
                             <Price price={order.totals?.grandTotal} />
                           </p>
                         </div>
+                        {canRequestRefund(order) && (
+                          <div className="pt-2">
+                            <button
+                              className="btn btn-primary"
+                              onClick={() => openRefundModal(order)}
+                            >
+                              Request Refund
+                            </button>
+                            <p className="text-xs text-[--color-muted] mt-2">Refunds are available after your return is approved.</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -263,7 +351,7 @@ export default function Returns() {
                     <div>
                       <h3 className="font-semibold">Refund #{refund._id.slice(-8)}</h3>
                       <p className="text-sm text-[--color-muted]">
-                        Order #{refund.order?.slice(-8)} • {formatDate(refund.createdAt)}
+                        Order #{(refund.order?._id || refund.order || '').toString().slice(-8)} • {formatDate(refund.createdAt)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -345,5 +433,80 @@ export default function Returns() {
         </div>
       )}
     </div>
+    {/* Refund Request Modal */}
+    {refundModalOpen && refundOrder && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/80" onClick={() => setRefundModalOpen(false)}></div>
+        <div className="relative modal-solid rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-[--color-border]">
+          <div className="px-6 py-4 border-b">
+            <h2 className="text-lg font-semibold">Request Refund</h2>
+            <div className="text-xs opacity-70">Order #{refundOrder._id}</div>
+          </div>
+          <form onSubmit={submitRefundRequest}>
+            <div className="p-6 space-y-4">
+              <div className="text-sm opacity-80">
+                <div><span className="font-medium">Total:</span> <Price price={refundOrder.totals?.grandTotal} /></div>
+                <div className="mt-1"><span className="font-medium">Paid via:</span> {refundOrder.payment?.method}</div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Amount</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  className="input w-full"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Refund Method</label>
+                <select value={refundMethod} onChange={(e) => setRefundMethod(e.target.value)} className="input w-full">
+                  <option value="ORIGINAL_PAYMENT">Original Payment Method</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="STORE_CREDIT">Store Credit</option>
+                </select>
+              </div>
+
+              {refundMethod === 'BANK_TRANSFER' && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Account Name</label>
+                    <input className="input w-full" value={bankAccountName} onChange={e=>setBankAccountName(e.target.value)} placeholder="Account holder name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Account Number</label>
+                    <input className="input w-full" value={bankAccountNumber} onChange={e=>setBankAccountNumber(e.target.value)} placeholder="1234567890" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Bank Name</label>
+                    <input className="input w-full" value={bankName} onChange={e=>setBankName(e.target.value)} placeholder="Your bank" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Routing Number (optional)</label>
+                    <input className="input w-full" value={bankRouting} onChange={e=>setBankRouting(e.target.value)} placeholder="Routing / branch code" />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Reason (optional)</label>
+                <textarea rows={3} value={refundReason} onChange={(e) => setRefundReason(e.target.value)} className="textarea w-full" placeholder="Why do you need a refund?" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t flex gap-3 justify-end">
+              <button type="button" className="btn btn-ghost" onClick={() => setRefundModalOpen(false)} disabled={submittingRefund}>Cancel</button>
+              <button type="submit" disabled={submittingRefund} className="btn btn-primary">
+                {submittingRefund ? 'Submitting…' : 'Submit Request'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

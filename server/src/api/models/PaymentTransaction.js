@@ -9,6 +9,8 @@ const paymentTransactionSchema = new mongoose.Schema({
       'CREATED', 'AUTHORIZED', 'CAPTURED', 'FAILED', 'REFUNDED', 'CANCELLED', 'VERIFIED',
       // Extended actions used by controllers
       'BANK_VERIFIED', 'STATUS_UPDATED',
+      // Refund workflow actions
+      'REFUND_REQUESTED', 'REFUND_APPROVED', 'REFUND_PROCESSED', 'REFUND_REJECTED',
       // COD-specific actions
       'COD_COLLECTED', 'COD_FAILED',
       // Webhooks/uploads
@@ -18,7 +20,12 @@ const paymentTransactionSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ['UNPAID', 'PENDING', 'AUTHORIZED', 'PAID', 'FAILED', 'REFUND_PENDING', 'REFUNDED'], 
+    enum: [
+      // Payment lifecycle
+      'UNPAID', 'PENDING', 'AUTHORIZED', 'PAID', 'FAILED', 'REFUND_PENDING', 'REFUNDED',
+      // Refund workflow statuses used by controllers
+      'REQUESTED', 'APPROVED', 'PROCESSED', 'CANCELLED'
+    ], 
     required: true 
   },
   amount: { type: Number, required: true, min: 0 },

@@ -13,7 +13,6 @@ import {
   rejectRefund, 
   getRefundStats 
 } from '../controllers/admin.refunds.controller.js'
-
 const router = Router()
 router.use(requireAdminAuth)
 
@@ -23,6 +22,7 @@ const listSchema = z.object({
   query: z.object({
     q: z.string().optional(),
     method: z.enum(['COD','CARD','BANK']).optional(),
+    status: z.string().optional(),
     page: z.coerce.number().min(1).optional(),
     limit: z.coerce.number().min(1).max(100).optional(),
   }).optional()
@@ -77,6 +77,7 @@ const statsSchema = z.object({
 
 // Routes
 router.get('/', canManageRefunds, validate(listSchema), listRefunds)
+router.get('/audits', canManageRefunds, validate(listSchema), listRefundAudits)
 router.get('/stats', canManageRefunds, validate(statsSchema), getRefundStats)
 router.get('/:id/details', canManageRefunds, validate(idParam), getRefundDetails)
 
@@ -84,5 +85,4 @@ router.post('/', canManageRefunds, validate(createRefundSchema), createRefund)
 router.patch('/:id/approve', canManageRefunds, validate(approveRefundSchema), approveRefund)
 router.patch('/:id/process', canManageRefunds, validate(processRefundSchema), processRefund)
 router.patch('/:id/reject', canManageRefunds, validate(rejectRefundSchema), rejectRefund)
-
 export default router

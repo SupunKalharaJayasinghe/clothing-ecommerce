@@ -2,6 +2,9 @@ import ApiError from '../../utils/ApiError.js'
 import catchAsync from '../../utils/catchAsync.js'
 import Order from '../models/Order.js'
 import Refund from '../models/Refund.js'
+import PaymentTransaction from '../models/PaymentTransaction.js'
+import { sendRefundNotification, sendAdminRefundNotification } from '../../utils/refundNotifications.js'
+import { env } from '../../config/env.js'
 
 // GET /api/refunds/me - Get user's refunds
 export const getMyRefunds = catchAsync(async (req, res) => {
@@ -103,4 +106,82 @@ export const getMyRefundStats = catchAsync(async (req, res) => {
   }
   
   res.json({ ok: true, stats })
+})
+
+// POST /api/refunds/request - Customer requests a refund (requires approved return)
+export const requestRefund = catchAsync(async (req, res) => {
+  const { orderId, amount, reason, refundMethod = 'ORIGINAL_PAYMENT', bankDetails } = req.body || {}
+
+  if (!orderId) throw new ApiError(400, 'orderId is required')
+
+  // Ensure order exists and belongs to user
+  const order = await Order.findById(orderId).populate('user')
+  if (!order) throw new ApiError(404, 'Order not found')
+  if (String(order.user?._id) !== String(req.user.sub)) {
+    throw new ApiError(403, 'Access denied')
+  }
+
+  // Require an approved return (or received/closed) before allowing refund request
+  const rStatus = String(order.returnRequest?.status || '').toLowerCase()
+  if (!['approved', 'received', 'closed'].includes(rStatus)) {
+    throw new ApiError(400, 'Return must be approved before requesting a refund')
+  }
+
+  // Ensure order was paid
+  const paid = String(order.payment?.status || '').toUpperCase() === 'PAID'
+  if (!paid) throw new ApiError(400, 'Order must be paid to process refund')
+
+  // Prevent duplicate refund
+  const existingRefund = await Refund.findOne({ order: orderId })
+  if (existingRefund) {
+    throw new ApiError(400, 'Refund already exists for this order')
+  }
+
+  // Validate amount
+  const maxRefund = order.totals?.grandTotal || 0
+  const amountNum = Number(amount)
+  if (!Number.isFinite(amountNum) || amountNum < 0) {
+    throw new ApiError(400, 'Invalid refund amount')
+  }
+  if (amountNum > maxRefund) {
+    throw new ApiError(400, `Refund amount cannot exceed order total (${maxRefund})`)
+  }
+
+  // Create refund record
+  const refund = await Refund.create({
+    order: orderId,
+    method: order.payment.method,
+    status: 'REQUESTED',
+    amount: amountNum,
+    reason: String(reason || '').trim() || undefined,
+    refundMethod,
+    bankDetails: refundMethod === 'BANK_TRANSFER' ? bankDetails : undefined,
+    requestedAt: new Date(),
+    requestedBy: req.user.sub
+  })
+
+  // Log payment transaction
+  await PaymentTransaction.create({
+    order: orderId,
+    method: order.payment.method,
+    action: 'REFUND_REQUESTED',
+    status: 'REQUESTED',
+    amount: amountNum,
+    currency: 'LKR',
+    notes: `Refund requested by customer: ${reason || 'No reason provided'}`,
+    createdBy: 'user'
+  })
+
+  // Update order payment status
+  order.payment.status = 'REFUND_PENDING'
+  await order.save()
+
+  // Notifications
+  await sendRefundNotification(refund, order, 'CREATED')
+  await sendAdminRefundNotification(refund, order, 'NEW_REQUEST')
+  if (refund.amount > (env.HIGH_VALUE_REFUND_THRESHOLD || 10000)) {
+    await sendAdminRefundNotification(refund, order, 'HIGH_VALUE')
+  }
+
+  res.status(201).json({ ok: true, refund })
 })

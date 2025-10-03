@@ -921,10 +921,12 @@ export const exportRefundsPDF = (refunds) => {
   let yPos = 50; const lineHeight = 6
   doc.setFontSize(9)
   refunds.forEach((r, i) => {
-    const id = String(r._id || '').substring(0, 8)
-    const amount = (r.totals?.grandTotal || 0).toLocaleString()
-    const status = r.returnRequest?.status || 'N/A'
-    doc.text(`${i+1}. ${id}... LKR ${amount} (${status})`, 14, yPos)
+    const id = String(r._id || r.order?._id || '').substring(0, 8)
+    const amountNum = Number((r.amount ?? r.totals?.grandTotal) || 0)
+    const amount = amountNum.toLocaleString()
+    const status = (r.status || r.returnRequest?.status || 'N/A')
+    const method = (r.method || r.payment?.method || 'N/A')
+    doc.text(`${i+1}. ${id}... ${method} • LKR ${amount} (${status})`, 14, yPos)
     yPos += lineHeight; if (yPos > 270) { doc.addPage(); yPos = 20 }
   })
   doc.save(`refunds-report-${new Date().toISOString().split('T')[0]}.pdf`)

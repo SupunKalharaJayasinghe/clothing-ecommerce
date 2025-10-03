@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js" ,
+    "start": "node src/index.js",
     "build": "echo \"(no build step)\"",
     "seed": "node src/scripts/seed.js",
     "seed:admin": "node src/scripts/seed_admin.js",
@@ -21,7 +21,7 @@
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.2.0",
