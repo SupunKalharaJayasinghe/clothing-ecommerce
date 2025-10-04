@@ -27,10 +27,11 @@ export function buildPayHereCheckout({ order, address, user }) {
   const [first_name = 'Customer', ...rest] = fullName.split(' ').filter(Boolean)
   const last_name = rest.join(' ') || 'User'
 
+
   const params = {
     merchant_id,
-    return_url: env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders',
-    cancel_url: env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout',
+    return_url: env.PAYHERE_RETURN_URL || 'https://inevitably-unpretty-serita.ngrok-free.dev/orders',
+    cancel_url: env.PAYHERE_CANCEL_URL || 'https://inevitably-unpretty-serita.ngrok-free.dev/checkout',
     notify_url: env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook',
     order_id,
     items: `Order ${order_id}`,
