@@ -55,6 +55,12 @@ export default function Checkout() {
   async function place() {
     setLoading(true); setError('')
     try {
+      // Enforce slip upload for BANK method
+      if (method === 'BANK' && !slip) {
+        setError('Please upload your bank slip to place a bank transfer order.')
+        setLoading(false)
+        return
+      }
       const hasTypedAddress = addr.line1.trim() && addr.city.trim() && addr.country.trim() && addr.phone.trim()
       const payload = {
         method,
@@ -72,7 +78,7 @@ export default function Checkout() {
       }
       const orderId = data.orderId
 
-      // BANK: upload slip immediately if provided
+      // BANK: upload slip immediately (now required)
       if (method === 'BANK' && slip) {
         const form = new FormData()
         form.append('slip', slip)
@@ -207,9 +213,8 @@ export default function Checkout() {
 
             {method === 'BANK' && (
               <div className="mt-3">
-                <label className="text-sm block mb-1">Upload bank slip (image)</label>
+                <label className="text-sm block mb-1">Upload bank slip (required)</label>
                 <input type="file" accept="image/*,application/pdf" onChange={e => setSlip(e.target.files?.[0] || null)} />
-                <p className="text-xs opacity-70 mt-1">You can also upload later from your orders page.</p>
               </div>
             )}
             {method === 'CARD' && (
@@ -263,7 +268,7 @@ export default function Checkout() {
               </div>
             </div>
           ) : (
-            <button className="btn btn-primary" onClick={place} disabled={loading}>
+            <button className="btn btn-primary" onClick={place} disabled={loading || (method === 'BANK' && !slip)}>
               {loading ? 'Placing…' : 'Place order'}
             </button>
           )}
