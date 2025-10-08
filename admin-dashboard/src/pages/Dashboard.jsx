@@ -86,7 +86,7 @@ export default function DashboardPage() {
   const ordersInPeriod = useMemo(() => orders.filter(o => new Date(o.createdAt).getTime() >= since), [orders, since])
 
   const sales = useMemo(() => {
-    const paid = ordersInPeriod.filter(o => (o.payment?.status === 'paid') || o.status === 'completed')
+    const paid = ordersInPeriod.filter(o => (String(o.payment?.status || '').toUpperCase() === 'PAID') || o.status === 'completed')
     return paid.reduce((s, o) => s + (o.totals?.grandTotal || 0), 0)
   }, [ordersInPeriod])
 
