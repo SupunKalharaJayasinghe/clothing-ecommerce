@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { api } from '../utils/http'
+import { api, fileUrl } from '../utils/http'
 import { formatLKR } from '../utils/currency'
 import { ChevronDown, ChevronRight, Search, CreditCard, DollarSign, CheckCircle, XCircle, Clock, RefreshCw, Download, FileText } from 'lucide-react'
 import { exportPaymentsPDF, exportSinglePaymentPDF } from '../utils/pdfExport'
@@ -65,6 +65,32 @@ export default function PaymentsPage() {
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
+    }
+  }
+
+  const downloadSlip = async (slipUrl) => {
+    try {
+      const url = fileUrl(slipUrl)
+      const res = await fetch(url, { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to download slip: ${res.status} ${res.statusText}`)
+      const blob = await res.blob()
+      const cd = res.headers.get('Content-Disposition') || ''
+      let filename = 'bank-slip'
+      const m = cd.match(/filename\*=UTF-8''([^;\n]+)/) || cd.match(/filename="?([^";\n]+)"?/)
+      if (m && m[1]) filename = decodeURIComponent(m[1])
+      if (!m) {
+        try { filename = decodeURIComponent(String(slipUrl).split('/').pop() || filename) } catch {}
+      }
+      const blobUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (e) {
+      alert(e.message || 'Failed to download bank slip')
     }
   }
 
@@ -231,6 +257,17 @@ const getStatusColor = (status) => paymentStatusClass(status)
                             </button>
                           </td>
                           <td>
+                            {o.payment?.method === 'BANK' && o.payment?.bank?.slipUrl && (
+                              <button
+                                type="button"
+                                onClick={() => downloadSlip(o.payment.bank.slipUrl)}
+                                className="btn btn-sm inline-flex items-center gap-2"
+                                title="Download bank slip"
+                              >
+                                <Download size={14} />
+                                Download Bank Slip
+                              </button>
+                            )}
                             {o.payment?.method === 'BANK' && (!o.payment?.bank?.verifiedAt) && (
                               <button
                                 onClick={() => verifyBank(o._id)} 
