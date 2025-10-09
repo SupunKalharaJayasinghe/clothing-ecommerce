@@ -12,10 +12,13 @@ function getCookie(name) {
   return m ? decodeURIComponent(m[2]) : undefined
 }
 
+// Fallback CSRF token captured from server response header for cross-host dev
+let csrfHeaderToken
+
 api.interceptors.request.use((cfg) => {
   const method = (cfg.method || 'get').toLowerCase()
   if (['post', 'put', 'patch', 'delete'].includes(method)) {
-    const token = getCookie('csrf_token')
+    const token = getCookie('csrf_token') || csrfHeaderToken
     if (token) {
       cfg.headers = cfg.headers || {}
       cfg.headers['x-csrf-token'] = token
@@ -29,7 +32,12 @@ let lastRehydrate = 0
 const REHYDRATE_COOLDOWN_MS = 5000
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // Capture CSRF token from header so SPA on a different host can use it for unsafe methods
+    const hdr = res.headers?.['x-csrf-token'] || res.headers?.['X-CSRF-Token']
+    if (hdr) csrfHeaderToken = hdr
+    return res
+  },
   async (err) => {
     const cfg = err.config || {}
 

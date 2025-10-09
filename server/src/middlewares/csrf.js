@@ -17,8 +17,9 @@ export function csrfProtection(req, res, next) {
 
   if (SAFE_METHODS.has(method)) {
     // Lazily set a token cookie for the client to echo back later
-    if (!cookieToken) {
-      const token = crypto.randomBytes(24).toString('hex')
+    let token = cookieToken
+    if (!token) {
+      token = crypto.randomBytes(24).toString('hex')
       res.cookie(CSRF_COOKIE, token, {
         httpOnly: false, // must be readable by client JS (double-submit)
         sameSite: env.COOKIE_SAMESITE,
@@ -26,6 +27,8 @@ export function csrfProtection(req, res, next) {
         maxAge: 7 * 24 * 60 * 60 * 1000
       })
     }
+    // Also surface the token in a response header so SPA on a different host can mirror it client-side
+    res.setHeader('x-csrf-token', token)
     return next()
   }
 
@@ -36,7 +39,10 @@ export function csrfProtection(req, res, next) {
 
   // For unsafe methods, validate match
   const headerToken = req.get('x-csrf-token')
-  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+  // In development, allow header-only validation to ease cross-host dev where cookie scoping prevents reading
+  const isDev = env.NODE_ENV !== 'production'
+  const valid = (cookieToken && headerToken && cookieToken === headerToken) || (isDev && headerToken)
+  if (!valid) {
     return res.status(403).json({ ok: false, message: 'Invalid CSRF token' })
   }
   return next()

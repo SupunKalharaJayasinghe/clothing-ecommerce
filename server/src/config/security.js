@@ -28,13 +28,15 @@ export const corsOptions = {
     // In development, allow any localhost/127.0.0.1 origin (e.g., Vite dev servers on dynamic ports)
     if (!isProd) {
       const localDev = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/
-      if (localDev.test(origin)) return callback(null, true)
+      const privateLAN = /^http:\/\/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}):\d+$/
+      if (localDev.test(origin) || privateLAN.test(origin)) return callback(null, true)
     }
     return callback(new Error('CORS not allowed from this origin: ' + origin), false)
   },
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','x-csrf-token']
+  allowedHeaders: ['Content-Type','Authorization','x-csrf-token'],
+  exposedHeaders: ['x-csrf-token']
 }
 
 // allow PayHere scripts/frames later; add your CDN if needed
@@ -46,7 +48,8 @@ export const cspDirectives = {
   "script-src": ["'self'", "https://www.payhere.lk"],
   "frame-src": ["'self'", "https://www.payhere.lk"],
   "style-src": ["'self'", "'unsafe-inline'", "https:"],
-  "connect-src": ["'self'", ...allowedOrigins]
+  // In development, allow any http/https connections to support LAN testing; restrict in production
+  "connect-src": ["'self'", ...(isProd ? allowedOrigins : ["http:", "https:"])]
 }
 
 // General API limiter (relaxed in dev; skip common background endpoints)
