@@ -26,6 +26,7 @@ export default function Checkout() {
     return { subtotal, shipping: 0, discount: 0, grand: subtotal }
   }, [items])
 
+
   // Route-level protection handles redirects
   useEffect(() => {}, [user])
 
@@ -36,6 +37,7 @@ export default function Checkout() {
         const { data } = await api.get('/account/addresses')
         const list = Array.isArray(data.items) ? data.items.slice() : []
         // Sort with default first, then by created order
+
         list.sort((a,b) => (b.isDefault === true) - (a.isDefault === true))
         setAddresses(list)
         const def = list.find(a => a.isDefault) || list[0]
@@ -72,11 +74,20 @@ export default function Checkout() {
       }
       const orderId = data.orderId
 
-      // BANK: upload slip immediately if provided
-      if (method === 'BANK' && slip) {
-        const form = new FormData()
-        form.append('slip', slip)
-        await api.post(`/payments/bank/${orderId}/slip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+     // BANK: must upload slip before placing
+      if (method === 'BANK') {
+        if (!slip) {
+          setError('Please upload your bank slip before placing the order.');
+          setLoading(false);
+          return;
+        }
+
+        const form = new FormData();
+        form.append('slip', slip);
+
+        await api.post(`/payments/bank/${orderId}/slip`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
       }
 
       // CARD: if backend returned PayHere form params (sandbox), auto-submit a form
@@ -161,6 +172,7 @@ export default function Checkout() {
         await api.post(`/payments/bank/${orderId}/slip`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
       }
 
+    
       dispatch(clearCart())
       navigate('/orders')
     } catch (e) {
@@ -171,6 +183,8 @@ export default function Checkout() {
     }
   }
 
+
+  
   return (
     <div className="container-app section max-w-5xl">
       <h1 className="section-title">Checkout</h1>
@@ -182,8 +196,8 @@ export default function Checkout() {
             <div className="card-body">
             <h2 className="font-semibold mb-2">Delivery address</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className="input" placeholder="Line 1 *" value={addr.line1} onChange={e => setAddr(a => ({ ...a, line1: e.target.value }))} />
-              <input className="input" placeholder="Line 2" value={addr.line2} onChange={e => setAddr(a => ({ ...a, line2: e.target.value }))} />
+              <input className="input" placeholder="House no ./ building * " value={addr.line1} onChange={e => setAddr(a => ({ ...a, line1: e.target.value }))} />
+              <input className="input" placeholder="Street / area *" value={addr.line2} onChange={e => setAddr(a => ({ ...a, line2: e.target.value }))} />
               <input className="input" placeholder="City *" value={addr.city} onChange={e => setAddr(a => ({ ...a, city: e.target.value }))} />
               <input className="input" placeholder="Region" value={addr.region} onChange={e => setAddr(a => ({ ...a, region: e.target.value }))} />
               <input className="input" placeholder="Postal Code" value={addr.postalCode} onChange={e => setAddr(a => ({ ...a, postalCode: e.target.value }))} />
@@ -218,11 +232,37 @@ export default function Checkout() {
                     <div><strong>Reference:</strong> Use your Order Number (e.g., #12345) as the payment reference</div>
                   </div>
                 </div>
-                <div>
+               {/*  <div>
                   <label className="text-sm block mb-1">Upload bank slip (image only)</label>
                   <input type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} />
                   <p className="text-xs opacity-70 mt-1">Supported: JPG, PNG, WEBP, GIF. Max 5MB. You can also upload later from your orders page.</p>
-                </div>
+                </div>*/}
+
+                   <div className="space-y-1">
+                      <label className="text-sm block mb-1 font-medium text-slate-200">
+                        Upload bank slip <span className="text-indigo-400">*</span> (image only)
+                      </label>
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => setSlip(e.target.files?.[0] || null)}
+                        className="
+                          w-full rounded-md border border-slate-600 bg-slate-900 text-slate-200
+                          focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400
+                          cursor-pointer transition
+                          file:mr-3 file:py-1.5 file:px-4 file:rounded-md file:border-0
+                          file:bg-blue-600 file:hover:bg-blue-500 file:text-white
+                          file:font-medium
+                        "
+                      />
+
+                      <p className="text-xs text-slate-400 mt-1">
+                        Supported: JPG, PNG, WEBP, GIF. Max 5MB. You can also upload later from your orders page.
+                      </p>
+                    </div>
+
+
               </div>
             )}
             {method === 'CARD' && (

@@ -6,15 +6,21 @@ import { Trash2, Minus, Plus, ShoppingCart } from '../lib/icons'
 import Price from '../components/ui/Price'
 
 export default function Cart() {
+
+  //Call add cart Details here
   const { items } = useAppSelector(s => s.cart)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
 
+
+  // Create Totals in cart 
   const totals = useMemo(() => {
     const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0)
     return { subtotal, shipping: 0, discount: 0, grand: subtotal }
   }, [items])
 
+
+// check if cart is empty
   if (items.length === 0) {
     return (
       <div className="container-app section max-w-4xl text-center">
@@ -31,6 +37,8 @@ export default function Cart() {
     )
   }
 
+
+  //  Card Desing Start Here
   return (
     <div className="container-app section max-w-5xl">
       <h1 className="section-title">Cart</h1>
