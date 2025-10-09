@@ -111,3 +111,63 @@ docker compose exec api node src/scripts/seed.js
 - If you see 401 errors after inactivity, the client retries `/auth/me` once to refresh rolling cookie; log back in if needed.
 - For 429 rate limits in production, adjust limits in `server/src/config/security.js`.
 - Ensure MongoDB text indexes are created; Mongoose autoIndex is enabled in dev (see `server/src/config/db.js`).
+
+
+## Troubleshooting␍␊
+## Troubleshooting␊
+
+- If you see 401 errors after inactivity, the client retries `/auth/me` once to refresh rolling cookie; log back in if needed.
+
+- For 429 rate limits in production, adjust limits in `server/src/config/security.js`.
+
+- Ensure MongoDB text indexes are created; Mongoose autoIndex is enabled in dev (see `server/src/config/db.js`).
+
+- Ensure MongoDB text indexes are created; Mongoose autoIndex is enabled in dev (see `server/src/config/db.js`).
+
+## Delivery-Related Packages
+
+Here’s a concise list of the packages that power delivery features across the repo, grouped by where they’re used.
+
+## Server (Delivery APIs)
+
+- Core/web: express, cors, helmet, compression, cookie-parser, morgan, express-rate-limit (server/src/package.json:1)
+
+- Data/validation: mongoose (Order, Delivery, PaymentTransaction models), zod (route validators) (server/src/package.json:1)
+
+- Auth/security: jsonwebtoken (delivery JWT), bcryptjs (password hashing), dotenv (env) (server/src/package.json:1)
+
+- Email/OTP: nodemailer (email transport for login OTP) (server/src/package.json:1)
+
+- Uploads/evidence: multer (delivery uploads, receipts, return photos) (server/src/package.json:1)
+
+## Notes
+
+- Node built-ins used: crypto (OTP hashing), path/fs (static files), not external packages.
+
+- No courier/shipping SDKs (e.g., Shippo/ShipEngine) — delivery is implemented in-house.
+
+## Delivery Panel (Standalone)
+
+- UI/icons: lucide (icons) (delivery/package.json:1)
+
+- Build/dev: vite (delivery/package.json:1) Admin Dashboard (Delivery management, handover, exports)
+
+- App/libs: react, react-dom, react-router-dom, axios (admin-dashboard/package.json:1)
+
+- UI/icons: lucide-react (admin-dashboard/package.json:1)
+
+- Exports: jspdf, jspdf-autotable (PDF export of delivery details) (admin-dashboard/package.json:1)
+
+- Build/dev: vite, @vitejs/plugin-react, tailwindcss (admin-dashboard/package.json:1)
+
+## Customer App (Addresses, Checkout, Orders)
+
+- App/libs: react, react-dom, react-router-dom, axios (client/package.json:1)
+
+- State: @reduxjs/toolkit, react-redux (client/package.json:1)
+
+- UI/icons: lucide-react (client/package.json:1)
+
+- Build/dev: vite (+ plugins), tailwindcss (client/package.json:1)
+
+If you want, I can map each package to the exact delivery files calling it (e.g., where multer/nodemailer/jwt are wired in the delivery controllers and middleware).
