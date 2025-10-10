@@ -30,6 +30,17 @@ export const placeOrder = catchAsync(async (req, res) => {
   const prods = await Product.find({ slug: { $in: Array.from(bySlug.keys()) } })
   if (prods.length !== bySlug.size) throw new ApiError(400, 'One or more products not found')
 
+  // Pre-check stock: gather any low-stock items and return a descriptive error
+  const lowStock = []
+  for (const p of prods) {
+    const requested = Number(bySlug.get(p.slug) || 0)
+    const available = Number(p.stock || 0)
+    if (requested > available) lowStock.push({ slug: p.slug, name: p.name, available, requested })
+  }
+  if (lowStock.length) {
+    return res.status(400).json({ ok: false, message: 'Some items are low in stock', lowStock })
+  }
+
   const orderItems = prods.map(p => {
     const qty = bySlug.get(p.slug)
     const unit = p.discountPercent ? Math.round((p.price * (1 - p.discountPercent/100)) * 100)/100 : p.price

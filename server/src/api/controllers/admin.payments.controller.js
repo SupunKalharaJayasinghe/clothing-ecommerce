@@ -5,6 +5,7 @@ import { PAYMENT_STATES, updateOrderStates, applyStateChanges } from '../../util
 import PaymentTransaction from '../models/PaymentTransaction.js'
 import Refund from '../models/Refund.js'
 import { sendInvoiceEmail } from '../../utils/invoiceEmail.js'
+import mongoose from 'mongoose'
 
 const PAYMENT_STATUSES = ['UNPAID','PENDING','AUTHORIZED','PAID','FAILED','REFUND_PENDING','REFUNDED']
 
@@ -15,14 +16,25 @@ export const listPayments = catchAsync(async (req, res) => {
   if (method && ['COD','CARD','BANK'].includes(String(method))) {
     filters.push({ 'payment.method': method })
   }
-  if (status && PAYMENT_STATUSES.includes(String(status))) {
-    filters.push({ 'payment.status': status })
+  if (status && String(status).trim()) {
+    const s = String(status).trim()
+    const rxStatus = new RegExp('^' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i')
+    filters.push({ 'payment.status': rxStatus })
   }
 
   if (q && String(q).trim()) {
     const ql = String(q).trim()
     const rx = new RegExp(ql.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-    filters.push({ $or: [ { _id: ql }, { 'items.slug': rx }, { 'items.name': rx } ] })
+    const or = [
+      { 'items.slug': rx },
+      { 'items.name': rx },
+      { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: rx } } }
+    ]
+    // If query looks like a valid ObjectId, allow direct _id match
+    if (mongoose.Types.ObjectId.isValid(ql)) {
+      or.unshift({ _id: new mongoose.Types.ObjectId(ql) })
+    }
+    filters.push({ $or: or })
   }
 
   const where = filters.length ? { $and: filters } : {}
@@ -116,15 +128,23 @@ export const listTransactions = catchAsync(async (req, res) => {
 
 export const updatePaymentStatus = catchAsync(async (req, res) => {
   const { id } = req.params
-  const { status } = req.body || {}
-  if (!PAYMENT_STATUSES.includes(String(status))) {
-    throw new ApiError(400, 'Invalid payment status')
-  }
+  const { status: statusInput } = req.body || {}
+  const status = String(statusInput || '').toUpperCase()
   const o = await Order.findById(id)
   if (!o) throw new ApiError(404, 'Order not found')
+  // Map method-specific statuses (e.g., COD) to core statuses
+  let canonical = status
+  const method = String(o.payment?.method || '').toUpperCase()
+  if (method === 'COD') {
+    if (status === 'COD_PENDING') canonical = 'PENDING'
+    if (status === 'COD_COLLECTED') canonical = 'PAID'
+  }
+  if (!PAYMENT_STATUSES.includes(canonical)) {
+    throw new ApiError(400, `Invalid payment status: ${status}`)
+  }
   
   // Use state manager for consistent payment status update
-  const changes = updateOrderStates(o, { paymentStatus: status })
+  const changes = updateOrderStates(o, { paymentStatus: canonical })
   applyStateChanges(o, changes)
   await o.save()
   // Log admin status change
@@ -132,7 +152,7 @@ export const updatePaymentStatus = catchAsync(async (req, res) => {
     order: o._id,
     method: o.payment?.method,
     action: 'STATUS_UPDATED',
-    status,
+    status: canonical,
     amount: o.totals?.grandTotal,
     currency: 'LKR',
     notes: 'Payment status updated by admin',
@@ -140,9 +160,9 @@ export const updatePaymentStatus = catchAsync(async (req, res) => {
   })
 
   // Persist refund state into Refund collection for refund-related statuses
-  const isRefundPending = status === PAYMENT_STATES.REFUND_PENDING
-  const isRefunded = status === PAYMENT_STATES.REFUNDED
-  const isFailed = status === PAYMENT_STATES.FAILED
+  const isRefundPending = canonical === PAYMENT_STATES.REFUND_PENDING
+  const isRefunded = canonical === PAYMENT_STATES.REFUNDED
+  const isFailed = canonical === PAYMENT_STATES.FAILED
   if (isRefundPending || isRefunded || isFailed) {
     const base = {
       order: o._id,
@@ -174,4 +194,42 @@ export const updatePaymentStatus = catchAsync(async (req, res) => {
     }
   }
   res.json({ ok: true, order: o })
+})
+export const deletePayment = catchAsync(async (req, res) => {
+  const { id } = req.params
+  const o = await Order.findById(id)
+  if (!o) throw new ApiError(404, 'Order not found')
+
+  await Promise.all([
+    PaymentTransaction.deleteMany({ order: o._id }),
+    Refund.deleteMany({ order: o._id })
+  ])
+  await o.deleteOne()
+  res.json({ ok: true, deleted: 1 })
+})
+
+// Bulk delete payments by ids
+export const bulkDeletePayments = catchAsync(async (req, res) => {
+  const { ids } = req.body || {}
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ApiError(400, 'ids array required')
+  }
+  const validIds = ids
+    .map(String)
+    .filter(id => mongoose.Types.ObjectId.isValid(id))
+    .map(id => new mongoose.Types.ObjectId(id))
+  if (validIds.length === 0) {
+    throw new ApiError(400, 'No valid ids provided')
+  }
+
+  const orders = await Order.find({ _id: { $in: validIds } }, { _id: 1 }).lean()
+  const orderIds = orders.map(o => o._id)
+  if (orderIds.length === 0) return res.json({ ok: true, deleted: 0 })
+
+  await Promise.all([
+    PaymentTransaction.deleteMany({ order: { $in: orderIds } }),
+    Refund.deleteMany({ order: { $in: orderIds } }),
+    Order.deleteMany({ _id: { $in: orderIds } })
+  ])
+  res.json({ ok: true, deleted: orderIds.length })
 })

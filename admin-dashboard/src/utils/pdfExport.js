@@ -876,38 +876,134 @@ export const exportSingleOrderPDF = (order) => {
 }
 
 // PAYMENTS PDF EXPORT
-export const exportPaymentsPDF = (payments) => {
+export const exportPaymentsPDF = (payments, options = {}) => {
   if (!payments?.length) { alert('No payments data'); return }
+  const { logoDataUrl } = options // optional data URL (png/jpg)
   const doc = new jsPDF()
-  doc.setFontSize(20); doc.text('Payments Report', 14, 22)
-  doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30)
-  doc.text(`Total: ${payments.length}`, 14, 35)
-  
-  let yPos = 50; const lineHeight = 6
-  doc.setFontSize(9)
+
+  // Header with optional logo
+  if (logoDataUrl) {
+    try { doc.addImage(logoDataUrl, 'PNG', 14, 10, 24, 12) } catch (e) { /* ignore */ }
+  }
+  doc.setFontSize(20); doc.setFont(undefined, 'bold'); doc.text('Payments Report', 14, logoDataUrl ? 30 : 22)
+  doc.setFontSize(10); doc.setFont(undefined, 'normal')
+  const metaY = (logoDataUrl ? 38 : 30)
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, metaY)
+  doc.text(`Total Payments: ${payments.length}`, 14, metaY + 5)
+
+  // Table header
+  let yPos = metaY + 18
+  const lineH = 7
+  const left = 14
+  const cols = [22, 28, 26, 22, 26, 26, 26] // adjust width: No, Order, Method, Status, Amount, Items, Date
+  const x = [left]
+  for (let i = 1; i < cols.length; i++) x[i] = x[i-1] + cols[i-1]
+
+  doc.setFontSize(10); doc.setFont(undefined, 'bold')
+  doc.setFillColor(41,128,185)
+  doc.setTextColor(255,255,255)
+  doc.rect(left, yPos - 5, cols.reduce((a,b)=>a+b,0), lineH, 'F')
+  doc.text('#', x[0], yPos)
+  doc.text('Order ID', x[1], yPos)
+  doc.text('Method', x[2], yPos)
+  doc.text('Status', x[3], yPos)
+  doc.text('Amount (LKR)', x[4], yPos)
+  doc.text('Items', x[5], yPos)
+  doc.text('Date', x[6], yPos)
+  yPos += lineH + 1
+
+  // Rows
+  doc.setFont(undefined, 'normal'); doc.setTextColor(0,0,0); doc.setFontSize(9)
   payments.forEach((p, i) => {
-    const id = String(p._id || '').substring(0, 8)
-    const method = p.payment?.method || 'N/A'
-    const status = p.payment?.status || 'N/A'
+    if (i % 2 === 1) { doc.setFillColor(245,245,245); doc.rect(left, yPos - 5, cols.reduce((a,b)=>a+b,0), lineH, 'F') }
+    const idShort = String(p._id || '').slice(-8)
+    const method = (p.payment?.method || 'N/A').toUpperCase()
+    const status = (p.payment?.status || 'N/A').toUpperCase()
     const amount = (p.totals?.grandTotal || 0).toLocaleString()
-    doc.text(`${i+1}. ${id}... ${method} LKR ${amount} (${status})`, 14, yPos)
-    yPos += lineHeight; if (yPos > 270) { doc.addPage(); yPos = 20 }
+    const itemsCount = Array.isArray(p.items) ? p.items.length : 0
+    const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'N/A'
+
+    doc.text(String(i+1), x[0], yPos)
+    doc.text(`#${idShort}`, x[1], yPos)
+    doc.text(method, x[2], yPos)
+    doc.text(status.length > 10 ? status.slice(0,10) + '…' : status, x[3], yPos)
+    doc.text(amount, x[4], yPos)
+    doc.text(String(itemsCount), x[5], yPos)
+    doc.text(dateStr, x[6], yPos)
+    yPos += lineH
+    if (yPos > 270) { doc.addPage(); yPos = 20 }
   })
+
+  // Footer pages
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i); doc.setFontSize(8); doc.setTextColor(0,0,0)
+    doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10)
+  }
   doc.save(`payments-report-${new Date().toISOString().split('T')[0]}.pdf`)
 }
 
-export const exportSinglePaymentPDF = (payment) => {
+export const exportSinglePaymentPDF = (payment, options = {}) => {
   if (!payment) throw new Error('No payment data')
+  const { logoDataUrl } = options
   const doc = new jsPDF()
-  doc.setFontSize(16); doc.text('Payment Details', 14, 22)
-  doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30)
-  let yPos = 45; const lineHeight = 7
-  doc.text(`Order: ${payment._id || 'N/A'}`, 14, yPos); yPos += lineHeight
-  doc.text(`Customer: ${payment.customerName || 'N/A'}`, 14, yPos); yPos += lineHeight
-  doc.text(`Method: ${payment.paymentMethod || 'N/A'}`, 14, yPos); yPos += lineHeight
-  doc.text(`Status: ${payment.paymentStatus || 'N/A'}`, 14, yPos); yPos += lineHeight
-  doc.text(`Amount: LKR ${(payment.totalValue || 0).toLocaleString()}`, 14, yPos)
-  doc.save(`payment-${String(payment._id || 'pay').substring(0,8)}-${new Date().toISOString().split('T')[0]}.pdf`)
+
+  if (logoDataUrl) { try { doc.addImage(logoDataUrl, 'PNG', 14, 10, 24, 12) } catch (e) { /* ignore */ } }
+  doc.setFontSize(16); doc.setFont(undefined, 'bold'); doc.text('Payment Details', 14, logoDataUrl ? 30 : 22)
+  doc.setFontSize(10); doc.setFont(undefined, 'normal')
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, (logoDataUrl ? 38 : 30))
+
+  let yPos = (logoDataUrl ? 50 : 42)
+  const lh = 8
+
+  // Required fields: Order Id, Payment Date, Payment Amount Items, Total pay amount
+  const orderId = payment._id || 'N/A'
+  const paymentDate = payment.createdAt ? new Date(payment.createdAt).toLocaleString() : 'N/A'
+  const itemsCount = Array.isArray(payment.items) ? payment.items.length : (payment.itemsCount || 0)
+  const totalAmount = payment.totalValue || 0
+  const method = payment.paymentMethod || 'N/A'
+  const status = payment.paymentStatus || 'N/A'
+
+  doc.setFont(undefined, 'bold'); doc.text('Summary', 14, yPos); yPos += lh
+  doc.setFont(undefined, 'normal')
+  doc.text(`Order ID: ${orderId}`, 14, yPos); yPos += lh
+  doc.text(`Payment Date: ${paymentDate}`, 14, yPos); yPos += lh
+  doc.text(`Payment Method: ${method}`, 14, yPos); yPos += lh
+  doc.text(`Payment Status: ${status}`, 14, yPos); yPos += lh
+  doc.text(`Payment Amount Items: ${itemsCount}`, 14, yPos); yPos += lh
+  doc.text(`Total Pay Amount: LKR ${totalAmount.toLocaleString()}`, 14, yPos); yPos += lh
+
+  // Optional: Items table
+  if (Array.isArray(payment.items) && payment.items.length) {
+    yPos += 6
+    doc.setFont(undefined, 'bold'); doc.text('Items', 14, yPos); yPos += lh
+    doc.setFont(undefined, 'normal'); doc.setFontSize(9)
+    const left = 14; const cols = [90, 20, 30, 30] // name, qty, price, line total
+    const x = [left, left+cols[0], left+cols[0]+cols[1], left+cols[0]+cols[1]+cols[2]]
+    doc.text('Name', x[0], yPos)
+    doc.text('Qty', x[1], yPos)
+    doc.text('Price', x[2], yPos)
+    doc.text('Total', x[3], yPos)
+    yPos += lh - 2
+    payment.items.forEach((it, idx) => {
+      const name = it.name || it.slug || 'Item'
+      const qty = it.quantity || it.qty || 1
+      const price = it.price || 0
+      const line = (price * qty)
+      doc.text((name.length>40?name.slice(0,37)+'…':name), x[0], yPos)
+      doc.text(String(qty), x[1], yPos)
+      doc.text(`LKR ${price.toLocaleString()}`, x[2], yPos)
+      doc.text(`LKR ${line.toLocaleString()}`, x[3], yPos)
+      yPos += lh - 2
+      if (yPos > 270) { doc.addPage(); yPos = 20 }
+    })
+  }
+
+  // Footer
+  doc.setFontSize(8)
+  doc.text('Page 1 of 1', doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10)
+  const fileId = String(payment._id || 'pay').substring(0,8)
+  doc.save(`payment-${fileId}-${new Date().toISOString().split('T')[0]}.pdf`)
 }
 
 // REFUNDS PDF EXPORT

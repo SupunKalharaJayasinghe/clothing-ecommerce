@@ -10,6 +10,7 @@ import PaymentIntent from '../models/PaymentIntent.js'
 import { sendInvoiceEmail } from '../../utils/invoiceEmail.js'
 import { sendMail } from '../../utils/mailer.js'
 import User from '../models/User.js'
+import { env } from '../../config/env.js'
 
 // BANK: POST /api/payments/bank/:orderId/slip
 export const uploadBankSlip = catchAsync(async (req, res) => {
@@ -133,8 +134,9 @@ export const payhereWebhook = catchAsync(async (req, res) => {
   }
 
   // Verify md5 signature if merchant secret is configured
-  if (env.PAYHERE_MERCHANT_SECRET) {
-    const merchantSecretHash = crypto.createHash('md5').update(env.PAYHERE_MERCHANT_SECRET).digest('hex').toUpperCase()
+  const secret = String(env.PAYHERE_MERCHANT_SECRET || '').trim()
+  if (secret) {
+    const merchantSecretHash = crypto.createHash('md5').update(secret).digest('hex').toUpperCase()
     const local = crypto
       .createHash('md5')
       .update(String(merchant_id || ''))

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import api from '../lib/axios'
 import { useAppSelector, useAppDispatch } from '../app/hooks' // <-- CHANGED
 import { addToCart } from '../features/cart/cartSlice'        // <-- NEW
-import { Heart, ShoppingCart, Pencil, Trash2 } from '../lib/icons'
+import { Heart, ShoppingCart, Pencil, Trash2, Minus, Plus } from '../lib/icons'
 import Price from '../components/ui/Price'
 import Stars from '../components/ui/Stars'
 import Badge from '../components/ui/Badge'
@@ -42,6 +42,7 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [imgIndex, setImgIndex] = useState(0)
+  const [qty, setQty] = useState(1)
 
   // favorites
   const [isFav, setIsFav] = useState(false)
@@ -155,7 +156,7 @@ export default function ProductDetails() {
     }
   }
 
-  // --- NEW: add to cart handler (adds 1 by default) ---
+  // --- NEW: add to cart handler with stock-aware quantity ---
   function addItem() {
     if (!p) return
     dispatch(addToCart({
@@ -164,7 +165,8 @@ export default function ProductDetails() {
       image: p.images?.[0],
       color: p.color,
       price: p.finalPrice ?? p.price,
-      quantity: 1
+      quantity: Math.max(1, Math.min(Number.isFinite(p.stock) ? p.stock : 99, qty)),
+      stock: p.stock
     }))
   }
 
@@ -321,6 +323,33 @@ export default function ProductDetails() {
           <p className="text-sm leading-relaxed opacity-90 whitespace-pre-line">{p.description}</p>
 
           <div className="flex items-center gap-3 pt-2">
+            <div className="inline-flex items-center rounded-lg border border-[--color-border] bg-[--color-surface-glass] backdrop-blur-sm overflow-hidden">
+              <button
+                className="px-3 py-2 hover:bg-[--color-surface-hover] text-[--color-text-high] transition-all duration-150"
+                onClick={() => setQty(q => Math.max(1, q - 1))}
+                aria-label="Decrease quantity"
+                disabled={p.stock <= 0}
+              >
+                <Minus size={16} />
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={Math.max(1, Number.isFinite(p.stock) ? p.stock : 99)}
+                className="w-16 text-center outline-none border-x border-[--color-border] bg-transparent text-[--color-text-high] py-2"
+                value={qty}
+                onChange={e => setQty(Math.max(1, Math.min((Number.isFinite(p.stock)?p.stock:99), Number(e.target.value)||1)))}
+                disabled={p.stock <= 0}
+              />
+              <button
+                className="px-3 py-2 hover:bg-[--color-surface-hover] text-[--color-text-high] transition-all duration-150"
+                onClick={() => setQty(q => Math.min((Number.isFinite(p.stock)?p.stock:99), q + 1))}
+                aria-label="Increase quantity"
+                disabled={p.stock <= 0 || (Number.isFinite(p.stock) && qty >= p.stock)}
+              >
+                <Plus size={16} />
+              </button>
+            </div>
             <button className="btn btn-primary" disabled={p.stock <= 0} onClick={addItem}>
               <ShoppingCart size={16} /> Add to cart
             </button>

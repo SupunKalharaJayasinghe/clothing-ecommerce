@@ -40,10 +40,10 @@ export default function Orders() {
     })()
   }, [])
 
-  // If redirected back from PayHere with ?orderId, verify payment success and clear cart
+  // If redirected back from PayHere (may use order_id, orderId, or id), verify payment success and clear cart
   useEffect(() => {
     const params = new URLSearchParams(location.search)
-    const id = params.get('orderId')
+    const id = params.get('order_id') || params.get('orderId') || params.get('id')
     if (!id) return
     (async () => {
       try {
@@ -61,7 +61,9 @@ export default function Orders() {
       } finally {
         // Clean the URL to remove the query param
         const url = new URL(window.location.href)
+        url.searchParams.delete('order_id')
         url.searchParams.delete('orderId')
+        url.searchParams.delete('id')
         navigate(url.pathname + url.search, { replace: true })
       }
     })()

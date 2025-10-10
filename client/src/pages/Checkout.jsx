@@ -119,7 +119,13 @@ export default function Checkout() {
       dispatch(clearCart())
       navigate('/orders')
     } catch (e) {
-      setError(e.response?.data?.message || e.message)
+      const data = e.response?.data
+      if (data?.lowStock && Array.isArray(data.lowStock) && data.lowStock.length) {
+        const lines = data.lowStock.map(ls => `${ls.name || ls.slug}: requested ${ls.requested}, available ${ls.available}`)
+        setError(`${data.message || 'Some items are low in stock'}\n\n${lines.join('\n')}`)
+      } else {
+        setError(data?.message || e.message)
+      }
     } finally {
       setLoading(false)
     }
@@ -176,7 +182,13 @@ export default function Checkout() {
       dispatch(clearCart())
       navigate('/orders')
     } catch (e) {
-      setError(e.response?.data?.message || e.message)
+      const data = e.response?.data
+      if (data?.lowStock && Array.isArray(data.lowStock) && data.lowStock.length) {
+        const lines = data.lowStock.map(ls => `${ls.name || ls.slug}: requested ${ls.requested}, available ${ls.available}`)
+        setError(`${data.message || 'Some items are low in stock'}\n\n${lines.join('\n')}`)
+      } else {
+        setError(data?.message || e.message)
+      }
     } finally {
       setLoading(false)
       setPreview(null)

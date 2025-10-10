@@ -21,10 +21,18 @@ const slice = createSlice({
   initialState,
   reducers: {
     addToCart(state, { payload }) {
-      const { slug, name, image, color, price, quantity = 1 } = payload
+      const { slug, name, image, color, price, quantity = 1, stock } = payload
       const existing = state.items.find(i => i.slug === slug)
-      if (existing) existing.quantity = Math.min(existing.quantity + quantity, 99)
-      else state.items.push({ slug, name, image, color, price, quantity })
+      const maxQty = Number.isFinite(stock) ? Math.max(0, Math.min(99, stock)) : 99
+      if (existing) {
+        // Update known stock if provided
+        if (Number.isFinite(stock)) existing.stock = stock
+        const cap = Number.isFinite(existing.stock) ? Math.max(0, Math.min(99, existing.stock)) : maxQty
+        existing.quantity = Math.min(existing.quantity + quantity, cap)
+      } else {
+        const qty = Number.isFinite(stock) ? Math.min(quantity, Math.max(0, Math.min(99, stock))) : quantity
+        state.items.push({ slug, name, image, color, price, quantity: Math.max(1, qty), ...(Number.isFinite(stock) ? { stock } : {}) })
+      }
       save(state)
     },
     removeFromCart(state, { payload }) {
@@ -34,7 +42,9 @@ const slice = createSlice({
     setQty(state, { payload }) {
       const it = state.items.find(i => i.slug === payload.slug)
       if (it) {
-        it.quantity = Math.max(1, Math.min(99, Number(payload.quantity) || 1))
+        const desired = Number(payload.quantity) || 1
+        const cap = Number.isFinite(it.stock) ? Math.max(1, Math.min(99, it.stock)) : 99
+        it.quantity = Math.max(1, Math.min(cap, desired))
         save(state)
       }
     },

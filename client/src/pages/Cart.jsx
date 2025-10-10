@@ -47,12 +47,13 @@ export default function Cart() {
         <div className="lg:col-span-2 space-y-4">
           {items.map(it => (
             <div key={it.slug} className="card p-6 flex gap-6 items-center">
-              <div className="w-20 h-20 md:w-24 md:h-24 bg-[--color-surface-glass] rounded-xl overflow-hidden backdrop-blur-sm border border-[--color-border]">
+              <Link to={`/products/${it.slug}`} className="w-20 h-20 md:w-24 md:h-24 bg-[--color-surface-glass] rounded-xl overflow-hidden backdrop-blur-sm border border-[--color-border] block">
                 <img src={it.image} alt={it.name} className="w-full h-full object-cover" />
-              </div>
+              </Link>
               <div className="flex-1 min-w-0 space-y-2">
-                <div className="font-semibold text-lg leading-snug line-clamp-2 text-[--color-text-high]">{it.name}</div>
+                <Link to={`/products/${it.slug}`} className="font-semibold text-lg leading-snug line-clamp-2 text-[--color-text-high] hover:underline">{it.name}</Link>
                 <div className="text-sm text-[--color-text-medium]">Color: <span className="font-medium">{it.color}</span></div>
+                <div className="text-xs"><Link className="underline opacity-80 hover:opacity-100" to={`/products/${it.slug}#reviews`}>See reviews</Link></div>
                 <div className="flex items-center gap-4 mt-3">
                   <div className="inline-flex items-center rounded-lg border border-[--color-border] bg-[--color-surface-glass] backdrop-blur-sm overflow-hidden">
                     <button
@@ -65,15 +66,16 @@ export default function Cart() {
                     <input
                       type="number"
                       min={1}
-                      max={99}
+                      max={Math.max(1, Number.isFinite(it.stock) ? it.stock : 99)}
                       className="w-16 text-center outline-none border-x border-[--color-border] bg-transparent text-[--color-text-high] py-2"
                       value={it.quantity}
-                      onChange={e => dispatch(setQty({ slug: it.slug, quantity: Math.max(1, Math.min(99, Number(e.target.value)||1)) }))}
+                      onChange={e => dispatch(setQty({ slug: it.slug, quantity: Math.max(1, Math.min((Number.isFinite(it.stock)?it.stock:99), Number(e.target.value)||1)) }))}
                     />
                     <button
                       className="px-3 py-2 hover:bg-[--color-surface-hover] text-[--color-text-high] transition-all duration-150"
-                      onClick={() => dispatch(setQty({ slug: it.slug, quantity: Math.min(99, it.quantity + 1) }))}
+                      onClick={() => dispatch(setQty({ slug: it.slug, quantity: Math.min((Number.isFinite(it.stock)?it.stock:99), it.quantity + 1) }))}
                       aria-label="Increase quantity"
+                      disabled={Number.isFinite(it.stock) && it.quantity >= it.stock}
                     >
                       <Plus size={16} />
                     </button>

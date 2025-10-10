@@ -31,7 +31,7 @@ export function buildPayHereCheckout({ order, address, user }) {
     merchant_id,
     return_url: env.PAYHERE_RETURN_URL || 'http://localhost:5173/orders',
     cancel_url: env.PAYHERE_CANCEL_URL || 'http://localhost:5173/checkout',
-    notify_url: env.PAYHERE_NOTIFY_URL || 'http://localhost:4000/api/payments/payhere/webhook',
+    notify_url: env.PAYHERE_NOTIFY_URL || 'https://inevitably-unpretty-serita.ngrok-free.dev/api/payments/payhere/webhook',
     order_id,
     items: `Order ${order_id}`,
     currency,
