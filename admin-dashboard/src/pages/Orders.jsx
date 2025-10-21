@@ -576,7 +576,7 @@ export default function OrdersPage() {
               <div>
                 <label className="label">Delivery person</label>
                 <select className="input w-full" value={assignAgent} onChange={e=>setAssignAgent(e.target.value)}>
-                  <option value="">â€” Select delivery person â€”</option>
+                  <option value="">-- Select delivery person --</option>
                   {agents.map(a => (
                     <option key={a.id} value={a.id}>{a.fullName || a.phone || a.email || a.id}</option>
                   ))}

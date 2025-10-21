@@ -296,22 +296,8 @@ function orderRow(o, refresh) {
     onclick: async (e) => {
       const btn = e.target
       try {
-        if (!confirm('Mark this order as Delivered?')) return
-        
         setLoading(btn, true)
-        const pod = prompt('Enter OTP code or photo/signature URL (optional). Leave blank to continue without evidence:') || ''
-        let payload = undefined
-        const trimmed = pod.trim()
-        
-        if (trimmed) {
-          if (/^\d{4,6}$/.test(trimmed)) {
-            payload = { evidence: { otp: trimmed } }
-          } else if (/^https?:\/\//i.test(trimmed)) {
-            payload = { evidence: { podPhotoUrl: trimmed } }
-          }
-        }
-        
-        await api.setOrderStatus(o.id, 'DELIVERED', payload)
+        await api.setOrderStatus(o.id, 'DELIVERED')
         showSuccess('Order marked as delivered successfully!', 'Delivery Complete')
         await refresh()
       } catch (e) { 
