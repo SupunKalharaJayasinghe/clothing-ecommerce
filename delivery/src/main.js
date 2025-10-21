@@ -365,19 +365,6 @@ function orderRow(o, refresh) {
     actionButtons.push(confirmPaymentBtn)
   }
 
-  // Return (RTO) - with verification
-  const returnBtn = el('button', { 
-    class: 'btn btn-danger',
-    style: 'display: flex; align-items: center; gap: 6px;',
-    onclick: () => { 
-      showNotification('Return to Origin feature is currently disabled for verification.', 'warning', 'Feature Disabled')
-      verifyBlocked() 
-    } 
-  })
-  returnBtn.appendChild(icons.return())
-  returnBtn.appendChild(document.createTextNode('Return'))
-  actionButtons.push(returnBtn)
-  
   // Enhanced title with status indicator
   const firstItem = (o.items && o.items[0]) ? o.items[0] : null
   const moreCount = (o.items?.length || 0) - 1
