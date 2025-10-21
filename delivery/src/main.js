@@ -290,10 +290,32 @@ function orderRow(o, refresh) {
   locationBtn.appendChild(icons.map())
   locationBtn.appendChild(document.createTextNode('Location'))
   //-------
+  const canStartDelivery = ['SHIPPED','IN_TRANSIT'].includes(String(o.deliveryState)) || String(o.orderState) === 'SHIPPED'
+  const canMarkDelivered = ['OUT_FOR_DELIVERY','SHIPPED','IN_TRANSIT'].includes(String(o.deliveryState)) || String(o.orderState) === 'SHIPPED'
+
+  if (canStartDelivery && String(o.deliveryState) !== 'OUT_FOR_DELIVERY') {
+    const startBtn = el('button', {
+      class: 'btn btn-outline',
+      style: 'display: flex; align-items: center; gap: 6px;',
+      onclick: async (e) => {
+        const btn = e.target
+        try {
+          setLoading(btn, true)
+          await api.setOrderStatus(o.id, 'OUT_FOR_DELIVERY')
+          showSuccess('Marked as out for delivery', 'Delivery')
+          await refresh()
+        } catch (e) { showError(e) } finally { setLoading(btn, false) }
+      }
+    })
+    startBtn.appendChild(icons.truck())
+    startBtn.appendChild(document.createTextNode('Start Delivery'))
+    actionButtons.push(startBtn)
+  }
+
   const deliveredBtn = el('button', { 
     class: 'btn btn-outline',
     style: 'display: flex; align-items: center; gap: 6px;',
-    onclick: async (e) => {
+    ...(canMarkDelivered ? { onclick: async (e) => {
       const btn = e.target
       try {
         setLoading(btn, true)
@@ -305,10 +327,14 @@ function orderRow(o, refresh) {
       } finally {
         setLoading(btn, false)
       }
-    } 
+    } } : {})
   })
   deliveredBtn.appendChild(icons.delivered())
   deliveredBtn.appendChild(document.createTextNode('Delivered'))
+  if (!canMarkDelivered) {
+    deliveredBtn.setAttribute('disabled', 'true')
+    deliveredBtn.title = 'Available after handover/out for delivery'
+  }
   
   actionButtons.push(locationBtn, deliveredBtn)
 

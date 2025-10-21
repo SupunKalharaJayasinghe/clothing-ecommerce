@@ -26,6 +26,14 @@ export default function OrdersPage() {
   const [assignFor, setAssignFor] = useState('')
   const [assignAgent, setAssignAgent] = useState('')
 
+  const [showDelivered, setShowDelivered] = useState(false)
+  const [deliveredFor, setDeliveredFor] = useState('')
+  const [delivered, setDelivered] = useState({ otp: '', podPhotoUrl: '', signatureUrl: '' })
+  const [showReason, setShowReason] = useState(false)
+  const [reasonFor, setReasonFor] = useState('')
+  const [reasonTarget, setReasonTarget] = useState('attempted')
+  const [reason, setReason] = useState({ code: '', detail: '' })
+
   // Create Order form state and modal
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({
@@ -87,27 +95,26 @@ export default function OrdersPage() {
   useEffect(() => { loadAgentsList() }, [])
 
   const updateStatus = async (id, next) => {
+    const s = String(next)
+    if (s === 'dispatched') {
+      await loadAgentsList()
+      setAssignFor(id)
+      setAssignOpen(true)
+      return
+    }
+    if (['attempted','failed','exception','return_to_sender'].includes(s)) {
+      setReasonFor(id)
+      setReasonTarget(s)
+      setShowReason(true)
+      return
+    }
+    if (s === 'delivered') {
+      setDeliveredFor(id)
+      setShowDelivered(true)
+      return
+    }
     try {
-      // Collect extra fields when required by server rules
-      const payload = { status: next }
-      if (next === 'dispatched') {
-        const scanRef = prompt('Enter dispatch scan reference (or leave empty to attach a photo URL next):') || ''
-        const photoUrl = scanRef ? '' : (prompt('Enter dispatch photo URL (optional):') || '')
-        payload.evidence = {}
-        if (scanRef) payload.evidence.scanRef = scanRef
-        if (photoUrl) payload.evidence.photoUrl = photoUrl
-      }
-      if (['attempted','failed','exception','return_to_sender'].includes(next)) {
-        const reason = prompt(`Enter reason for ${next.toUpperCase()}: (e.g., NO_ANSWER / address issue)`)
-        if (reason) payload.reason = { detail: reason }
-      }
-      if (next === 'delivered') {
-        const pod = prompt('Enter POD evidence: OTP code OR a photo/signature URL. If OTP, type the code; otherwise paste a URL.') || ''
-        payload.evidence = {}
-        if (/^\d{4,6}$/.test(pod)) payload.evidence.otp = pod
-        else if (pod) payload.evidence.podPhotoUrl = pod
-      }
-      await api.patch(`/admin/orders/${id}/status`, payload)
+      await api.patch(`/admin/orders/${id}/status`, { status: s })
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
@@ -151,6 +158,53 @@ export default function OrdersPage() {
       setAssignOpen(false)
       setAssignFor('')
       setAssignAgent('')
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message || e.message)
+    }
+  }
+
+  const submitDelivered = async () => {
+    if (!deliveredFor) return
+    const otp = String(delivered.otp || '').trim()
+    const pod = String(delivered.podPhotoUrl || '').trim()
+    const sig = String(delivered.signatureUrl || '').trim()
+    const evidence = {}
+    if (/^\d{4,6}$/.test(otp)) evidence.otp = otp
+    if (pod) evidence.podPhotoUrl = pod
+    if (sig) evidence.signatureUrl = sig
+    if (!evidence.otp && !evidence.podPhotoUrl && !evidence.signatureUrl) {
+      alert('Please provide OTP or Photo/Signature URL')
+      return
+    }
+    try {
+      await api.patch(`/admin/orders/${deliveredFor}/status`, { status: 'delivered', evidence })
+      setShowDelivered(false)
+      setDeliveredFor('')
+      setDelivered({ otp: '', podPhotoUrl: '', signatureUrl: '' })
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message || e.message)
+    }
+  }
+
+  const submitReason = async () => {
+    if (!reasonFor) return
+    const code = String(reason.code || '').trim()
+    const detail = String(reason.detail || '').trim()
+    const payload = { status: reasonTarget, reason: {} }
+    if (code) payload.reason.code = code
+    if (detail) payload.reason.detail = detail
+    if (!payload.reason.code && !payload.reason.detail) {
+      alert('Please enter a reason code or details')
+      return
+    }
+    try {
+      await api.patch(`/admin/orders/${reasonFor}/status`, payload)
+      setShowReason(false)
+      setReasonFor('')
+      setReasonTarget('attempted')
+      setReason({ code: '', detail: '' })
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
@@ -586,6 +640,62 @@ export default function OrdersPage() {
             <div className="card-footer flex justify-end gap-2">
               <button className="btn" onClick={()=>setAssignOpen(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={submitAssign}>Handover</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDelivered && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={()=>setShowDelivered(false)}>
+          <div className="card w-full max-w-md" onClick={e=>e.stopPropagation()}>
+            <div className="card-header font-semibold">Proof of Delivery</div>
+            <div className="card-body grid gap-3">
+              <div>
+                <label className="label">OTP code</label>
+                <input className="input w-full" value={delivered.otp} onChange={e=>setDelivered(d=>({...d, otp:e.target.value}))} placeholder="4-6 digit OTP (optional)" />
+              </div>
+              <div>
+                <label className="label">Photo URL</label>
+                <input className="input w-full" value={delivered.podPhotoUrl} onChange={e=>setDelivered(d=>({...d, podPhotoUrl:e.target.value}))} placeholder="Photo URL (optional)" />
+              </div>
+              <div>
+                <label className="label">Signature URL</label>
+                <input className="input w-full" value={delivered.signatureUrl} onChange={e=>setDelivered(d=>({...d, signatureUrl:e.target.value}))} placeholder="Signature URL (optional)" />
+              </div>
+              <div className="text-[11px] text-[color:var(--text-muted)]">Provide at least one field.</div>
+            </div>
+            <div className="card-footer flex justify-end gap-2">
+              <button className="btn" onClick={()=>setShowDelivered(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitDelivered}>Mark Delivered</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReason && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={()=>setShowReason(false)}>
+          <div className="card w-full max-w-md" onClick={e=>e.stopPropagation()}>
+            <div className="card-header font-semibold">Update status</div>
+            <div className="card-body grid gap-3">
+              <div>
+                <label className="label">Reason code</label>
+                <select className="input w-full" value={reason.code} onChange={e=>setReason(r=>({...r, code:e.target.value}))}>
+                  <option value="">-- Select reason code --</option>
+                  <option value="NO_ANSWER">NO_ANSWER</option>
+                  <option value="ADDRESS_INCORRECT">ADDRESS_INCORRECT</option>
+                  <option value="CUSTOMER_REQUESTED">CUSTOMER_REQUESTED</option>
+                  <option value="PACKAGE_DAMAGED">PACKAGE_DAMAGED</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Details</label>
+                <input className="input w-full" value={reason.detail} onChange={e=>setReason(r=>({...r, detail:e.target.value}))} placeholder="Notes (optional)" />
+              </div>
+            </div>
+            <div className="card-footer flex justify-end gap-2">
+              <button className="btn" onClick={()=>setShowReason(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitReason}>Update</button>
             </div>
           </div>
         </div>

@@ -1,7 +1,8 @@
 import catchAsync from '../../utils/catchAsync.js'
 import ApiError from '../../utils/ApiError.js'
 import Order from '../models/Order.js'
-import { updateOrderStates, applyStateChanges, DELIVERY_STATES, canTransitionDeliveryState } from '../../utils/stateManager.js'
+import DeliveryEvent from '../models/DeliveryEvent.js'
+import { updateOrderStates, applyStateChanges, DELIVERY_STATES, ORDER_STATES, canTransitionDeliveryState, canTransitionOrderState } from '../../utils/stateManager.js'
 
 // List orders for delivery staff across COD, CARD, BANK
 export const listDeliveryOrders = catchAsync(async (req, res) => {
@@ -152,11 +153,53 @@ export const updateDeliveryOrderStatus = catchAsync(async (req, res) => {
     sequence.push(target)
   }
 
+  const events = []
+  let prev = o.deliveryState
   for (const st of sequence) {
     const changes = updateOrderStates(o, { deliveryState: st })
     applyStateChanges(o, changes)
+
+    // Keep orderState in sync for key delivery milestones
+    if (st === DELIVERY_STATES.OUT_FOR_DELIVERY) {
+      if (canTransitionOrderState(o.orderState, ORDER_STATES.OUT_FOR_DELIVERY)) {
+        const ordCh = updateOrderStates(o, { orderState: ORDER_STATES.OUT_FOR_DELIVERY })
+        applyStateChanges(o, ordCh)
+      }
+    }
+    if (st === DELIVERY_STATES.DELIVERED) {
+      if (canTransitionOrderState(o.orderState, ORDER_STATES.DELIVERED)) {
+        const ordCh = updateOrderStates(o, { orderState: ORDER_STATES.DELIVERED })
+        applyStateChanges(o, ordCh)
+      }
+    }
+    // queue audit log for this transition
+    const ev = req.body?.evidence || {}
+    const r = req.body?.reason || {}
+    const payload = {
+      order: o._id,
+      fromState: String(prev || ''),
+      toState: String(st),
+      actor: 'delivery',
+      reason: (r.code || r.detail) ? { code: r.code, detail: r.detail } : undefined,
+      evidence: (st === DELIVERY_STATES.DELIVERED || ev.podPhotoUrl || ev.signatureUrl || ev.otp || ev.scanRef || ev.photoUrl) ? {
+        scanRef: ev.scanRef,
+        photoUrl: ev.photoUrl,
+        podPhotoUrl: ev.podPhotoUrl,
+        signatureUrl: ev.signatureUrl,
+        otp: ev.otp
+      } : undefined
+    }
+    // attach actor id if available
+    if (req.delivery?.sub) {
+      payload.actorId = req.delivery.sub
+      payload.actorModel = 'Delivery'
+    }
+    events.push(payload)
+    prev = st
   }
 
   await o.save()
+  // write audit logs (non-blocking)
+  try { if (events.length) await DeliveryEvent.insertMany(events) } catch {}
   res.json({ ok: true, orderId: o._id, deliveryState: o.deliveryState })
 })
