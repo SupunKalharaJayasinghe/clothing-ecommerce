@@ -57,6 +57,7 @@ export const listOrders = catchAsync(async (req, res) => {
 
   const [items, total] = await Promise.all([
     Order.find(where)
+      .populate('user', 'firstName lastName email username')
       .populate('assignedDelivery', 'firstName lastName phone email username')
       .sort({ createdAt: -1 })
       .skip(skip)

@@ -1,14 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
-import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon, Download, FileText } from 'lucide-react'
+import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon, Download, FileText, Copy, Check } from 'lucide-react'
 import { exportOrdersPDF, exportSingleOrderPDF } from '../utils/pdfExport'
 import { formatOrderId } from '../utils/format'
 
 // Clean status sets for Admin
 const filterStatuses = [
-  '',
-  'CONFIRMED','PACKING','SHIPPED','OUT_FOR_DELIVERY','DELIVERED','CANCELLED','RETURNED'
+  { value: '', label: 'All statuses' },
+  { value: 'PLACED', label: 'Placed' },
+  { value: 'PACKED', label: 'Packed' },
+  { value: 'HANDOVER', label: 'Handover' },
+  { value: 'START_DELIVERY', label: 'Start Delivery' },
+  { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'PAID', label: 'PAID' },
+  { value: 'UNPAID', label: 'UNPAID' }
 ]
 
 export default function OrdersPage() {
@@ -17,6 +23,7 @@ export default function OrdersPage() {
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [copiedId, setCopiedId] = useState('')
 
   // Delivery agents for assignment
   const [agents, setAgents] = useState([])
@@ -49,20 +56,35 @@ export default function OrdersPage() {
     setError('')
     try {
       const m = String(q || '').trim().match(/^#?([a-f0-9]{1,8})$/i)
-      if (m) {
-        const perPage = 100
-        let page = 1
-        let out = []
-        for (;;) {
-          const { data } = await api.get('/admin/orders', { params: { page, limit: perPage, status: status || undefined } })
-          out = out.concat(data.items || [])
-          if (!data.hasMore || page >= 5) break
-          page += 1
-        }
-        setItems(out)
+      const perPage = 100
+      let page = 1
+      const out = []
+      // Safe upper bound to avoid runaway in edge cases
+      const MAX_PAGES = 200
+      const mapFilterToBackend = {
+        PLACED: 'CONFIRMED',
+        PACKED: 'PACKING',
+        HANDOVER: 'SHIPPED',
+        START_DELIVERY: 'OUT_FOR_DELIVERY',
+        DELIVERED: 'DELIVERED'
+      }
+      const sVal = String(status || '')
+      const backendStatus = mapFilterToBackend[sVal.toUpperCase()] || ''
+      for (;;) {
+        const params = m
+          ? { page, limit: perPage, status: backendStatus || undefined }
+          : { page, limit: perPage, q: String(q || '').trim() || undefined, status: backendStatus || undefined }
+        const { data } = await api.get('/admin/orders', { params })
+        if (Array.isArray(data.items) && data.items.length) out.push(...data.items)
+        if (!data.hasMore || page >= MAX_PAGES) break
+        page += 1
+      }
+      // Apply payment status filter client-side when selected
+      if (sVal.toUpperCase() === 'PAID' || sVal.toUpperCase() === 'UNPAID') {
+        const payFiltered = out.filter(o => String(o.payment?.status || '').toUpperCase() === sVal.toUpperCase())
+        setItems(payFiltered)
       } else {
-        const res = await api.get('/admin/orders', { params: { q, status: status || undefined } })
-        setItems(res.data.items)
+        setItems(out)
       }
     } catch (e) {
       setError(e.response?.data?.message || e.message)
@@ -93,6 +115,17 @@ export default function OrdersPage() {
     }
   }
   useEffect(() => { loadAgentsList() }, [])
+
+  const copyShortId = async (id) => {
+    try {
+      const short = formatOrderId(id)
+      await navigator.clipboard.writeText(short)
+      setCopiedId(String(id))
+      setTimeout(() => setCopiedId(''), 1200)
+    } catch (e) {
+      alert('Failed to copy')
+    }
+  }
 
   const updateStatus = async (id, next) => {
     const s = String(next)
@@ -296,7 +329,7 @@ export default function OrdersPage() {
             />
           </div>
           <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
-            {filterStatuses.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
+            {filterStatuses.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
           <button 
@@ -374,8 +407,20 @@ export default function OrdersPage() {
                     return (
                       <tr key={o._id}>
                         <td>
-                          <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-                            {formatOrderId(o._id)}
+                          <div className="font-mono text-sm font-medium text-[color:var(--text-primary)] flex items-center gap-2">
+                            <span>{formatOrderId(o._id)}</span>
+                            <button
+                              type="button"
+                              className="p-1 rounded hover:bg-[color:var(--surface-hover)]"
+                              title="Copy order id"
+                              onClick={() => copyShortId(o._id)}
+                            >
+                              {copiedId === String(o._id) ? (
+                                <Check size={14} className="text-green-400" />
+                              ) : (
+                                <Copy size={14} className="text-[color:var(--text-muted)]" />
+                              )}
+                            </button>
                           </div>
                           <div className="text-xs text-[color:var(--text-muted)] mt-1">
                             {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

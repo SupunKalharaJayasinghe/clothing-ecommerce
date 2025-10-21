@@ -288,7 +288,7 @@ export default function Orders() {
                     <div className="text-xs opacity-60">Order</div>
                     <button
                       className="text-[11px] underline opacity-80 hover:opacity-100"
-                      onClick={() => navigator.clipboard?.writeText(o._id).catch(() => {})}
+                      onClick={() => navigator.clipboard?.writeText(formatOrderId(o._id)).catch(() => {})}
                       title="Copy order ID"
                     >
                       <span className="font-mono">{formatOrderId(o._id)}</span>
