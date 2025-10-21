@@ -65,7 +65,8 @@ export const listDeliveryOrders = catchAsync(async (req, res) => {
     paymentStatus: o.payment?.status,
     address: { city: o.address?.city, line1: o.address?.line1, phone: o.address?.phone },
     customer: { name: `${o.user?.firstName || ''} ${o.user?.lastName || ''}`.trim() || undefined },
-    items: (o.items || []).map(i => ({ slug: i.slug, name: i.name, qty: i.quantity }))
+    total: o.totals?.grandTotal,
+    items: (o.items || []).map(i => ({ slug: i.slug, name: i.name, qty: i.quantity, image: i.image }))
   }))
   res.json({ ok: true, items: rows })
 })

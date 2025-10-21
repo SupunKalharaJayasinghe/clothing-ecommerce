@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf'
+import { formatOrderId } from './format'
 
 export const exportCustomersPDF = (customers) => {
   console.log('Starting PDF export for customers:', customers)
@@ -674,7 +675,7 @@ export const exportOrdersPDF = (orders) => {
     }
     
     // Order data
-    const orderId = String(order._id || '').substring(0, 10) + '...'
+    const orderId = formatOrderId(order?._id)
     const customerName = order.user ? `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() : 'Guest'
     const total = (order.totals?.grandTotal || 0).toLocaleString()
     const status = order.status || order.orderState || 'N/A'
@@ -748,7 +749,7 @@ export const exportSingleOrderPDF = (order) => {
     const lineHeight = 8
     
     // Order details
-    doc.text(`Order ID: ${order._id || 'N/A'}`, 14, yPos)
+    doc.text(`Order ID: ${formatOrderId(order._id) || 'N/A'}`, 14, yPos)
     yPos += lineHeight
     
     doc.text(`Customer: ${order.customerName || 'Guest'}`, 14, yPos)
@@ -886,11 +887,11 @@ export const exportPaymentsPDF = (payments) => {
   let yPos = 50; const lineHeight = 6
   doc.setFontSize(9)
   payments.forEach((p, i) => {
-    const id = String(p._id || '').substring(0, 8)
+    const id = formatOrderId(p?._id)
     const method = p.payment?.method || 'N/A'
     const status = p.payment?.status || 'N/A'
     const amount = (p.totals?.grandTotal || 0).toLocaleString()
-    doc.text(`${i+1}. ${id}... ${method} LKR ${amount} (${status})`, 14, yPos)
+    doc.text(`${i+1}. ${id} ${method} LKR ${amount} (${status})`, 14, yPos)
     yPos += lineHeight; if (yPos > 270) { doc.addPage(); yPos = 20 }
   })
   doc.save(`payments-report-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -902,7 +903,7 @@ export const exportSinglePaymentPDF = (payment) => {
   doc.setFontSize(16); doc.text('Payment Details', 14, 22)
   doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30)
   let yPos = 45; const lineHeight = 7
-  doc.text(`Order: ${payment._id || 'N/A'}`, 14, yPos); yPos += lineHeight
+  doc.text(`Order: ${formatOrderId(payment._id) || 'N/A'}`, 14, yPos); yPos += lineHeight
   doc.text(`Customer: ${payment.customerName || 'N/A'}`, 14, yPos); yPos += lineHeight
   doc.text(`Method: ${payment.paymentMethod || 'N/A'}`, 14, yPos); yPos += lineHeight
   doc.text(`Status: ${payment.paymentStatus || 'N/A'}`, 14, yPos); yPos += lineHeight
@@ -957,9 +958,9 @@ export const exportReturnsPDF = (returns) => {
   let yPos = 50; const lineHeight = 6
   doc.setFontSize(9)
   returns.forEach((r, i) => {
-    const id = String(r._id || '').substring(0, 8)
+    const id = formatOrderId(r?.order?._id || r?.orderId || r?.order || r?._id)
     const status = r.returnRequest?.status || 'N/A'
-    doc.text(`${i+1}. Order ${id}... Status: ${status}`, 14, yPos)
+    doc.text(`${i+1}. Order ${id} Status: ${status}`, 14, yPos)
     yPos += lineHeight; if (yPos > 270) { doc.addPage(); yPos = 20 }
   })
   doc.save(`returns-report-${new Date().toISOString().split('T')[0]}.pdf`)

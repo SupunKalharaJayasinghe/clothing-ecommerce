@@ -12,8 +12,8 @@ import Register from '../pages/Register'
 import { useAppSelector } from '../app/hooks'
 import Account from '../pages/Account'
 import About from '../pages/About'
-import ForgotPassword from '../pages/ForgotPassword'     // <-- NEW
-import ResetPassword from '../pages/ResetPassword'       // <-- NEW
+import ForgotPassword from '../pages/ForgotPassword'
+import ResetPassword from '../pages/ResetPassword' 
 import Loader from '../components/ui/Loader'
 import Privacy from '../pages/Privacy'
 import Terms from '../pages/Terms'

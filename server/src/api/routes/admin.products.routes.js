@@ -61,9 +61,9 @@ const updateSchema = z.object({
   })
 })
 
-router.get('/', canManageProducts, validate(listSchema), listProducts)
-router.get('/:id', canManageProducts, validate(idParam), getProduct)
-router.get('/:id/details', canManageProducts, validate(idParam), getProductDetails)
+router.get('/', validate(listSchema), listProducts)
+router.get('/:id', validate(idParam), getProduct)
+router.get('/:id/details', validate(idParam), getProductDetails)
 router.post('/', canManageProducts, validate(createSchema), createProduct)
 router.patch('/:id', canManageProducts, validate(updateSchema), updateProduct)
 router.delete('/:id', canManageProducts, validate(idParam), deleteProduct)

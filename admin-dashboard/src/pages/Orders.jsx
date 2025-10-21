@@ -1,8 +1,9 @@
-﻿import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
 import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon, Download, FileText } from 'lucide-react'
 import { exportOrdersPDF, exportSingleOrderPDF } from '../utils/pdfExport'
+import { formatOrderId } from '../utils/format'
 
 // Clean status sets for Admin
 const filterStatuses = [
@@ -39,8 +40,22 @@ export default function OrdersPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get('/admin/orders', { params: { q, status: status || undefined } })
-      setItems(res.data.items)
+      const m = String(q || '').trim().match(/^#?([a-f0-9]{1,8})$/i)
+      if (m) {
+        const perPage = 100
+        let page = 1
+        let out = []
+        for (;;) {
+          const { data } = await api.get('/admin/orders', { params: { page, limit: perPage, status: status || undefined } })
+          out = out.concat(data.items || [])
+          if (!data.hasMore || page >= 5) break
+          page += 1
+        }
+        setItems(out)
+      } else {
+        const res = await api.get('/admin/orders', { params: { q, status: status || undefined } })
+        setItems(res.data.items)
+      }
     } catch (e) {
       setError(e.response?.data?.message || e.message)
     } finally {
@@ -49,6 +64,16 @@ export default function OrdersPage() {
   }
 
   useEffect(() => { load() }, [])
+  const visibleItems = useMemo(() => {
+    const sq = String(q || '').trim()
+    if (!sq) return items
+    const m = sq.match(/^#?([a-f0-9]{1,8})$/i)
+    if (m) {
+      const needle = m[1].toLowerCase()
+      return (items || []).filter(o => String(o._id || '').slice(-8).toLowerCase().includes(needle))
+    }
+    return items
+  }, [items, q])
   const loadAgentsList = async () => {
     try {
       const res = await api.get('/admin/delivery', { params: { limit: 100 } })
@@ -183,11 +208,11 @@ export default function OrdersPage() {
 
   // PDF export functions
   const handleExportAllPDF = () => {
-    if (items.length === 0) {
+    if (visibleItems.length === 0) {
       alert('No orders to export')
       return
     }
-    exportOrdersPDF(items)
+    exportOrdersPDF(visibleItems)
   }
 
   const handleExportSinglePDF = async (orderId) => {
@@ -210,7 +235,7 @@ export default function OrdersPage() {
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
             <input
-              placeholder="Search orders..."
+              placeholder="Search orders (#XXXXXXXX, email, name...)"
               value={q}
               onChange={e=>setQ(e.target.value)}
               className="input min-w-[200px]"
@@ -268,13 +293,13 @@ export default function OrdersPage() {
                         <div className="text-[color:var(--text-muted)]">Loading...</div>
                       </td>
                     </tr>
-                  ) : items.length === 0 ? (
+                  ) : visibleItems.length === 0 ? (
                     <tr>
                       <td colSpan="7" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">No orders found</div>
                       </td>
                     </tr>
-                  ) : items.map(o => {
+                  ) : visibleItems.map(o => {
                     const method = String(o.payment?.method || '').toUpperCase()
                     const pay = String(o.payment?.status || '').toUpperCase()
                     const state = String(o.orderState || o.status || '').toUpperCase()
@@ -296,7 +321,7 @@ export default function OrdersPage() {
                       <tr key={o._id}>
                         <td>
                           <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-                            #{o._id?.slice(-8)}
+                            {formatOrderId(o._id)}
                           </div>
                           <div className="text-xs text-[color:var(--text-muted)] mt-1">
                             {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

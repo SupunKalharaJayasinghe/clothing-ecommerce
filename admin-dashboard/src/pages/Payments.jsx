@@ -4,6 +4,7 @@ import { formatLKR } from '../utils/currency'
 import { ChevronDown, ChevronRight, Search, CreditCard, DollarSign, CheckCircle, XCircle, Clock, RefreshCw, Download, FileText } from 'lucide-react'
 import { exportPaymentsPDF, exportSinglePaymentPDF } from '../utils/pdfExport'
 import { paymentStatusClass } from '../utils/status'
+import { formatOrderId } from '../utils/format'
 
 const methods = ['', 'BANK', 'CARD', 'COD']
 // Align with API enum
@@ -141,7 +142,7 @@ export default function PaymentsPage() {
           <select value={method} onChange={e=>setMethod(e.target.value)} className="input">
             {methods.map(m => <option key={m} value={m}>{m || 'All methods'}</option>)}
           </select>
-<select value={status} onChange={e=>setStatus(e.target.value)} className="input">
+          <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
             {STATUSES.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
@@ -201,7 +202,7 @@ export default function PaymentsPage() {
                       }
                     }
                     
-const getStatusColor = (status) => paymentStatusClass(status)
+                    const getStatusColor = (status) => paymentStatusClass(status)
                     return (
                       <React.Fragment key={o._id}>
                         <tr>
@@ -218,7 +219,7 @@ const getStatusColor = (status) => paymentStatusClass(status)
                           </td>
                           <td>
                             <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-                              #{o._id?.slice(-8)}
+                              {formatOrderId(o._id)}
                             </div>
                             <div className="text-xs text-[color:var(--text-muted)] mt-1">
                               {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

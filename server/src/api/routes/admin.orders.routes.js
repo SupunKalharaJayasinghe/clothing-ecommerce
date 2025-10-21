@@ -36,9 +36,9 @@ const statusSchema = z.object({
   }).passthrough()
 })
 
-router.get('/', canManageOrders, validate(listSchema), listOrders)
-router.get('/:id', canManageOrders, validate(idParam), getOrder)
-router.get('/:id/details', canManageOrders, validate(idParam), getOrderDetails)
+router.get('/', validate(listSchema), listOrders)
+router.get('/:id', validate(idParam), getOrder)
+router.get('/:id/details', validate(idParam), getOrderDetails)
 router.patch('/:id/status', canManageOrders, validate(statusSchema), updateStatus)
 
 // Create

@@ -4,6 +4,7 @@ import { formatLKR } from '../utils/currency'
 import { Search, RefreshCw, DollarSign, CreditCard, Clock, CheckCircle, FileText, Download, TrendingUp } from 'lucide-react'
 import { exportRefundsPDF, exportSingleRefundPDF } from '../utils/pdfExport'
 import { refundStatusClass } from '../utils/status'
+import { formatOrderId } from '../utils/format'
 
 const methods = ['', 'BANK', 'CARD', 'COD']
 const statuses = ['', 'REQUESTED', 'APPROVED', 'PROCESSING', 'PROCESSED', 'FAILED', 'CANCELLED']
@@ -211,7 +212,7 @@ const getStatusColor = (status) => refundStatusClass(status)
                         <tr key={o._id}>
                           <td>
                             <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-#{(o.order?._id || o._id)?.toString().slice(-8)}
+{formatOrderId(o.order?._id || o._id)}
                             </div>
                             <div className="text-xs text-[color:var(--text-muted)] mt-1">
                               {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
