@@ -12,18 +12,18 @@ const canManageAdmins = requireAnyRole(ROLES.ADMIN, ROLES.USER_MANAGER)
 
 const listSchema = z.object({ query: z.object({ q: z.string().optional(), role: z.string().optional(), page: z.coerce.number().min(1).optional(), limit: z.coerce.number().min(1).max(100).optional() }) })
 const idParam = z.object({ params: z.object({ id: z.string() }) })
-const createSchema = z.object({ body: z.object({ firstName: z.string().min(2).max(60), lastName: z.string().min(2).max(60), username: z.string().min(3).max(30).regex(/^[a-z0-9_.]+$/), email: z.string().email(), password: z.string().min(8), roles: z.array(z.string()).min(1).default(['user_manager']) }) })
+const createSchema = z.object({ body: z.object({ firstName: z.string().min(2).max(60), lastName: z.string().min(2).max(60), username: z.string().min(3).max(30).regex(/^[a-z0-9_.]+$/i, 'Username can contain letters, numbers, underscores, and dots').transform((s) => s.toLowerCase()), email: z.string().email(), password: z.string().min(8), roles: z.array(z.string()).min(1).default(['user_manager']) }) })
 const createVerifySchema = z.object({ body: z.object({
   tmpToken: z.string().min(10),
   code: z.string().regex(/^\d{6}$/, 'Verification code must be 6 digits'),
   firstName: z.string().min(2).max(60),
   lastName: z.string().min(2).max(60),
-  username: z.string().min(3).max(30).regex(/^[a-z0-9_.]+$/),
+  username: z.string().min(3).max(30).regex(/^[a-z0-9_.]+$/i, 'Username can contain letters, numbers, underscores, and dots').transform((s) => s.toLowerCase()),
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   roles: z.array(z.string()).min(1).default(['user_manager'])
 }) })
-const updateSchema = z.object({ params: z.object({ id: z.string() }), body: z.object({ firstName: z.string().min(2).max(60).optional(), lastName: z.string().min(2).max(60).optional(), username: z.string().min(3).max(30).regex(/^[a-z0-9_.]+$/).optional(), email: z.string().email().optional(), password: z.string().min(8).optional(), roles: z.array(z.string()).min(1).optional() }) })
+const updateSchema = z.object({ params: z.object({ id: z.string() }), body: z.object({ firstName: z.string().min(2).max(60).optional(), lastName: z.string().min(2).max(60).optional(), username: z.string().min(3).max(30).regex(/^[a-z0-9_.]+$/i, 'Username can contain letters, numbers, underscores, and dots').transform((s) => s.toLowerCase()).optional(), email: z.string().email().optional(), password: z.string().min(8).optional(), roles: z.array(z.string()).min(1).optional() }) })
 
 router.get('/', canManageAdmins, validate(listSchema), listAdmins)
 router.get('/:id', canManageAdmins, validate(idParam), getAdmin)
