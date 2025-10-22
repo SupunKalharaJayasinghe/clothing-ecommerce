@@ -66,6 +66,11 @@ export const exportCustomersPDF = (customers) => {
   }
   
   const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const leftMargin = 14
+  const rightMargin = 14
+  const contentWidth = pageWidth - leftMargin - rightMargin
   
   // Add title
   doc.setFontSize(20)
@@ -81,8 +86,7 @@ export const exportCustomersPDF = (customers) => {
   // Create table manually
   let yPos = 50
   const lineHeight = 8
-  const leftMargin = 14
-  const columnWidths = [50, 70, 50, 40] // Name, Email, Username, Date
+  const columnWidths = [contentWidth * 0.30, contentWidth * 0.40, contentWidth * 0.18, contentWidth * 0.12] // Name, Email, Username, Date
   const columnPositions = [
     leftMargin, 
     leftMargin + columnWidths[0], 
@@ -94,7 +98,7 @@ export const exportCustomersPDF = (customers) => {
   doc.setFontSize(10)
   doc.setFont(undefined, 'bold')
   doc.setFillColor(41, 128, 185)
-  doc.rect(leftMargin, yPos - 5, 210, lineHeight, 'F')
+  doc.rect(leftMargin, yPos - 5, contentWidth, lineHeight, 'F')
   doc.setTextColor(255, 255, 255)
   doc.text('Name', columnPositions[0], yPos)
   doc.text('Email', columnPositions[1], yPos)
@@ -110,7 +114,7 @@ export const exportCustomersPDF = (customers) => {
     // Alternate row background
     if (index % 2 === 1) {
       doc.setFillColor(245, 245, 245)
-      doc.rect(leftMargin, yPos - 5, 210, lineHeight, 'F')
+      doc.rect(leftMargin, yPos - 5, contentWidth, lineHeight, 'F')
     }
     
     // Customer data
@@ -130,21 +134,16 @@ export const exportCustomersPDF = (customers) => {
     // Add new page if needed
     if (yPos > pageHeight - 20) {
       doc.addPage()
-      const newTop2 = drawReportHeader(doc, 'Orders Report')
-      yPos = newTop2 + 4
+      yPos = 50
       doc.setFontSize(10)
       doc.setFont(undefined, 'bold')
       doc.setFillColor(41, 128, 185)
       doc.rect(leftMargin, yPos - 5, contentWidth, lineHeight, 'F')
       doc.setTextColor(255, 255, 255)
-      const headerCenter2 = (i) => columnPositions[i] + columnWidths[i] / 2
-      const rightOf2 = (i, pad=2) => columnPositions[i] + columnWidths[i] - pad
-      doc.text('Order ID', columnPositions[0], yPos)
-      doc.text('Customer', columnPositions[1], yPos)
-      doc.text('Total (LKR)', rightOf2(2), yPos, { align: 'right' })
-      doc.text('Status', headerCenter2(3), yPos, { align: 'center' })
-      doc.text('Items', headerCenter2(4), yPos, { align: 'center' })
-      doc.text('Date', rightOf2(5), yPos, { align: 'right' })
+      doc.text('Name', columnPositions[0], yPos)
+      doc.text('Email', columnPositions[1], yPos)
+      doc.text('Username', columnPositions[2], yPos)
+      doc.text('Registration Date', columnPositions[3], yPos)
       yPos += lineHeight + 2
       doc.setFont(undefined, 'normal')
       doc.setTextColor(0, 0, 0)
