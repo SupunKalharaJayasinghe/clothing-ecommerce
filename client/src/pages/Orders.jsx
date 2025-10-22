@@ -7,6 +7,7 @@ import Badge from '../components/ui/Badge'
 import Loader from '../components/ui/Loader'
 import { ChevronDown, ChevronUp, Copy } from '../lib/icons'
 import { clearCart } from '../features/cart/cartSlice'
+import { formatOrderId } from '../lib/format'
 
 export default function Orders() {
   const { user } = useAppSelector(s => s.auth)
@@ -16,12 +17,12 @@ export default function Orders() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [orders, setOrders] = useState([])
-  const [uploading, setUploading] = useState('') // orderId currently uploading slip
-  const [expanded, setExpanded] = useState({}) // map of orderId => bool (mobile only)
+  const [uploading, setUploading] = useState('')
+  const [expanded, setExpanded] = useState({})
   const [returnOpen, setReturnOpen] = useState(false)
   const [returnFor, setReturnFor] = useState(null)
   const [retReason, setRetReason] = useState('')
-  const [retSel, setRetSel] = useState([]) // [slug]
+  const [retSel, setRetSel] = useState([])
   const [retSubmitting, setRetSubmitting] = useState(false)
   const [retFiles, setRetFiles] = useState([])
   // Cancel order modal
@@ -245,7 +246,7 @@ export default function Orders() {
           <div className="relative modal-solid rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-[--color-border]">
             <div className="px-6 py-4 border-b">
               <h2 className="text-lg font-semibold">Cancel Order</h2>
-              <div className="text-xs opacity-70">Order #{cancelFor._id}</div>
+              <div className="text-xs opacity-70">Order {formatOrderId(cancelFor._id)}</div>
             </div>
             <div className="p-6 space-y-4">
               <div className="text-sm opacity-80">
@@ -287,10 +288,10 @@ export default function Orders() {
                     <div className="text-xs opacity-60">Order</div>
                     <button
                       className="text-[11px] underline opacity-80 hover:opacity-100"
-                      onClick={() => navigator.clipboard?.writeText(o._id).catch(() => {})}
+                      onClick={() => navigator.clipboard?.writeText(formatOrderId(o._id)).catch(() => {})}
                       title="Copy order ID"
                     >
-                      <span className="font-mono">#{o._id}</span>
+                      <span className="font-mono">{formatOrderId(o._id)}</span>
                       <span className="inline-flex ml-1 align-middle"><Copy size={12} /></span>
                     </button>
                   </div>
@@ -516,7 +517,7 @@ export default function Orders() {
           <div className="relative modal-solid rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-[--color-border]">
             <div className="px-6 py-4 border-b">
               <h2 className="text-lg font-semibold">Request Return</h2>
-              <div className="text-xs opacity-70">Order #{returnFor._id}</div>
+              <div className="text-xs opacity-70">Order {formatOrderId(returnFor._id)}</div>
             </div>
             <div className="p-6 space-y-4">
               <div className="text-sm opacity-80">

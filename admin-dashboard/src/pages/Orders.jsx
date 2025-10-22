@@ -1,13 +1,20 @@
-﻿import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import { formatLKR } from '../utils/currency'
-import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon, Download, FileText } from 'lucide-react'
+import { Search, Plus, X, Trash2, Package, CreditCard, Truck, User, MapPin, ShoppingCart, PackageCheck, TruckIcon, Download, FileText, Copy, Check } from 'lucide-react'
 import { exportOrdersPDF, exportSingleOrderPDF } from '../utils/pdfExport'
+import { formatOrderId } from '../utils/format'
 
 // Clean status sets for Admin
 const filterStatuses = [
-  '',
-  'CONFIRMED','PACKING','SHIPPED','OUT_FOR_DELIVERY','DELIVERED','CANCELLED','RETURNED'
+  { value: '', label: 'All statuses' },
+  { value: 'PLACED', label: 'Placed' },
+  { value: 'PACKED', label: 'Packed' },
+  { value: 'HANDOVER', label: 'Handover' },
+  { value: 'START_DELIVERY', label: 'Start Delivery' },
+  { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'PAID', label: 'PAID' },
+  { value: 'UNPAID', label: 'UNPAID' }
 ]
 
 export default function OrdersPage() {
@@ -16,6 +23,7 @@ export default function OrdersPage() {
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [copiedId, setCopiedId] = useState('')
 
   // Delivery agents for assignment
   const [agents, setAgents] = useState([])
@@ -24,6 +32,14 @@ export default function OrdersPage() {
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignFor, setAssignFor] = useState('')
   const [assignAgent, setAssignAgent] = useState('')
+
+  const [showDelivered, setShowDelivered] = useState(false)
+  const [deliveredFor, setDeliveredFor] = useState('')
+  const [delivered, setDelivered] = useState({ otp: '', podPhotoUrl: '', signatureUrl: '' })
+  const [showReason, setShowReason] = useState(false)
+  const [reasonFor, setReasonFor] = useState('')
+  const [reasonTarget, setReasonTarget] = useState('attempted')
+  const [reason, setReason] = useState({ code: '', detail: '' })
 
   // Create Order form state and modal
   const [showModal, setShowModal] = useState(false)
@@ -39,8 +55,37 @@ export default function OrdersPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get('/admin/orders', { params: { q, status: status || undefined } })
-      setItems(res.data.items)
+      const m = String(q || '').trim().match(/^#?([a-f0-9]{1,8})$/i)
+      const perPage = 100
+      let page = 1
+      const out = []
+      // Safe upper bound to avoid runaway in edge cases
+      const MAX_PAGES = 200
+      const mapFilterToBackend = {
+        PLACED: 'CONFIRMED',
+        PACKED: 'PACKING',
+        HANDOVER: 'SHIPPED',
+        START_DELIVERY: 'OUT_FOR_DELIVERY',
+        DELIVERED: 'DELIVERED'
+      }
+      const sVal = String(status || '')
+      const backendStatus = mapFilterToBackend[sVal.toUpperCase()] || ''
+      for (;;) {
+        const params = m
+          ? { page, limit: perPage, status: backendStatus || undefined }
+          : { page, limit: perPage, q: String(q || '').trim() || undefined, status: backendStatus || undefined }
+        const { data } = await api.get('/admin/orders', { params })
+        if (Array.isArray(data.items) && data.items.length) out.push(...data.items)
+        if (!data.hasMore || page >= MAX_PAGES) break
+        page += 1
+      }
+      // Apply payment status filter client-side when selected
+      if (sVal.toUpperCase() === 'PAID' || sVal.toUpperCase() === 'UNPAID') {
+        const payFiltered = out.filter(o => String(o.payment?.status || '').toUpperCase() === sVal.toUpperCase())
+        setItems(payFiltered)
+      } else {
+        setItems(out)
+      }
     } catch (e) {
       setError(e.response?.data?.message || e.message)
     } finally {
@@ -49,6 +94,16 @@ export default function OrdersPage() {
   }
 
   useEffect(() => { load() }, [])
+  const visibleItems = useMemo(() => {
+    const sq = String(q || '').trim()
+    if (!sq) return items
+    const m = sq.match(/^#?([a-f0-9]{1,8})$/i)
+    if (m) {
+      const needle = m[1].toLowerCase()
+      return (items || []).filter(o => String(o._id || '').slice(-8).toLowerCase().includes(needle))
+    }
+    return items
+  }, [items, q])
   const loadAgentsList = async () => {
     try {
       const res = await api.get('/admin/delivery', { params: { limit: 100 } })
@@ -61,28 +116,38 @@ export default function OrdersPage() {
   }
   useEffect(() => { loadAgentsList() }, [])
 
-  const updateStatus = async (id, next) => {
+  const copyShortId = async (id) => {
     try {
-      // Collect extra fields when required by server rules
-      const payload = { status: next }
-      if (next === 'dispatched') {
-        const scanRef = prompt('Enter dispatch scan reference (or leave empty to attach a photo URL next):') || ''
-        const photoUrl = scanRef ? '' : (prompt('Enter dispatch photo URL (optional):') || '')
-        payload.evidence = {}
-        if (scanRef) payload.evidence.scanRef = scanRef
-        if (photoUrl) payload.evidence.photoUrl = photoUrl
-      }
-      if (['attempted','failed','exception','return_to_sender'].includes(next)) {
-        const reason = prompt(`Enter reason for ${next.toUpperCase()}: (e.g., NO_ANSWER / address issue)`)
-        if (reason) payload.reason = { detail: reason }
-      }
-      if (next === 'delivered') {
-        const pod = prompt('Enter POD evidence: OTP code OR a photo/signature URL. If OTP, type the code; otherwise paste a URL.') || ''
-        payload.evidence = {}
-        if (/^\d{4,6}$/.test(pod)) payload.evidence.otp = pod
-        else if (pod) payload.evidence.podPhotoUrl = pod
-      }
-      await api.patch(`/admin/orders/${id}/status`, payload)
+      const short = formatOrderId(id)
+      await navigator.clipboard.writeText(short)
+      setCopiedId(String(id))
+      setTimeout(() => setCopiedId(''), 1200)
+    } catch (e) {
+      alert('Failed to copy')
+    }
+  }
+
+  const updateStatus = async (id, next) => {
+    const s = String(next)
+    if (s === 'dispatched') {
+      await loadAgentsList()
+      setAssignFor(id)
+      setAssignOpen(true)
+      return
+    }
+    if (['attempted','failed','exception','return_to_sender'].includes(s)) {
+      setReasonFor(id)
+      setReasonTarget(s)
+      setShowReason(true)
+      return
+    }
+    if (s === 'delivered') {
+      setDeliveredFor(id)
+      setShowDelivered(true)
+      return
+    }
+    try {
+      await api.patch(`/admin/orders/${id}/status`, { status: s })
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
@@ -126,6 +191,53 @@ export default function OrdersPage() {
       setAssignOpen(false)
       setAssignFor('')
       setAssignAgent('')
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message || e.message)
+    }
+  }
+
+  const submitDelivered = async () => {
+    if (!deliveredFor) return
+    const otp = String(delivered.otp || '').trim()
+    const pod = String(delivered.podPhotoUrl || '').trim()
+    const sig = String(delivered.signatureUrl || '').trim()
+    const evidence = {}
+    if (/^\d{4,6}$/.test(otp)) evidence.otp = otp
+    if (pod) evidence.podPhotoUrl = pod
+    if (sig) evidence.signatureUrl = sig
+    if (!evidence.otp && !evidence.podPhotoUrl && !evidence.signatureUrl) {
+      alert('Please provide OTP or Photo/Signature URL')
+      return
+    }
+    try {
+      await api.patch(`/admin/orders/${deliveredFor}/status`, { status: 'delivered', evidence })
+      setShowDelivered(false)
+      setDeliveredFor('')
+      setDelivered({ otp: '', podPhotoUrl: '', signatureUrl: '' })
+      await load()
+    } catch (e) {
+      alert(e.response?.data?.message || e.message)
+    }
+  }
+
+  const submitReason = async () => {
+    if (!reasonFor) return
+    const code = String(reason.code || '').trim()
+    const detail = String(reason.detail || '').trim()
+    const payload = { status: reasonTarget, reason: {} }
+    if (code) payload.reason.code = code
+    if (detail) payload.reason.detail = detail
+    if (!payload.reason.code && !payload.reason.detail) {
+      alert('Please enter a reason code or details')
+      return
+    }
+    try {
+      await api.patch(`/admin/orders/${reasonFor}/status`, payload)
+      setShowReason(false)
+      setReasonFor('')
+      setReasonTarget('attempted')
+      setReason({ code: '', detail: '' })
       await load()
     } catch (e) {
       alert(e.response?.data?.message || e.message)
@@ -183,11 +295,11 @@ export default function OrdersPage() {
 
   // PDF export functions
   const handleExportAllPDF = () => {
-    if (items.length === 0) {
+    if (visibleItems.length === 0) {
       alert('No orders to export')
       return
     }
-    exportOrdersPDF(items)
+    exportOrdersPDF(visibleItems)
   }
 
   const handleExportSinglePDF = async (orderId) => {
@@ -210,14 +322,14 @@ export default function OrdersPage() {
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[color:var(--text-muted)]" />
             <input
-              placeholder="Search orders..."
+              placeholder="Search orders (#XXXXXXXX, email, name...)"
               value={q}
               onChange={e=>setQ(e.target.value)}
               className="input min-w-[200px]"
             />
           </div>
           <select value={status} onChange={e=>setStatus(e.target.value)} className="input">
-            {filterStatuses.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
+            {filterStatuses.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
           <button onClick={load} className="btn btn-secondary whitespace-nowrap">Filter</button>
           <button 
@@ -268,13 +380,13 @@ export default function OrdersPage() {
                         <div className="text-[color:var(--text-muted)]">Loading...</div>
                       </td>
                     </tr>
-                  ) : items.length === 0 ? (
+                  ) : visibleItems.length === 0 ? (
                     <tr>
                       <td colSpan="7" className="text-center py-8">
                         <div className="text-[color:var(--text-muted)]">No orders found</div>
                       </td>
                     </tr>
-                  ) : items.map(o => {
+                  ) : visibleItems.map(o => {
                     const method = String(o.payment?.method || '').toUpperCase()
                     const pay = String(o.payment?.status || '').toUpperCase()
                     const state = String(o.orderState || o.status || '').toUpperCase()
@@ -295,8 +407,20 @@ export default function OrdersPage() {
                     return (
                       <tr key={o._id}>
                         <td>
-                          <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-                            #{o._id?.slice(-8)}
+                          <div className="font-mono text-sm font-medium text-[color:var(--text-primary)] flex items-center gap-2">
+                            <span>{formatOrderId(o._id)}</span>
+                            <button
+                              type="button"
+                              className="p-1 rounded hover:bg-[color:var(--surface-hover)]"
+                              title="Copy order id"
+                              onClick={() => copyShortId(o._id)}
+                            >
+                              {copiedId === String(o._id) ? (
+                                <Check size={14} className="text-green-400" />
+                              ) : (
+                                <Copy size={14} className="text-[color:var(--text-muted)]" />
+                              )}
+                            </button>
                           </div>
                           <div className="text-xs text-[color:var(--text-muted)] mt-1">
                             {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -551,7 +675,7 @@ export default function OrdersPage() {
               <div>
                 <label className="label">Delivery person</label>
                 <select className="input w-full" value={assignAgent} onChange={e=>setAssignAgent(e.target.value)}>
-                  <option value="">â€” Select delivery person â€”</option>
+                  <option value="">-- Select delivery person --</option>
                   {agents.map(a => (
                     <option key={a.id} value={a.id}>{a.fullName || a.phone || a.email || a.id}</option>
                   ))}
@@ -561,6 +685,62 @@ export default function OrdersPage() {
             <div className="card-footer flex justify-end gap-2">
               <button className="btn" onClick={()=>setAssignOpen(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={submitAssign}>Handover</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDelivered && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={()=>setShowDelivered(false)}>
+          <div className="card w-full max-w-md" onClick={e=>e.stopPropagation()}>
+            <div className="card-header font-semibold">Proof of Delivery</div>
+            <div className="card-body grid gap-3">
+              <div>
+                <label className="label">OTP code</label>
+                <input className="input w-full" value={delivered.otp} onChange={e=>setDelivered(d=>({...d, otp:e.target.value}))} placeholder="4-6 digit OTP (optional)" />
+              </div>
+              <div>
+                <label className="label">Photo URL</label>
+                <input className="input w-full" value={delivered.podPhotoUrl} onChange={e=>setDelivered(d=>({...d, podPhotoUrl:e.target.value}))} placeholder="Photo URL (optional)" />
+              </div>
+              <div>
+                <label className="label">Signature URL</label>
+                <input className="input w-full" value={delivered.signatureUrl} onChange={e=>setDelivered(d=>({...d, signatureUrl:e.target.value}))} placeholder="Signature URL (optional)" />
+              </div>
+              <div className="text-[11px] text-[color:var(--text-muted)]">Provide at least one field.</div>
+            </div>
+            <div className="card-footer flex justify-end gap-2">
+              <button className="btn" onClick={()=>setShowDelivered(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitDelivered}>Mark Delivered</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReason && (
+        <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4" onClick={()=>setShowReason(false)}>
+          <div className="card w-full max-w-md" onClick={e=>e.stopPropagation()}>
+            <div className="card-header font-semibold">Update status</div>
+            <div className="card-body grid gap-3">
+              <div>
+                <label className="label">Reason code</label>
+                <select className="input w-full" value={reason.code} onChange={e=>setReason(r=>({...r, code:e.target.value}))}>
+                  <option value="">-- Select reason code --</option>
+                  <option value="NO_ANSWER">NO_ANSWER</option>
+                  <option value="ADDRESS_INCORRECT">ADDRESS_INCORRECT</option>
+                  <option value="CUSTOMER_REQUESTED">CUSTOMER_REQUESTED</option>
+                  <option value="PACKAGE_DAMAGED">PACKAGE_DAMAGED</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Details</label>
+                <input className="input w-full" value={reason.detail} onChange={e=>setReason(r=>({...r, detail:e.target.value}))} placeholder="Notes (optional)" />
+              </div>
+            </div>
+            <div className="card-footer flex justify-end gap-2">
+              <button className="btn" onClick={()=>setShowReason(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitReason}>Update</button>
             </div>
           </div>
         </div>

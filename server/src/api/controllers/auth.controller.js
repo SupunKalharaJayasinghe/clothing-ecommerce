@@ -6,7 +6,7 @@ import catchAsync from '../../utils/catchAsync.js'
 import { signJwt, verifyJwt } from '../../utils/jwt.js'
 import { env } from '../../config/env.js'
 import { authenticator } from 'otplib'
-import { sendVerificationCode } from '../../utils/mailer.js'
+import { sendVerificationCode, sendMail } from '../../utils/mailer.js'
 
 const accessCookie = {
   httpOnly: true,
@@ -254,9 +254,25 @@ export const forgotPassword = catchAsync(async (req, res) => {
   }
   await user.save()
 
-  // TODO: send email with link containing `raw` token
-  // For dev, return token so you can test
-const response = { ok: true, message: 'If the account exists, a reset link has been sent.' }
+  const candidates = String(process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean)
+  const origin = candidates[0] || req.get('origin') || 'http://localhost:5173'
+  const base = origin.replace(/\/$/, '')
+  const resetUrl = `${base}/reset-password/${encodeURIComponent(raw)}`
+
+  const subject = 'Reset your password'
+  const text = `We received a request to reset your password. Click the link below to choose a new password.\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
+      <h2 style="margin:0 0 12px">Reset your password</h2>
+      <p style="margin:0 0 12px">We received a request to reset your password. Click the button below to choose a new password.</p>
+      <p style="margin:16px 0"><a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">Reset Password</a></p>
+      <p style="margin:12px 0;color:#475569">If the button doesn't work, copy and paste this URL into your browser:</p>
+      <p style="margin:0 0 12px"><a href="${resetUrl}">${resetUrl}</a></p>
+    </div>
+  `
+  await sendMail({ to: user.email, subject, text, html })
+
+  const response = { ok: true, message: 'If the account exists, a reset link has been sent.' }
   if (process.env.NODE_ENV !== 'production') {
     response.devToken = raw
   }

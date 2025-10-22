@@ -7,6 +7,7 @@ import Delivery from '../models/Delivery.js'
 import PaymentTransaction from '../models/PaymentTransaction.js'
 import mongoose from 'mongoose'
 import { getInitialStates, updateOrderStates, applyStateChanges, DELIVERY_STATES, ORDER_STATES, validateDispatchRequirements } from '../../utils/stateManager.js'
+import { buildAdminStatusFilter } from '../../utils/stateMapper.js'
 
 const ALLOWED_STATUSES = [
   // Admin-friendly aliases
@@ -26,13 +27,9 @@ export const listOrders = catchAsync(async (req, res) => {
   const { q = '', status, page = 1, limit = 20 } = req.query
 
   const filters = []
-  if (status && ALLOWED_STATUSES.includes(String(status))) {
-    const s = String(status)
-    const orderStates = new Set(['placed','confirmed','cancelled','closed'])
-    const deliveryStates = new Set(['confirmed','packed','ready_for_pickup','dispatched','in_transit','at_local_facility','out_for_delivery','delivered','held_for_pickup','attempted','failed','return_to_sender','returned','exception'])
-    if (orderStates.has(s)) filters.push({ orderState: s })
-    else if (deliveryStates.has(s)) filters.push({ deliveryState: s })
-    else filters.push({ status: s })
+  if (status) {
+    const mapped = buildAdminStatusFilter(status)
+    if (mapped) filters.push(mapped)
   }
 
   if (q && String(q).trim()) {
@@ -60,6 +57,7 @@ export const listOrders = catchAsync(async (req, res) => {
 
   const [items, total] = await Promise.all([
     Order.find(where)
+      .populate('user', 'firstName lastName email username')
       .populate('assignedDelivery', 'firstName lastName phone email username')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -214,13 +212,68 @@ export const updateStatus = catchAsync(async (req, res) => {
       if (!had && !ev.scanRef && !ev.photoUrl && !assignId) {
         throw new ApiError(400, 'DISPATCHED requires scanRef/photoUrl OR selecting a delivery person')
       }
-      // Attach/overwrite evidence when supplied
+      // For CARD orders, decrement stock atomically at dispatch
+      const methodNow = String(o.payment?.method || '').toUpperCase()
+      if (methodNow === 'CARD') {
+        const stageNow = String(o.deliveryState || '').toUpperCase()
+        const alreadyShipped = new Set(['SHIPPED','IN_TRANSIT','OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED','RTO_INITIATED','RETURNED_TO_WAREHOUSE']).has(stageNow)
+        // Only reserve stock once at the moment of dispatch
+        if (alreadyShipped) {
+          // Proceed to apply phase changes without touching stock
+          const { getAdminPhaseChanges } = await import('../../utils/stateManager.js')
+          const ch = getAdminPhaseChanges(o, raw)
+          applyStateChanges(o, ch)
+          await o.save()
+          return res.json({ ok: true, order: o })
+        }
+        const session = await mongoose.startSession()
+        try {
+          await session.withTransaction(async () => {
+            // Decrement stock with guards
+            const ops = (o.items || []).map(it => ({
+              updateOne: {
+                filter: { _id: it.product, stock: { $gte: it.quantity } },
+                update: { $inc: { stock: -it.quantity } }
+              }
+            }))
+            if (ops.length) {
+              const resBulk = await Product.bulkWrite(ops, { session })
+              if (resBulk.modifiedCount !== ops.length) {
+                throw new ApiError(400, 'One or more items are out of stock for dispatch')
+              }
+            }
+
+            // Attach/overwrite evidence when supplied
+            if (ev.scanRef || ev.photoUrl) {
+              o.deliveryMeta = o.deliveryMeta || {}
+              o.deliveryMeta.evidence = o.deliveryMeta.evidence || {}
+              o.deliveryMeta.evidence.dispatched = { at: new Date(), scanRef: ev.scanRef, photoUrl: ev.photoUrl }
+            }
+            // Optional assignment of delivery person
+            if (assignId) {
+              const exists = await Delivery.findById(assignId).select('_id')
+              if (!exists) throw new ApiError(400, 'Delivery user not found')
+              o.assignedDelivery = assignId
+              o.assignedAt = o.assignedAt || new Date()
+            }
+
+            // Construct and apply state changes for this phase
+            const { getAdminPhaseChanges } = await import('../../utils/stateManager.js')
+            const ch = getAdminPhaseChanges(o, raw)
+            applyStateChanges(o, ch)
+            await o.save({ session })
+          })
+        } finally {
+          session.endSession()
+        }
+        return res.json({ ok: true, order: o })
+      }
+      // Non-CARD methods: attach optional evidence/assignment outside a transaction
       if (ev.scanRef || ev.photoUrl) {
         o.deliveryMeta = o.deliveryMeta || {}
         o.deliveryMeta.evidence = o.deliveryMeta.evidence || {}
         o.deliveryMeta.evidence.dispatched = { at: new Date(), scanRef: ev.scanRef, photoUrl: ev.photoUrl }
       }
-      // Optional assignment of delivery person
       if (assignId) {
         const exists = await Delivery.findById(assignId).select('_id')
         if (!exists) throw new ApiError(400, 'Delivery user not found')
@@ -391,12 +444,16 @@ export const deleteOrder = catchAsync(async (req, res) => {
   if (!o) throw new ApiError(404, 'Order not found')
 
   const blocked = new Set(['dispatched','in_transit','at_local_facility','out_for_delivery','delivered','returned'])
-  if (blocked.has(String(o.deliveryState))) {
+  // Block deletion when order is already handed over / in delivery pipeline
+  const blockedDelivery = new Set(['SHIPPED','IN_TRANSIT','OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED','RTO_INITIATED','RETURNED_TO_WAREHOUSE'])
+  if (blockedDelivery.has(String(o.deliveryState))) {
     throw new ApiError(400, 'Cannot delete an order already handed over to delivery')
   }
 
-  // Restock inventory when it was reserved
-  const needRestock = (o.payment?.method === 'CARD') ? (o.payment?.status === 'paid') : (o.payment?.method === 'COD' || o.payment?.method === 'BANK')
+  // Restock inventory only when it was reserved
+  // COD/BANK reserve at order creation; CARD reserves at dispatch (and deletes are blocked post-dispatch)
+  const methodU = String(o.payment?.method || '').toUpperCase()
+  const needRestock = (methodU === 'COD' || methodU === 'BANK')
   if (needRestock) {
     const ops = (o.items || []).map(it => ({
       updateOne: {

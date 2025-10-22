@@ -6,7 +6,7 @@ const orderItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   image: { type: String },
   color: { type: String },
-  price: { type: Number, required: true },      // unit price at time of order (finalPrice)
+  price: { type: Number, required: true },
   quantity: { type: Number, required: true, min: 1 }
 }, { _id: false })
 

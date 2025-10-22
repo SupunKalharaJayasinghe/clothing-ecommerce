@@ -14,6 +14,16 @@ function el(tag, attrs = {}, ...children) {
   return n
 }
 
+function formatCurrencyLKR(n) {
+  try {
+    const v = Number(n || 0)
+    return new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
+  } catch {
+    const v = Number(n || 0)
+    return `LKR ${v.toFixed(2)}`
+  }
+}
+
 // Modern notification system
 function showNotification(message, type = 'info', title = '') {
   const notification = el('div', { class: `notification ${type}` },
@@ -42,6 +52,47 @@ function showError(err) {
 
 function showSuccess(message, title = 'Success') {
   showNotification(message, 'success', title)
+}
+
+function formatOrderId(id) {
+  try {
+    const s = String(id || '')
+    if (!s) return '#'
+    return '#' + s.slice(-8)
+  } catch (e) {
+    return '#'
+  }
+}
+
+function resolveImageSrc(src) {
+  try {
+    const s = String(src || '')
+    if (!s) return ''
+    if (/^(https?:)?\/\//i.test(s) || /^data:/i.test(s)) return s
+    const base = String(window.DELIVERY_API_BASE || '').replace(/\/?api$/i, '')
+    if (s.startsWith('/')) return base + s
+    return base ? `${base.replace(/\/$/, '')}/${s.replace(/^\//, '')}` : s
+  } catch { return '' }
+}
+
+function badge(text, variant) {
+  return el('span', { class: `badge badge-${variant}`, style: 'font-size:12px; padding:6px 10px; text-transform: uppercase;' }, text)
+}
+
+function mapDeliveryVariant(s) {
+  const v = String(s || '').toUpperCase()
+  if (v === 'DELIVERED') return 'success'
+  if (['OUT_FOR_DELIVERY','SHIPPED','IN_TRANSIT'].includes(v)) return 'warn'
+  if (['DELIVERY_FAILED','RTO_INITIATED','RETURNED_TO_WAREHOUSE'].includes(v)) return 'danger'
+  return 'info'
+}
+
+function mapPaymentVariant(s) {
+  const v = String(s || '').toUpperCase()
+  if (['PAID','AUTHORIZED','REFUNDED'].includes(v)) return 'success'
+  if (['UNPAID','FAILED'].includes(v)) return 'danger'
+  if (['PENDING','REFUND_PENDING','REFUND_PENDING'].includes(v)) return 'warn'
+  return 'info'
 }
 
 // Loading state management
@@ -90,7 +141,8 @@ const icons = {
   failed: () => createIcon('x-circle'),
   user: () => createIcon('user'),
   card: () => createIcon('credit-card'),
-  bank: () => createIcon('building')
+  bank: () => createIcon('building'),
+  copy: () => createIcon('copy')
 }
 
 // Enhanced animations
@@ -237,29 +289,37 @@ function orderRow(o, refresh) {
   })
   locationBtn.appendChild(icons.map())
   locationBtn.appendChild(document.createTextNode('Location'))
-  
+  //-------
+  const canStartDelivery = ['SHIPPED','IN_TRANSIT'].includes(String(o.deliveryState)) || String(o.orderState) === 'SHIPPED'
+  const canMarkDelivered = ['OUT_FOR_DELIVERY','SHIPPED','IN_TRANSIT'].includes(String(o.deliveryState)) || String(o.orderState) === 'SHIPPED'
+
+  if (canStartDelivery && String(o.deliveryState) !== 'OUT_FOR_DELIVERY') {
+    const startBtn = el('button', {
+      class: 'btn btn-outline',
+      style: 'display: flex; align-items: center; gap: 6px;',
+      onclick: async (e) => {
+        const btn = e.target
+        try {
+          setLoading(btn, true)
+          await api.setOrderStatus(o.id, 'OUT_FOR_DELIVERY')
+          showSuccess('Marked as out for delivery', 'Delivery')
+          await refresh()
+        } catch (e) { showError(e) } finally { setLoading(btn, false) }
+      }
+    })
+    startBtn.appendChild(icons.truck())
+    startBtn.appendChild(document.createTextNode('Start Delivery'))
+    actionButtons.push(startBtn)
+  }
+
   const deliveredBtn = el('button', { 
     class: 'btn btn-outline',
     style: 'display: flex; align-items: center; gap: 6px;',
-    onclick: async (e) => {
+    ...(canMarkDelivered ? { onclick: async (e) => {
       const btn = e.target
       try {
-        if (!confirm('Mark this order as Delivered?')) return
-        
         setLoading(btn, true)
-        const pod = prompt('Enter OTP code or photo/signature URL (optional). Leave blank to continue without evidence:') || ''
-        let payload = undefined
-        const trimmed = pod.trim()
-        
-        if (trimmed) {
-          if (/^\d{4,6}$/.test(trimmed)) {
-            payload = { evidence: { otp: trimmed } }
-          } else if (/^https?:\/\//i.test(trimmed)) {
-            payload = { evidence: { podPhotoUrl: trimmed } }
-          }
-        }
-        
-        await api.setOrderStatus(o.id, 'DELIVERED', payload)
+        await api.setOrderStatus(o.id, 'DELIVERED')
         showSuccess('Order marked as delivered successfully!', 'Delivery Complete')
         await refresh()
       } catch (e) { 
@@ -267,10 +327,14 @@ function orderRow(o, refresh) {
       } finally {
         setLoading(btn, false)
       }
-    } 
+    } } : {})
   })
   deliveredBtn.appendChild(icons.delivered())
   deliveredBtn.appendChild(document.createTextNode('Delivered'))
+  if (!canMarkDelivered) {
+    deliveredBtn.setAttribute('disabled', 'true')
+    deliveredBtn.title = 'Available after handover/out for delivery'
+  }
   
   actionButtons.push(locationBtn, deliveredBtn)
 
@@ -301,36 +365,65 @@ function orderRow(o, refresh) {
     actionButtons.push(confirmPaymentBtn)
   }
 
-  // Return (RTO) - with verification
-  const returnBtn = el('button', { 
-    class: 'btn btn-danger',
-    style: 'display: flex; align-items: center; gap: 6px;',
-    onclick: () => { 
-      showNotification('Return to Origin feature is currently disabled for verification.', 'warning', 'Feature Disabled')
-      verifyBlocked() 
-    } 
-  })
-  returnBtn.appendChild(icons.return())
-  returnBtn.appendChild(document.createTextNode('Return'))
-  actionButtons.push(returnBtn)
-  
   // Enhanced title with status indicator
   const firstItem = (o.items && o.items[0]) ? o.items[0] : null
   const moreCount = (o.items?.length || 0) - 1
-  const title = firstItem ? `${firstItem.name}${moreCount > 0 ? ` (+${moreCount} more)` : ''}` : `Order #${o.id}`
+  const orderIdShort = formatOrderId(o.id)
+  const itemTitle = firstItem ? `${firstItem.name}${moreCount > 0 ? ` (+${moreCount} more)` : ''}` : ''
+  const titleText = `${orderIdShort}`
 
   // Get delivery status for visual indicator
   const deliveryStatus = o.deliveryState || o.orderState || 'PENDING'
   const statusIndicator = getStatusIndicator(deliveryStatus)
 
   // Create meta elements with icons
-  const customerMeta = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px;' })
-  customerMeta.appendChild(icons.user())
-  customerMeta.appendChild(document.createTextNode(`${o.customer?.name || 'Unknown Customer'}${o.address?.phone ? ` · ${o.address.phone}` : ''}`))
+  const customerNameMeta = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px;' })
+  customerNameMeta.appendChild(icons.user())
+  customerNameMeta.appendChild(document.createTextNode(`${o.customer?.name || 'Unknown Customer'}`))
 
-  const locationMeta = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px;' })
-  locationMeta.appendChild(icons.location())
-  locationMeta.appendChild(document.createTextNode(`${o.address?.city || 'Unknown City'} · ${o.address?.line1 || 'Address not provided'}`))
+  const addressMeta = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px;' })
+  addressMeta.appendChild(icons.location())
+  addressMeta.appendChild(document.createTextNode(`${o.address?.city || 'Unknown City'} · ${o.address?.line1 || 'Address not provided'}`))
+
+  const phoneMeta = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px;' })
+  phoneMeta.appendChild(icons.phone())
+  phoneMeta.appendChild(document.createTextNode(`${o.address?.phone || 'N/A'}`))
+
+  const orderNameMeta = firstItem ? el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink);' }, itemTitle) : null
+
+  const totalMeta = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 6px;' })
+  totalMeta.appendChild(icons.paid())
+  totalMeta.appendChild(document.createTextNode('Total: '))
+  totalMeta.appendChild(el('span', { style: 'color: var(--ink); font-weight: 600;' }, formatCurrencyLKR(o.total)))
+
+  const orderStatusRow = el('div', { class: 'meta', style: 'margin-top: 8px; display: flex; align-items: center; gap: 8px;' },
+    el('span', { style: 'color: var(--muted);' }, 'Order status:'),
+    badge(deliveryStatus.replace(/_/g, ' '), mapDeliveryVariant(deliveryStatus))
+  )
+
+  const paymentStatusRow = el('div', { class: 'meta', style: 'display: flex; align-items: center; gap: 8px;' },
+    el('span', { style: 'color: var(--muted);' }, 'Payment status:'),
+    badge(String(o.payment?.status || 'UNKNOWN'), mapPaymentVariant(o.payment?.status))
+  )
+
+  const divider = el('div', { style: 'height:1px; background: var(--border); margin: 8px 0;' })
+
+  const images = (o.items || []).map(it => resolveImageSrc(it.image)).filter(Boolean)
+  let thumbsRow = null
+  if (images.length) {
+    const maxThumbs = 4
+    thumbsRow = el('div', { class: 'meta', style: 'margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' })
+    images.slice(0, maxThumbs).forEach((src, idx) => {
+      const wrapper = el('div', { style: 'width:48px;height:48px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background: var(--surface-hover);' })
+      const img = el('img', { src, alt: `Item ${idx+1}`, loading: 'lazy', style: 'width:100%;height:100%;object-fit:cover;display:block;', onerror: () => { wrapper.style.display = 'none' } })
+      wrapper.appendChild(img)
+      thumbsRow.appendChild(wrapper)
+    })
+    const more = images.length - maxThumbs
+    if (more > 0) {
+      thumbsRow.appendChild(el('span', { class: 'badge', style: 'font-size:11px; padding:4px 8px; opacity:0.9;' }, `+${more} more`))
+    }
+  }
 
   const refreshBtn = el('button', { 
     class: 'btn btn-ghost',
@@ -349,17 +442,36 @@ function orderRow(o, refresh) {
   refreshBtn.appendChild(icons.refresh())
   refreshBtn.appendChild(document.createTextNode('Refresh'))
 
+  const copyOrderId = async () => {
+    try {
+      const shortId = formatOrderId(o.id)
+      await navigator.clipboard.writeText(shortId)
+      showSuccess(`Copied ${shortId}`, 'Copied')
+    } catch {}
+  }
+
+  const orderIdEl = el('span', { style: 'font-size: 20px; font-weight: 800; cursor: pointer;' }, titleText)
+  orderIdEl.addEventListener('click', copyOrderId)
+  const copyIconEl = icons.copy()
+  copyIconEl.style.cursor = 'pointer'
+  copyIconEl.addEventListener('click', copyOrderId)
+
   return animateIn(el('div', { class: 'order' },
     el('div', {},
-      el('div', { class: 'title', style: 'display: flex; align-items: center;' }, 
+      el('div', { class: 'title', style: 'display: flex; align-items: center; gap: 8px;' }, 
         statusIndicator,
-        title
+        orderIdEl,
+        copyIconEl
       ),
-      customerMeta,
-      locationMeta,
-      el('div', { class: 'meta', style: 'margin-top: 8px; font-weight: 500; color: var(--ink-secondary)' }, 
-        `Status: ${deliveryStatus.replace(/_/g, ' ')}`
-      )
+      thumbsRow || '',
+      orderNameMeta || '',
+      customerNameMeta,
+      addressMeta,
+      phoneMeta,
+      totalMeta,
+      divider,
+      orderStatusRow,
+      paymentStatusRow
     ),
     el('div', { class: 'actions' },
       refreshBtn,
@@ -678,14 +790,6 @@ async function renderApp() {
   document.getElementById('statusSelect').addEventListener('change', load)
   document.getElementById('methodSelect').addEventListener('change', load)
   
-  // Start auto-refresh every 30 seconds
-  autoRefreshInterval = setInterval(load, 30000)
-  
-  // Clear interval when navigating away
-  window.addEventListener('beforeunload', () => {
-    if (autoRefreshInterval) clearInterval(autoRefreshInterval)
-  })
-
   await load()
 }
 

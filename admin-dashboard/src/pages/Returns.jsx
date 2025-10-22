@@ -3,6 +3,7 @@ import { api, fileUrl } from '../utils/http'
 import { Search, Plus, X, RotateCcw, Package, FileText, Eye, CheckCircle, XCircle, Clock, AlertTriangle, Download } from 'lucide-react'
 import { exportReturnsPDF, exportSingleReturnPDF } from '../utils/pdfExport'
 import { returnStatusClass } from '../utils/status'
+import { formatOrderId } from '../utils/format'
 
 const statuses = ['', 'requested', 'approved', 'rejected', 'received', 'closed']
 
@@ -27,7 +28,7 @@ export default function RefundsPage() {
     setLoading(true)
     setError('')
     try {
-const res = await api.get('/admin/returns/audits', { params: { q, status: status || undefined } })
+      const res = await api.get('/admin/returns/audits', { params: { q, status: status || undefined } })
       setItems(res.data.items)
     } catch (e) {
       setError(e.response?.data?.message || e.message)
@@ -78,7 +79,7 @@ const res = await api.get('/admin/returns/audits', { params: { q, status: status
 
   // PDF export functions
   const handleExportAllPDF = () => {
-if (items.length === 0) {
+    if (items.length === 0) {
       alert('No returns to export')
       return
     }
@@ -174,7 +175,7 @@ if (items.length === 0) {
                         </td>
                       </tr>
                     ) : items.map(o => {
-const getStatusColor = (status) => returnStatusClass(status)
+                      const getStatusColor = (status) => returnStatusClass(status)
                       
                       const getStatusIcon = (status) => {
                         switch(status?.toLowerCase()) {
@@ -195,7 +196,7 @@ const getStatusColor = (status) => returnStatusClass(status)
                         <tr key={o._id}>
                           <td>
                             <div className="font-mono text-sm font-medium text-[color:var(--text-primary)]">
-#{(o.order?._id || o._id)?.toString().slice(-8)}
+                              {formatOrderId(o.order?._id || o._id)}
                             </div>
                             <div className="text-xs text-[color:var(--text-muted)] mt-1">
                               {new Date(o.createdAt).toLocaleDateString()} {new Date(o.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -351,7 +352,7 @@ onChange={e=>updateStatus(o.order?._id || o.order, e.target.value)}
           <div className="relative bg-[color:var(--surface)] rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden border border-[color:var(--surface-border)] animate-slide-up">
             <div className="px-6 py-4 border-b border-[color:var(--surface-border)] flex items-center justify-between">
               <div>
-                <div className="text-sm opacity-70">Order #{(detail.order?._id || detail.order)?.slice(-8)}</div>
+                <div className="text-sm opacity-70">Order {formatOrderId(detail.order?._id || detail.order)}</div>
                 <h3 className="text-lg font-semibold">Return Details</h3>
               </div>
               <button className="btn btn-sm" onClick={() => setDetailOpen(false)}>Close</button>

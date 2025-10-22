@@ -54,19 +54,7 @@ export default function ForgotPassword() {
             )}
 
             {/* For local dev convenience only */}
-            {import.meta.env.DEV && forgot.devToken && (
-              <div className="p-3 rounded-lg bg-[--color-surface-glass] border border-[--color-border] backdrop-blur-sm">
-                <div className="text-xs text-[--color-text-medium]">
-                  <p className="mb-1">Dev token: <code className="text-[--color-brand-400]">{forgot.devToken}</code></p>
-                  <Link 
-                    className="text-[--color-brand-400] hover:text-[--color-brand-300] underline" 
-                    to={`/reset-password/${forgot.devToken}`}
-                  >
-                    Open reset form
-                  </Link>
-                </div>
-              </div>
-            )}
+            {import.meta.env.DEV && forgot.devToken && null}
 
             <button 
               className="w-full btn btn-primary py-3 text-base font-semibold"

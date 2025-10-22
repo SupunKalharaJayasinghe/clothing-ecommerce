@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../utils/http'
 import Time from '../ui/Time'
 import { DollarSign, Package, AlertTriangle, TrendingUp, ShoppingCart, Bell } from 'lucide-react'
+import { formatOrderId } from '../utils/format'
 
 function currency(n) {
   try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'LKR', maximumFractionDigits: 0 }).format(n || 0) } catch { return `Rs. ${Number(n||0).toLocaleString()}` }
@@ -188,7 +189,7 @@ export default function DashboardPage() {
                     <div key={o._id} className="list-row">
                       <div>
                         <div className="font-medium">{o.items?.[0]?.name || o._id}</div>
-                        <div className="text-xs text-[color:var(--text-muted)]">#{o._id} • <Time value={o.createdAt} /></div>
+                        <div className="text-xs text-[color:var(--text-muted)]">{formatOrderId(o._id)} • <Time value={o.createdAt} /></div>
                       </div>
                       <div className="text-right font-semibold">{currency(o.totals?.grandTotal)}</div>
                     </div>
@@ -220,7 +221,7 @@ export default function DashboardPage() {
                 <>
                   {displayLowStock.map(p => (
                     <div key={p.id} className="list-row">
-                      <div className="font-medium line-clamp-1">{p.name}</div>
+                      <div className="font-medium text-[color:var(--text-primary)] line-clamp-1">{p.name}</div>
                       <div className="badge badge-warn">{p.stock} left</div>
                     </div>
                   ))}
@@ -246,7 +247,7 @@ export default function DashboardPage() {
           <div className="card-body">
             {inv.outList.length ? inv.outList.map(p => (
               <div key={p.id} className="list-row">
-                <div className="font-medium line-clamp-1">{p.name}</div>
+                <div className="font-medium text-[color:var(--text-primary)] line-clamp-1">{p.name}</div>
                 <div className="badge badge-danger">Out</div>
               </div>
             )) : <div className="text-sm text-[color:var(--text-muted)]">All good</div>}
@@ -263,7 +264,7 @@ export default function DashboardPage() {
                 <>
                   {displayTopIssues.map(p => (
                     <div key={p.id} className="list-row">
-                      <div className="font-medium line-clamp-1">{p.name}</div>
+                      <div className="font-medium text-[color:var(--text-primary)] line-clamp-1">{p.name}</div>
                       <div className="text-sm text-[color:var(--text-muted)]">Stock: {p.stock} • Threshold: {p.lowStockThreshold ?? 5}</div>
                     </div>
                   ))}

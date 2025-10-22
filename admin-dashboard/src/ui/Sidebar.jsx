@@ -30,6 +30,25 @@ export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth()
   const initial = getInitial(user)
   const isAdmin = (user?.roles || []).includes('admin')
+  const roleText = (() => {
+    if (user?.isPrimaryAdmin) return 'Primary Admin'
+    const roles = user?.roles || []
+    const map = {
+      admin: 'Admin',
+      user_manager: 'User Manager',
+      product_manager: 'Product Manager',
+      order_manager: 'Order Manager',
+      payment_manager: 'Payment Manager',
+      refund_manager: 'Refund Manager',
+      return_manager: 'Return Manager',
+      review_manager: 'Review Manager',
+      delivery_agent: 'Delivery Agent'
+    }
+    for (const r of roles) {
+      if (map[r]) return map[r]
+    }
+    return 'Admin'
+  })()
   const [openLogout, setOpenLogout] = useState(false)
   
   const handleItemClick = () => {
@@ -45,7 +64,7 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="profile-header">
           <div className="avatar" aria-hidden="true">{initial}</div>
           <div className="profile-info">
-            <div className="name">{user?.name || 'Admin User'}</div>
+            <div className="name">{roleText}</div>
             <div className="email">{user?.email || 'admin@example.com'}</div>
           </div>
         </div>

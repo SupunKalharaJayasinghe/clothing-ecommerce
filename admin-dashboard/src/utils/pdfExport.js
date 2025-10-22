@@ -1,4 +1,61 @@
 import jsPDF from 'jspdf'
+import { formatOrderId } from './format'
+
+const BRAND_NAME = 'D & G Enterprises'
+function drawReportHeader(doc, title) {
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const left = 14
+  const right = 14
+  doc.setFillColor(245, 248, 252)
+  doc.rect(0, 0, pageWidth, 26, 'F')
+  doc.setTextColor(20, 20, 20)
+  doc.setFontSize(12)
+  doc.setFont(undefined, 'bold')
+  doc.text(BRAND_NAME, left, 14)
+  doc.setFontSize(8)
+  doc.setFont(undefined, 'normal')
+  doc.setTextColor(100, 116, 139)
+  doc.text('Clothing & Accessories', left, 20)
+  doc.setTextColor(30, 30, 30)
+  doc.setFontSize(10)
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth - right, 14, { align: 'right' })
+  doc.setFontSize(16)
+  doc.setFont(undefined, 'bold')
+  doc.setTextColor(33, 33, 33)
+  doc.text(title, left, 34)
+  doc.setDrawColor(220)
+  doc.line(left, 36, pageWidth - right, 36)
+  return 42
+}
+
+function drawReportFooter(doc) {
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8)
+    doc.setTextColor(0, 0, 0)
+    doc.text(`Page ${i} of ${pageCount}`,
+      doc.internal.pageSize.width - 30,
+      doc.internal.pageSize.height - 10)
+  }
+}
+
+function fmtCurrencyLKR(n, withSymbol = false) {
+  try {
+    const v = Number(n || 0)
+    const s = new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
+    return withSymbol ? s : s.replace(/^([^\d]*)\s?/, '')
+  } catch { return String(n ?? '0') }
+}
+
+function applyStatusColor(doc, u) {
+  const s = String(u || '').toUpperCase()
+  if (s.includes('DELIVERED')) { doc.setTextColor(34,197,94); return }
+  if (s.includes('CANCEL') || s.includes('FAIL') || s.includes('RETURN')) { doc.setTextColor(220,38,38); return }
+  if (s.includes('SHIP') || s.includes('OUT FOR DELIVERY') || s.includes('TRANSIT')) { doc.setTextColor(37,99,235); return }
+  if (s.includes('CONFIRM') || s.includes('PACK')) { doc.setTextColor(245,158,11); return }
+  doc.setTextColor(0,0,0)
+}
 
 export const exportCustomersPDF = (customers) => {
   console.log('Starting PDF export for customers:', customers)
@@ -71,24 +128,31 @@ export const exportCustomersPDF = (customers) => {
     yPos += lineHeight
     
     // Add new page if needed
-    if (yPos > 270) {
+    if (yPos > pageHeight - 20) {
       doc.addPage()
-      yPos = 20
+      const newTop2 = drawReportHeader(doc, 'Orders Report')
+      yPos = newTop2 + 4
+      doc.setFontSize(10)
+      doc.setFont(undefined, 'bold')
+      doc.setFillColor(41, 128, 185)
+      doc.rect(leftMargin, yPos - 5, contentWidth, lineHeight, 'F')
+      doc.setTextColor(255, 255, 255)
+      const headerCenter2 = (i) => columnPositions[i] + columnWidths[i] / 2
+      const rightOf2 = (i, pad=2) => columnPositions[i] + columnWidths[i] - pad
+      doc.text('Order ID', columnPositions[0], yPos)
+      doc.text('Customer', columnPositions[1], yPos)
+      doc.text('Total (LKR)', rightOf2(2), yPos, { align: 'right' })
+      doc.text('Status', headerCenter2(3), yPos, { align: 'center' })
+      doc.text('Items', headerCenter2(4), yPos, { align: 'center' })
+      doc.text('Date', rightOf2(5), yPos, { align: 'right' })
+      yPos += lineHeight + 2
+      doc.setFont(undefined, 'normal')
+      doc.setTextColor(0, 0, 0)
     }
   })
   
-  // Add footer
-  const pageCount = doc.internal.getNumberOfPages()
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i)
-    doc.setFontSize(8)
-    doc.setTextColor(0, 0, 0)
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      doc.internal.pageSize.width - 30,
-      doc.internal.pageSize.height - 10
-    )
-  }
+  // Add footer with page numbers
+  drawReportFooter(doc)
   
   // Save the PDF
   doc.save(`customers-report-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -295,11 +359,11 @@ export const exportProductsPDF = (products) => {
   doc.text(`Low Stock Items: ${lowStockCount}`, 14, 45)
   doc.text(`Out of Stock Items: ${outOfStockCount}`, 14, 50)
   
-  // Create table manually
-  let yPos = 65
+  const getPageHeight = () => doc.internal.pageSize.getHeight()
   const lineHeight = 8
   const leftMargin = 14
-  const columnWidths = [60, 35, 25, 25, 25, 25] // Name, Category, Price, Stock, Status
+  const columnWidths = [60, 35, 25, 25, 25, 25] // Name, Category, Price, Stock, Value, Status
+  const tableWidth = columnWidths.reduce((sum, width) => sum + width, 0)
   const columnPositions = [
     leftMargin, 
     leftMargin + columnWidths[0], 
@@ -308,33 +372,31 @@ export const exportProductsPDF = (products) => {
     leftMargin + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3],
     leftMargin + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3] + columnWidths[4]
   ]
+  const drawTableHeader = (startY) => {
+    doc.setFontSize(10)
+    doc.setFont(undefined, 'bold')
+    doc.setFillColor(41, 128, 185)
+    doc.rect(leftMargin, startY - 5, tableWidth, lineHeight, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.text('Product Name', columnPositions[0], startY)
+    doc.text('Category', columnPositions[1], startY)
+    doc.text('Price (LKR)', columnPositions[2], startY)
+    doc.text('Stock', columnPositions[3], startY)
+    doc.text('Value (LKR)', columnPositions[4], startY)
+    doc.text('Status', columnPositions[5], startY)
+    doc.setTextColor(0, 0, 0)
+    doc.setFont(undefined, 'normal')
+    return startY + lineHeight + 2
+  }
   
-  // Draw header
-  doc.setFontSize(10)
-  doc.setFont(undefined, 'bold')
-  doc.setFillColor(41, 128, 185)
-  doc.rect(leftMargin, yPos - 5, 195, lineHeight, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.text('Product Name', columnPositions[0], yPos)
-  doc.text('Category', columnPositions[1], yPos)
-  doc.text('Price (LKR)', columnPositions[2], yPos)
-  doc.text('Stock', columnPositions[3], yPos)
-  doc.text('Value (LKR)', columnPositions[4], yPos)
-  doc.text('Status', columnPositions[5], yPos)
-  yPos += lineHeight + 2
-  
-  // Draw data rows
-  doc.setFont(undefined, 'normal')
-  doc.setTextColor(0, 0, 0)
+  let yPos = drawTableHeader(65)
   
   products.forEach((product, index) => {
-    // Alternate row background
     if (index % 2 === 1) {
       doc.setFillColor(245, 245, 245)
-      doc.rect(leftMargin, yPos - 5, 195, lineHeight, 'F')
+      doc.rect(leftMargin, yPos - 5, tableWidth, lineHeight, 'F')
     }
     
-    // Product data
     const name = product.name || 'N/A'
     const category = product.category || 'N/A'
     const price = product.price || 0
@@ -342,14 +404,12 @@ export const exportProductsPDF = (products) => {
     const value = price * stock
     const status = stock <= 0 ? 'Out' : stock <= (product.lowStockThreshold || 5) ? 'Low' : 'OK'
     
-    // Truncate long text to fit columns
     doc.text(name.length > 25 ? name.substring(0, 22) + '...' : name, columnPositions[0], yPos)
     doc.text(category.length > 12 ? category.substring(0, 9) + '...' : category, columnPositions[1], yPos)
     doc.text(price.toLocaleString(), columnPositions[2], yPos)
     doc.text(stock.toString(), columnPositions[3], yPos)
     doc.text(value.toLocaleString(), columnPositions[4], yPos)
     
-    // Status with color
     if (status === 'Out') {
       doc.setTextColor(220, 38, 38) // Red
     } else if (status === 'Low') {
@@ -358,29 +418,21 @@ export const exportProductsPDF = (products) => {
       doc.setTextColor(34, 197, 94) // Green
     }
     doc.text(status, columnPositions[5], yPos)
-    doc.setTextColor(0, 0, 0) // Reset to black
+    doc.setTextColor(0, 0, 0)
     
     yPos += lineHeight
     
-    // Add new page if needed
-    if (yPos > 270) {
+    if (yPos > getPageHeight() - 20) {
       doc.addPage()
-      yPos = 20
+      doc.setFontSize(14)
+      doc.setFont(undefined, 'bold')
+      doc.text('Products Report (continued)', leftMargin, 22)
+      yPos = drawTableHeader(35)
     }
   })
   
   // Add footer
-  const pageCount = doc.internal.getNumberOfPages()
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i)
-    doc.setFontSize(8)
-    doc.setTextColor(0, 0, 0)
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      doc.internal.pageSize.width - 30,
-      doc.internal.pageSize.height - 10
-    )
-  }
+  drawReportFooter(doc)
   
   // Save the PDF
   doc.save(`products-report-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -582,12 +634,7 @@ export const exportSingleProductPDF = (product) => {
     yPos += lineHeight
     
     // Add footer
-    doc.setFontSize(8)
-    doc.text(
-      'Page 1 of 1',
-      doc.internal.pageSize.width - 30,
-      doc.internal.pageSize.height - 10
-    )
+    drawReportFooter(doc)
     
     // Save the PDF
     const productName = product.name || product.slug || 'product'
@@ -613,36 +660,47 @@ export const exportOrdersPDF = (orders) => {
   }
   
   const doc = new jsPDF()
+  const topStart = drawReportHeader(doc, 'Orders Report')
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const leftMargin = 14
+  const rightMargin = 14
+  const contentWidth = pageWidth - leftMargin - rightMargin
   
-  // Add title
-  doc.setFontSize(20)
-  doc.setFont(undefined, 'bold')
-  doc.text('Orders Report', 14, 22)
+  // Calculate summary statistics (canonical)
+  const upper = (s) => String(s || '').toUpperCase()
+  const totalValue = orders.reduce((sum, o) => sum + Number(o.totals?.grandTotal ?? o.total ?? o.totalValue ?? 0), 0)
+  const completedOrders = orders.filter(o => upper(o.orderState) === 'DELIVERED' || upper(o.deliveryState) === 'DELIVERED').length
+  const pendingSet = new Set(['CREATED','CONFIRMED','PACKING','SHIPPED','OUT_FOR_DELIVERY'])
+  const pendingOrders = orders.filter(o => pendingSet.has(upper(o.orderState))).length
+  const cancelledOrders = orders.filter(o => upper(o.orderState) === 'CANCELLED').length
+  const returnedOrders = orders.filter(o => upper(o.orderState) === 'RETURNED' || upper(o.deliveryState) === 'RETURNED_TO_WAREHOUSE').length
   
-  // Add metadata
+  let metaY = topStart
   doc.setFontSize(10)
   doc.setFont(undefined, 'normal')
-  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30)
-  doc.text(`Total Orders: ${orders.length}`, 14, 35)
-  
-  // Calculate summary statistics
-  const totalValue = orders.reduce((sum, o) => sum + (o.totals?.grandTotal || 0), 0)
-  const completedOrders = orders.filter(o => o.status === 'completed' || o.orderState === 'DELIVERED').length
-  const pendingOrders = orders.filter(o => ['pending','placed','packing'].includes(o.status) || ['CONFIRMED','PACKING'].includes(o.orderState)).length
-  
-  doc.text(`Total Order Value: LKR ${totalValue.toLocaleString()}`, 14, 40)
-  doc.text(`Completed Orders: ${completedOrders}`, 14, 45)
-  doc.text(`Pending Orders: ${pendingOrders}`, 14, 50)
+  doc.text(`Total Orders: ${orders.length}`, 14, metaY); metaY += 5
+  doc.text(`Total Order Value: ${fmtCurrencyLKR(totalValue, true)}`, 14, metaY); metaY += 5
+  doc.text(`Completed Orders: ${completedOrders}`, 14, metaY); metaY += 5
+  doc.text(`Pending Orders: ${pendingOrders}`, 14, metaY); metaY += 5
+  doc.text(`Cancelled: ${cancelledOrders}   Returned: ${returnedOrders}`, 14, metaY); metaY += 8
   
   // Create table manually
-  let yPos = 65
+  let yPos = metaY
   const lineHeight = 8
-  const leftMargin = 14
-  const columnWidths = [45, 35, 30, 25, 25, 35] // Order ID, Customer, Total, Status, Date
+  // Responsive column widths based on page width
+  const columnWidths = [
+    contentWidth * 0.20, // Order ID
+    contentWidth * 0.28, // Customer
+    contentWidth * 0.14, // Total
+    contentWidth * 0.20, // Status
+    contentWidth * 0.06, // Items
+    contentWidth * 0.12  // Date (wider to fit)
+  ]
   const columnPositions = [
-    leftMargin, 
-    leftMargin + columnWidths[0], 
-    leftMargin + columnWidths[0] + columnWidths[1], 
+    leftMargin,
+    leftMargin + columnWidths[0],
+    leftMargin + columnWidths[0] + columnWidths[1],
     leftMargin + columnWidths[0] + columnWidths[1] + columnWidths[2],
     leftMargin + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3],
     leftMargin + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3] + columnWidths[4]
@@ -652,14 +710,16 @@ export const exportOrdersPDF = (orders) => {
   doc.setFontSize(10)
   doc.setFont(undefined, 'bold')
   doc.setFillColor(41, 128, 185)
-  doc.rect(leftMargin, yPos - 5, 195, lineHeight, 'F')
+  doc.rect(leftMargin, yPos - 5, contentWidth, lineHeight, 'F')
   doc.setTextColor(255, 255, 255)
+  const headerCenter = (i) => columnPositions[i] + columnWidths[i] / 2
+  const rightOf = (i, pad=2) => columnPositions[i] + columnWidths[i] - pad
   doc.text('Order ID', columnPositions[0], yPos)
   doc.text('Customer', columnPositions[1], yPos)
-  doc.text('Total (LKR)', columnPositions[2], yPos)
-  doc.text('Status', columnPositions[3], yPos)
-  doc.text('Items', columnPositions[4], yPos)
-  doc.text('Date', columnPositions[5], yPos)
+  doc.text('Total (LKR)', rightOf(2), yPos, { align: 'right' })
+  doc.text('Status', headerCenter(3), yPos, { align: 'center' })
+  doc.text('Items', headerCenter(4), yPos, { align: 'center' })
+  doc.text('Date', rightOf(5), yPos, { align: 'right' })
   yPos += lineHeight + 2
   
   // Draw data rows
@@ -670,24 +730,37 @@ export const exportOrdersPDF = (orders) => {
     // Alternate row background
     if (index % 2 === 1) {
       doc.setFillColor(245, 245, 245)
-      doc.rect(leftMargin, yPos - 5, 195, lineHeight, 'F')
+      doc.rect(leftMargin, yPos - 5, contentWidth, lineHeight, 'F')
     }
     
     // Order data
-    const orderId = String(order._id || '').substring(0, 10) + '...'
-    const customerName = order.user ? `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() : 'Guest'
-    const total = (order.totals?.grandTotal || 0).toLocaleString()
-    const status = order.status || order.orderState || 'N/A'
-    const itemCount = order.items?.length || 0
+    const orderId = formatOrderId(order?._id)
+    const customerName = (order.user ? `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() : '')
+      || order.customer?.name || order.customerName || order.user?.username || 'Guest'
+    const totalNum = Number(order.totals?.grandTotal ?? order.total ?? order.totalValue ?? 0)
+    const total = fmtCurrencyLKR(totalNum, false)
+    const rawStatus = String(order.orderState || order.deliveryState || order.status || 'N/A')
+    const status = rawStatus.toUpperCase().replace(/_/g, ' ')
+    const itemCount = Number(order.items?.length ?? order.itemCount ?? 0)
     const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'
     
     // Truncate long text to fit columns
+    const custMax = 32
+    const statusMax = 24
+    const totalRight = columnPositions[2] + columnWidths[2] - 2
+    const itemsRight = columnPositions[4] + columnWidths[4] - 2
+    const dateRight = columnPositions[5] + columnWidths[5] - 2
     doc.text(orderId, columnPositions[0], yPos)
-    doc.text(customerName.length > 15 ? customerName.substring(0, 12) + '...' : customerName, columnPositions[1], yPos)
-    doc.text(total, columnPositions[2], yPos)
-    doc.text(status.length > 8 ? status.substring(0, 8) : status, columnPositions[3], yPos)
-    doc.text(itemCount.toString(), columnPositions[4], yPos)
-    doc.text(date, columnPositions[5], yPos)
+    doc.text(customerName.length > custMax ? customerName.substring(0, custMax - 3) + '...' : customerName, columnPositions[1], yPos)
+    doc.text(total, totalRight, yPos, { align: 'right' })
+    if (status.includes('DELIVERED')) doc.setTextColor(34,197,94)
+    else if (status.includes('CANCEL') || status.includes('FAIL') || status.includes('RETURN')) doc.setTextColor(220,38,38)
+    else if (status.includes('SHIP') || status.includes('OUT FOR DELIVERY') || status.includes('TRANSIT')) doc.setTextColor(37,99,235)
+    else if (status.includes('CONFIRM') || status.includes('PACK')) doc.setTextColor(245,158,11)
+    doc.text(status.length > statusMax ? status.substring(0, statusMax - 3) + '...' : status, columnPositions[3], yPos)
+    doc.setTextColor(0,0,0)
+    doc.text(String(itemCount), itemsRight, yPos, { align: 'right' })
+    doc.text(date, dateRight, yPos, { align: 'right' })
     
     yPos += lineHeight
     
@@ -725,43 +798,94 @@ export const exportSingleOrderPDF = (order) => {
     }
     
     const doc = new jsPDF()
-  
-    // Add title
-    doc.setFontSize(20)
-    doc.setFont(undefined, 'bold')
-    doc.text('Order Details', 14, 22)
-    
-    // Add metadata
-    doc.setFontSize(10)
-    doc.setFont(undefined, 'normal')
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30)
+    const topStart = drawReportHeader(doc, 'Order Details')
     
     // Order information section
     doc.setFontSize(14)
     doc.setFont(undefined, 'bold')
-    doc.text('Order Information', 14, 50)
+    doc.text('Order Information', 14, topStart)
     
     doc.setFontSize(11)
     doc.setFont(undefined, 'normal')
     
-    let yPos = 60
+    let yPos = topStart + 10
     const lineHeight = 8
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const left = 14
+    const right = 14
+    const contentWidth = pageWidth - left - right
+    // Summary chips: Status, Payment, Method
+    const ordStatusChip = String(order.orderState || order.deliveryState || order.status || 'N/A').toUpperCase().replace(/_/g, ' ')
+    const payMethodChip = order.payment?.method || order.paymentMethod || 'N/A'
+    const payStatusChip = String(order.payment?.status || order.paymentStatus || 'N/A').toUpperCase()
+    const chip = (label, value, x, y, color) => {
+      const txt = `${label}: ${value}`
+      const w = doc.getTextWidth(txt) + 8
+      doc.setFillColor(color[0], color[1], color[2])
+      doc.rect(x, y - 6, w, 8, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(10)
+      doc.text(txt, x + 4, y)
+      doc.setTextColor(0, 0, 0)
+      return w + 6
+    }
+    let cx = left
+    let cy = yPos
+    let statusColor = [107,114,128]
+    if (ordStatusChip.includes('DELIVERED')) statusColor = [34,197,94]
+    else if (ordStatusChip.includes('CANCEL') || ordStatusChip.includes('FAIL') || ordStatusChip.includes('RETURN')) statusColor = [220,38,38]
+    else if (ordStatusChip.includes('SHIP') || ordStatusChip.includes('OUT FOR DELIVERY') || ordStatusChip.includes('TRANSIT')) statusColor = [37,99,235]
+    else if (ordStatusChip.includes('CONFIRM') || ordStatusChip.includes('PACK')) statusColor = [245,158,11]
+    cx += chip('Status', ordStatusChip, cx, cy, statusColor)
+    const payColor = payStatusChip === 'PAID' ? [34,197,94] : (payStatusChip === 'FAILED' ? [220,38,38] : [245,158,11])
+    cx += chip('Payment', payStatusChip, cx, cy, payColor)
+    cx += chip('Method', payMethodChip, cx, cy, [71,85,105])
+    yPos += 12
     
     // Order details
-    doc.text(`Order ID: ${order._id || 'N/A'}`, 14, yPos)
-    yPos += lineHeight
-    
-    doc.text(`Customer: ${order.customerName || 'Guest'}`, 14, yPos)
-    yPos += lineHeight
-    
-    doc.text(`Email: ${order.customerEmail || 'N/A'}`, 14, yPos)
+    const custName = (order.customer?.name) || (`${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim()) || order.customerName || 'Guest'
+    const custEmail = order.customer?.email || order.user?.email || order.customerEmail || 'N/A'
+    const ordStatus = String(order.orderState || order.deliveryState || order.status || 'N/A').toUpperCase().replace(/_/g, ' ')
+    doc.text(`Order ID: ${formatOrderId(order._id) || 'N/A'}`, 14, yPos)
     yPos += lineHeight
     
     doc.text(`Order Date: ${order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}`, 14, yPos)
     yPos += lineHeight
-    
-    doc.text(`Status: ${order.status || order.orderState || 'N/A'}`, 14, yPos)
-    yPos += lineHeight
+
+    // Two-column panels: Customer and Shipping Address
+    yPos += 6
+    const colW = (contentWidth - 6) / 2
+    const leftX = left
+    const rightX = left + colW + 6
+    const addrPanel = order.shippingAddress || order.address || {}
+    const leftLines = [
+      `Name: ${custName}`,
+      `Email: ${custEmail}`,
+      `Phone: ${addrPanel.phone || 'N/A'}`
+    ]
+    const rightLines = [
+      addrPanel.line1 || '',
+      addrPanel.line2 || '',
+      `${addrPanel.city || ''}${addrPanel.region ? ', ' + addrPanel.region : ''} ${addrPanel.postalCode || ''}`.trim(),
+      addrPanel.country || ''
+    ].filter(Boolean)
+    const panelLH = 6
+    const leftH = 12 + leftLines.length * panelLH + 6
+    const rightH = 12 + rightLines.length * panelLH + 6
+    const panelH = Math.max(leftH, rightH)
+    doc.setDrawColor(229)
+    doc.setFillColor(248,250,252)
+    doc.rect(leftX, yPos, colW, panelH, 'FD')
+    doc.rect(rightX, yPos, colW, panelH, 'FD')
+    doc.setFontSize(12); doc.setFont(undefined, 'bold')
+    doc.text('Customer', leftX + 4, yPos + 8)
+    doc.text('Shipping Address', rightX + 4, yPos + 8)
+    doc.setFontSize(10); doc.setFont(undefined, 'normal')
+    let ly = yPos + 16
+    leftLines.forEach(line => { doc.text(line, leftX + 4, ly); ly += panelLH })
+    ly = yPos + 16
+    rightLines.forEach(line => { doc.text(line, rightX + 4, ly); ly += panelLH })
+    yPos += panelH + 10
     
     // Payment section
     yPos += 10
@@ -773,33 +897,67 @@ export const exportSingleOrderPDF = (order) => {
     doc.setFontSize(11)
     doc.setFont(undefined, 'normal')
     
-    doc.text(`Payment Method: ${order.paymentMethod || 'N/A'}`, 14, yPos)
+    const payMethod = order.payment?.method || order.paymentMethod || 'N/A'
+    const payStatus = order.payment?.status || order.paymentStatus || 'N/A'
+    const totals = order.totals || {}
+    const subTotalNum = Number(totals.subtotal ?? totals.subTotal ?? order.subtotal ?? 0)
+    const shippingNum = Number(totals.shipping ?? order.shipping ?? 0)
+    const taxNum = Number(totals.tax ?? order.tax ?? 0)
+    const discountNum = Number(totals.discount ?? order.discount ?? 0)
+    const grandNum = Number(totals.grandTotal ?? order.totalValue ?? order.total ?? 0)
+    doc.text(`Payment Method: ${payMethod}`, 14, yPos)
     yPos += lineHeight
     
-    doc.text(`Payment Status: ${order.paymentStatus || 'N/A'}`, 14, yPos)
+    doc.text(`Payment Status: ${payStatus}`, 14, yPos)
     yPos += lineHeight
     
-    doc.text(`Subtotal: LKR ${(order.subtotal || 0).toLocaleString()}`, 14, yPos)
-    yPos += lineHeight
-    
-    if (order.shipping) {
-      doc.text(`Shipping: LKR ${order.shipping.toLocaleString()}`, 14, yPos)
-      yPos += lineHeight
+    // Delivery information panel
+    yPos += 10
+    doc.setFontSize(14)
+    doc.setFont(undefined, 'bold')
+    doc.text('Delivery Information', 14, yPos)
+    yPos += 10
+    doc.setFontSize(11)
+    doc.setFont(undefined, 'normal')
+    {
+      const d = order.assignedDelivery || {}
+      const lines = []
+      if (d.firstName || d.lastName || d.username) {
+        const dn = `${d.firstName || ''} ${d.lastName || ''}`.trim() || d.username
+        lines.push(`Assigned To: ${dn}`)
+      } else {
+        lines.push('Assigned To: Unassigned')
+      }
+      if (d.phone) lines.push(`Phone: ${d.phone}`)
+      const delState = String(order.deliveryState || order.orderState || 'N/A').toUpperCase().replace(/_/g,' ')
+      lines.push(`Delivery State: ${delState}`)
+      const pod = order.deliveryMeta?.evidence?.delivered || {}
+      const podBits = []
+      if (pod.otp) podBits.push('OTP')
+      if (pod.podPhotoUrl) podBits.push('Photo')
+      if (pod.signatureUrl) podBits.push('Signature')
+      lines.push(`POD Evidence: ${podBits.length ? podBits.join(', ') : 'None'}`)
+
+      const panelLH = 6
+      const panelH = 12 + lines.length * panelLH + 6
+      // Page break if not enough space
+      if (yPos + panelH > 270) {
+        doc.addPage()
+        const newTop = drawReportHeader(doc, 'Order Details')
+        yPos = newTop + 10
+      }
+      doc.setDrawColor(229)
+      doc.setFillColor(248,250,252)
+      const boxW = contentWidth
+      doc.rect(14, yPos, boxW, panelH, 'FD')
+      doc.setFontSize(12); doc.setFont(undefined, 'bold')
+      doc.text('Courier', 18, yPos + 8)
+      doc.setFontSize(10); doc.setFont(undefined, 'normal')
+      let ty = yPos + 16
+      lines.forEach(line => { doc.text(line, 18, ty); ty += panelLH })
+      yPos += panelH
     }
-    
-    if (order.tax) {
-      doc.text(`Tax: LKR ${order.tax.toLocaleString()}`, 14, yPos)
-      yPos += lineHeight
-    }
-    
-    if (order.discount) {
-      doc.text(`Discount: LKR ${order.discount.toLocaleString()}`, 14, yPos)
-      yPos += lineHeight
-    }
-    
-    doc.text(`Total: LKR ${(order.totalValue || 0).toLocaleString()}`, 14, yPos)
-    yPos += lineHeight
-    
+
     // Items section
     if (order.items && order.items.length > 0) {
       yPos += 10
@@ -810,60 +968,100 @@ export const exportSingleOrderPDF = (order) => {
       
       doc.setFontSize(11)
       doc.setFont(undefined, 'normal')
-      
-      order.items.forEach((item, index) => {
-        doc.text(`${index + 1}. ${item.name || 'N/A'}`, 14, yPos)
-        yPos += lineHeight
-        
-        doc.text(`   Quantity: ${item.quantity || 1} x LKR ${(item.price || 0).toLocaleString()}`, 14, yPos)
-        yPos += lineHeight
-        
-        if (item.color) {
-          doc.text(`   Color: ${item.color}`, 14, yPos)
-          yPos += lineHeight
-        }
-        
-        yPos += 3 // Space between items
-      })
-    }
-    
-    // Shipping address
-    if (order.shippingAddress) {
-      yPos += 10
-      doc.setFontSize(14)
+      // Items table
+      const tableLeft = 14
+      const w = [90, 20, 35, 35] // Name, Qty, Price, Line Total
+      const pos = [tableLeft, tableLeft + w[0], tableLeft + w[0] + w[1], tableLeft + w[0] + w[1] + w[2]]
+      // header
+      doc.setFontSize(10)
       doc.setFont(undefined, 'bold')
-      doc.text('Shipping Address', 14, yPos)
-      yPos += 10
-      
+      doc.setFillColor(41,128,185)
+      doc.rect(tableLeft, yPos - 5, 195, lineHeight, 'F')
+      doc.setTextColor(255,255,255)
+      doc.text('Item', pos[0], yPos)
+      doc.text('Qty', pos[1] + w[1] - 2, yPos, { align: 'right' })
+      doc.text('Price', pos[2] + w[2] - 2, yPos, { align: 'right' })
+      doc.text('Total', pos[3] + w[3] - 2, yPos, { align: 'right' })
+      yPos += lineHeight + 2
       doc.setFontSize(11)
       doc.setFont(undefined, 'normal')
-      
-      const addr = order.shippingAddress
-      if (addr.line1) {
-        doc.text(addr.line1, 14, yPos)
+      doc.setTextColor(0,0,0)
+
+      order.items.forEach((item, index) => {
+        // page break
+        if (yPos > 270) {
+          doc.addPage()
+          const newTop = drawReportHeader(doc, 'Order Details')
+          yPos = newTop + 10
+          doc.setFontSize(10)
+          doc.setFont(undefined, 'bold')
+          doc.setFillColor(41,128,185)
+          doc.rect(tableLeft, yPos - 5, 195, lineHeight, 'F')
+          doc.setTextColor(255,255,255)
+          doc.text('Item', pos[0], yPos)
+          doc.text('Qty', pos[1] + w[1] - 2, yPos, { align: 'right' })
+          doc.text('Price', pos[2] + w[2] - 2, yPos, { align: 'right' })
+          doc.text('Total', pos[3] + w[3] - 2, yPos, { align: 'right' })
+          yPos += lineHeight + 2
+          doc.setFontSize(11)
+          doc.setFont(undefined, 'normal')
+          doc.setTextColor(0,0,0)
+        }
+        const name = item.name || item.slug || 'Item'
+        const qty = Number(item.quantity || 1)
+        const priceNum = Number(item.price ?? item.unitPrice ?? 0)
+        const lineTotal = Number(item.total ?? priceNum * qty)
+        const nameMax = 60
+        const nameText = name.length > nameMax ? name.substring(0, nameMax - 3) + '...' : name
+        doc.text(`${index + 1}. ${nameText}`, pos[0], yPos)
+        doc.text(String(qty), pos[1] + w[1] - 2, yPos, { align: 'right' })
+        doc.text(fmtCurrencyLKR(priceNum, false), pos[2] + w[2] - 2, yPos, { align: 'right' })
+        doc.text(fmtCurrencyLKR(lineTotal, false), pos[3] + w[3] - 2, yPos, { align: 'right' })
         yPos += lineHeight
+      })
+
+      // Order summary box (right aligned)
+      yPos += 6
+      const sumW = 80
+      const sumX = left + contentWidth - sumW
+      const sumLines = [
+        { k: 'Subtotal', v: subTotalNum },
+        ...(shippingNum ? [{ k: 'Shipping', v: shippingNum }] : []),
+        ...(taxNum ? [{ k: 'Tax', v: taxNum }] : []),
+        ...(discountNum ? [{ k: 'Discount', v: -discountNum }] : []),
+      ]
+      const sumLH = 7
+      const sumH = 12 + (sumLines.length + 2) * sumLH + 8
+      if (yPos + sumH > 270) {
+        doc.addPage()
+        const newTop = drawReportHeader(doc, 'Order Details')
+        yPos = newTop + 10
       }
-      if (addr.line2) {
-        doc.text(addr.line2, 14, yPos)
-        yPos += lineHeight
-      }
-      doc.text(`${addr.city || ''}, ${addr.region || ''} ${addr.postalCode || ''}`, 14, yPos)
-      yPos += lineHeight
-      doc.text(addr.country || '', 14, yPos)
-      yPos += lineHeight
-      if (addr.phone) {
-        doc.text(`Phone: ${addr.phone}`, 14, yPos)
-        yPos += lineHeight
-      }
+      doc.setDrawColor(229)
+      doc.setFillColor(248,250,252)
+      doc.rect(sumX, yPos, sumW, sumH, 'FD')
+      doc.setFontSize(12); doc.setFont(undefined, 'bold')
+      doc.text('Order Summary', sumX + 6, yPos + 10)
+      let sy = yPos + 18
+      doc.setFontSize(10); doc.setFont(undefined, 'normal')
+      sumLines.forEach(({k,v}) => {
+        doc.text(k, sumX + 6, sy)
+        doc.text(fmtCurrencyLKR(v, true), sumX + sumW - 6, sy, { align: 'right' })
+        sy += sumLH
+      })
+      // Divider and grand total
+      doc.setDrawColor(210)
+      doc.line(sumX + 6, sy + 2, sumX + sumW - 6, sy + 2)
+      sy += sumLH
+      doc.setFontSize(11); doc.setFont(undefined, 'bold')
+      doc.text('Total', sumX + 6, sy)
+      doc.text(fmtCurrencyLKR(grandNum, true), sumX + sumW - 6, sy, { align: 'right' })
     }
     
+    // Shipping address block removed (covered in panels above)
+    
     // Add footer
-    doc.setFontSize(8)
-    doc.text(
-      'Page 1 of 1',
-      doc.internal.pageSize.width - 30,
-      doc.internal.pageSize.height - 10
-    )
+    drawReportFooter(doc)
     
     // Save the PDF
     const orderIdShort = String(order._id || 'order').substring(0, 8)
@@ -886,11 +1084,11 @@ export const exportPaymentsPDF = (payments) => {
   let yPos = 50; const lineHeight = 6
   doc.setFontSize(9)
   payments.forEach((p, i) => {
-    const id = String(p._id || '').substring(0, 8)
+    const id = formatOrderId(p?._id)
     const method = p.payment?.method || 'N/A'
     const status = p.payment?.status || 'N/A'
     const amount = (p.totals?.grandTotal || 0).toLocaleString()
-    doc.text(`${i+1}. ${id}... ${method} LKR ${amount} (${status})`, 14, yPos)
+    doc.text(`${i+1}. ${id} ${method} LKR ${amount} (${status})`, 14, yPos)
     yPos += lineHeight; if (yPos > 270) { doc.addPage(); yPos = 20 }
   })
   doc.save(`payments-report-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -902,7 +1100,7 @@ export const exportSinglePaymentPDF = (payment) => {
   doc.setFontSize(16); doc.text('Payment Details', 14, 22)
   doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30)
   let yPos = 45; const lineHeight = 7
-  doc.text(`Order: ${payment._id || 'N/A'}`, 14, yPos); yPos += lineHeight
+  doc.text(`Order: ${formatOrderId(payment._id) || 'N/A'}`, 14, yPos); yPos += lineHeight
   doc.text(`Customer: ${payment.customerName || 'N/A'}`, 14, yPos); yPos += lineHeight
   doc.text(`Method: ${payment.paymentMethod || 'N/A'}`, 14, yPos); yPos += lineHeight
   doc.text(`Status: ${payment.paymentStatus || 'N/A'}`, 14, yPos); yPos += lineHeight
@@ -957,9 +1155,9 @@ export const exportReturnsPDF = (returns) => {
   let yPos = 50; const lineHeight = 6
   doc.setFontSize(9)
   returns.forEach((r, i) => {
-    const id = String(r._id || '').substring(0, 8)
+    const id = formatOrderId(r?.order?._id || r?.orderId || r?.order || r?._id)
     const status = r.returnRequest?.status || 'N/A'
-    doc.text(`${i+1}. Order ${id}... Status: ${status}`, 14, yPos)
+    doc.text(`${i+1}. Order ${id} Status: ${status}`, 14, yPos)
     yPos += lineHeight; if (yPos > 270) { doc.addPage(); yPos = 20 }
   })
   doc.save(`returns-report-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -1052,4 +1250,3 @@ export const exportSingleDeliveryPDF = (delivery) => {
   doc.text(`Address: ${delivery.addressLine1 || 'N/A'}, ${delivery.city || 'N/A'}`, 14, yPos)
   doc.save(`delivery-${String(delivery._id || 'del').substring(0,8)}-${new Date().toISOString().split('T')[0]}.pdf`)
 }
-

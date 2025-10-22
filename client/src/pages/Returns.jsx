@@ -6,6 +6,7 @@ import Badge from '../components/ui/Badge'
 import Loader from '../components/ui/Loader'
 import { ArrowLeft, Package, RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle } from '../lib/icons'
 import { Link } from 'react-router-dom'
+import { formatOrderId } from '../lib/format'
 
 export default function Returns() {
   const { user } = useAppSelector(s => s.auth)
@@ -237,7 +238,7 @@ export default function Returns() {
                 <div className="card-header">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold">Order #{order._id.slice(-8)}</h3>
+                      <h3 className="font-semibold">Order {formatOrderId(order._id)}</h3>
                       <p className="text-sm text-[--color-muted]">
                         Placed on {formatDate(order.createdAt)}
                       </p>
@@ -358,7 +359,7 @@ export default function Returns() {
                     <div>
                       <h3 className="font-semibold">Refund #{refund._id.slice(-8)}</h3>
                       <p className="text-sm text-[--color-muted]">
-                        Order #{(refund.order?._id || refund.order || '').toString().slice(-8)} • {formatDate(refund.createdAt)}
+                        Order {formatOrderId(refund.order?._id || refund.order)} • {formatDate(refund.createdAt)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -447,7 +448,7 @@ export default function Returns() {
         <div className="relative modal-solid rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-[--color-border]">
           <div className="px-6 py-4 border-b">
             <h2 className="text-lg font-semibold">Request Refund</h2>
-            <div className="text-xs opacity-70">Order #{refundOrder._id}</div>
+            <div className="text-xs opacity-70">Order {formatOrderId(refundOrder._id)}</div>
           </div>
           <form onSubmit={submitRefundRequest}>
             <div className="p-6 space-y-4">
