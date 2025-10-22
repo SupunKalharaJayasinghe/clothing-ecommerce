@@ -444,8 +444,9 @@ function orderRow(o, refresh) {
 
   const copyOrderId = async () => {
     try {
-      await navigator.clipboard.writeText(String(o.id || ''))
-      showSuccess(`Copied ${titleText}`, 'Copied')
+      const shortId = formatOrderId(o.id)
+      await navigator.clipboard.writeText(shortId)
+      showSuccess(`Copied ${shortId}`, 'Copied')
     } catch {}
   }
 
