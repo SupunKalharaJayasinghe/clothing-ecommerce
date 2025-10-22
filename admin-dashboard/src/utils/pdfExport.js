@@ -359,11 +359,11 @@ export const exportProductsPDF = (products) => {
   doc.text(`Low Stock Items: ${lowStockCount}`, 14, 45)
   doc.text(`Out of Stock Items: ${outOfStockCount}`, 14, 50)
   
-  // Create table manually
-  let yPos = 65
+  const getPageHeight = () => doc.internal.pageSize.getHeight()
   const lineHeight = 8
   const leftMargin = 14
-  const columnWidths = [60, 35, 25, 25, 25, 25] // Name, Category, Price, Stock, Status
+  const columnWidths = [60, 35, 25, 25, 25, 25] // Name, Category, Price, Stock, Value, Status
+  const tableWidth = columnWidths.reduce((sum, width) => sum + width, 0)
   const columnPositions = [
     leftMargin, 
     leftMargin + columnWidths[0], 
@@ -372,33 +372,31 @@ export const exportProductsPDF = (products) => {
     leftMargin + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3],
     leftMargin + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3] + columnWidths[4]
   ]
+  const drawTableHeader = (startY) => {
+    doc.setFontSize(10)
+    doc.setFont(undefined, 'bold')
+    doc.setFillColor(41, 128, 185)
+    doc.rect(leftMargin, startY - 5, tableWidth, lineHeight, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.text('Product Name', columnPositions[0], startY)
+    doc.text('Category', columnPositions[1], startY)
+    doc.text('Price (LKR)', columnPositions[2], startY)
+    doc.text('Stock', columnPositions[3], startY)
+    doc.text('Value (LKR)', columnPositions[4], startY)
+    doc.text('Status', columnPositions[5], startY)
+    doc.setTextColor(0, 0, 0)
+    doc.setFont(undefined, 'normal')
+    return startY + lineHeight + 2
+  }
   
-  // Draw table header
-  doc.setFontSize(10)
-  doc.setFont(undefined, 'bold')
-  doc.setFillColor(41, 128, 185)
-  doc.rect(leftMargin, yPos - 5, 195, lineHeight, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.text('Product Name', columnPositions[0], yPos)
-  doc.text('Category', columnPositions[1], yPos)
-  doc.text('Price (LKR)', columnPositions[2], yPos)
-  doc.text('Stock', columnPositions[3], yPos)
-  doc.text('Value (LKR)', columnPositions[4], yPos)
-  doc.text('Status', columnPositions[5], yPos)
-  yPos += lineHeight + 2
-  
-  // Draw data rows
-  doc.setFont(undefined, 'normal')
-  doc.setTextColor(0, 0, 0)
+  let yPos = drawTableHeader(65)
   
   products.forEach((product, index) => {
-    // Alternate row background
     if (index % 2 === 1) {
       doc.setFillColor(245, 245, 245)
-      doc.rect(leftMargin, yPos - 5, contentWidth, lineHeight, 'F')
+      doc.rect(leftMargin, yPos - 5, tableWidth, lineHeight, 'F')
     }
     
-    // Product data
     const name = product.name || 'N/A'
     const category = product.category || 'N/A'
     const price = product.price || 0
@@ -406,14 +404,12 @@ export const exportProductsPDF = (products) => {
     const value = price * stock
     const status = stock <= 0 ? 'Out' : stock <= (product.lowStockThreshold || 5) ? 'Low' : 'OK'
     
-    // Truncate long text to fit columns
     doc.text(name.length > 25 ? name.substring(0, 22) + '...' : name, columnPositions[0], yPos)
     doc.text(category.length > 12 ? category.substring(0, 9) + '...' : category, columnPositions[1], yPos)
     doc.text(price.toLocaleString(), columnPositions[2], yPos)
     doc.text(stock.toString(), columnPositions[3], yPos)
     doc.text(value.toLocaleString(), columnPositions[4], yPos)
     
-    // Status with color
     if (status === 'Out') {
       doc.setTextColor(220, 38, 38) // Red
     } else if (status === 'Low') {
@@ -422,30 +418,16 @@ export const exportProductsPDF = (products) => {
       doc.setTextColor(34, 197, 94) // Green
     }
     doc.text(status, columnPositions[5], yPos)
-    doc.setTextColor(0, 0, 0) // Reset to black
+    doc.setTextColor(0, 0, 0)
     
     yPos += lineHeight
     
-    // Add new page if needed
-    if (yPos > pageHeight - 20) {
+    if (yPos > getPageHeight() - 20) {
       doc.addPage()
-      const newTop = drawReportHeader(doc, 'Orders Report')
-      // repeat table header on new page
-      yPos = newTop + 4
-      doc.setFontSize(10)
+      doc.setFontSize(14)
       doc.setFont(undefined, 'bold')
-      doc.setFillColor(41, 128, 185)
-      doc.rect(leftMargin, yPos - 5, contentWidth, lineHeight, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.text('Order ID', columnPositions[0], yPos)
-      doc.text('Customer', columnPositions[1], yPos)
-      doc.text('Total (LKR)', rightOf(2), yPos, { align: 'right' })
-      doc.text('Status', headerCenter(3), yPos, { align: 'center' })
-      doc.text('Items', headerCenter(4), yPos, { align: 'center' })
-      doc.text('Date', rightOf(5), yPos, { align: 'right' })
-      yPos += lineHeight + 2
-      doc.setFont(undefined, 'normal')
-      doc.setTextColor(0, 0, 0)
+      doc.text('Products Report (continued)', leftMargin, 22)
+      yPos = drawTableHeader(35)
     }
   })
   
@@ -1268,4 +1250,3 @@ export const exportSingleDeliveryPDF = (delivery) => {
   doc.text(`Address: ${delivery.addressLine1 || 'N/A'}, ${delivery.city || 'N/A'}`, 14, yPos)
   doc.save(`delivery-${String(delivery._id || 'del').substring(0,8)}-${new Date().toISOString().split('T')[0]}.pdf`)
 }
-
