@@ -68,10 +68,9 @@ export const createAdmin = catchAsync(async (_req, _res) => {
 
 // Step 1: send OTP to main admin email to approve creation
 export const initiateCreateAdmin = catchAsync(async (req, res) => {
-  // Find main admin by configured email
-  const mainEmail = MAIN_ADMIN_EMAIL.toLowerCase()
-  const mainAdmin = await Admin.findOne({ email: mainEmail })
-  if (!mainAdmin) throw new ApiError(400, 'Main admin email is not registered')
+  // Use the currently authenticated primary admin to authorize creation
+  const mainAdmin = req.adminDoc
+  if (!mainAdmin?.isPrimaryAdmin) throw new ApiError(403, 'Only the primary admin can perform this action')
 
   // generate 6-digit code and store hash with expiry
   const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, '0')
