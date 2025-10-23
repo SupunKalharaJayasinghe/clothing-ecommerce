@@ -165,6 +165,7 @@ export default function Returns() {
   const getRefundStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'processed': return 'green'
+      case 'completed': return 'green'
       case 'approved': return 'blue'
       case 'requested': return 'yellow'
       case 'failed': return 'red'
@@ -364,7 +365,7 @@ export default function Returns() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge tone={getRefundStatusColor(refund.status)}>
-                        {refund.status?.toUpperCase() || 'UNKNOWN'}
+                        {String(refund.status || '').toLowerCase() === 'processed' ? 'COMPLETED' : (refund.status?.toUpperCase() || 'UNKNOWN')}
                       </Badge>
                     </div>
                   </div>
@@ -420,7 +421,7 @@ export default function Returns() {
                           <div className="flex items-center gap-3">
                             <div className="w-2 h-2 bg-green-600 rounded-full"></div>
                             <div>
-                              <p className="text-sm font-medium">Processed</p>
+                              <p className="text-sm font-medium">Completed</p>
                               <p className="text-xs text-[--color-muted]">{formatDate(refund.processedAt)}</p>
                             </div>
                           </div>
